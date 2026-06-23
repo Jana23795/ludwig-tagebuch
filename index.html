@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🐴 Ludwig – Trainingstagebuch</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --sand: #F5EFE0;
+    --warm: #EDE0C8;
+    --brown: #7A5C38;
+    --dark: #3B2A1A;
+    --green: #5A7A52;
+    --red: #A03030;
+    --accent: #B8864E;
+    --white: #FFFDF8;
+    --border: #D4C4A8;
+    --shadow: rgba(58,42,26,0.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--sand);
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--dark);
+    color: var(--sand);
+    padding: 18px 24px 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  header .horse-icon { font-size: 2rem; }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.45rem;
+    letter-spacing: 0.02em;
+  }
+  header p { font-size: 0.78rem; opacity: 0.65; margin-top: 1px; }
+  header .spacer { flex: 1; }
+  header .badge {
+    background: var(--accent);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── NAV TABS ── */
+  nav {
+    display: flex;
+    background: var(--warm);
+    border-bottom: 2px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  nav button {
+    flex: 0 0 auto;
+    padding: 12px 18px;
+    background: none;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--brown);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    transition: all 0.18s;
+  }
+  nav button.active {
+    color: var(--dark);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+  nav button:hover:not(.active) { background: rgba(0,0,0,0.04); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 20px 16px 40px; max-width: 680px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    color: var(--brown);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── FORM ELEMENTS ── */
+  label.field-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--brown);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  label.field-label:first-child { margin-top: 0; }
+
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    background: var(--sand);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--dark);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); background: var(--white); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  /* ── CHECKBOX GROUPS ── */
+  .check-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 6px;
+  }
+  .check-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--sand);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 0.83rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .check-group input[type="checkbox"] { display: none; }
+  .check-group label.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+  .check-group label:hover { border-color: var(--accent); }
+
+  /* ── MOOD SCALE ── */
+  .mood-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .mood-group label {
+    font-size: 1.8rem;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 5px 9px;
+    background: var(--sand);
+    transition: all 0.15s;
+    line-height: 1;
+  }
+  .mood-group input[type="radio"] { display: none; }
+  .mood-group label.checked {
+    border-color: var(--accent);
+    background: var(--warm);
+    box-shadow: 0 0 0 2px var(--accent);
+    transform: scale(1.18);
+  }
+  .mood-group label:hover { transform: scale(1.12); border-color: var(--accent); }
+
+  /* ── WEATHER ICONS ── */
+  .weather-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .weather-group label {
+    font-size: 1.5rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 4px 8px;
+    transition: all 0.15s;
+    background: var(--sand);
+    border-color: var(--border);
+  }
+  .weather-group input[type="radio"] { display: none; }
+  .weather-group label.checked {
+    border-color: var(--accent);
+    background: var(--warm);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  /* ── VERDAUUNG (color scale) ── */
+  .verdauung-group { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+  .verdauung-group label {
+    font-size: 1.5rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    padding: 4px 10px;
+    background: var(--sand);
+    border-color: var(--border);
+    transition: all 0.15s;
+  }
+  .verdauung-group input[type="radio"] { display: none; }
+  .verdauung-group label.checked {
+    border-color: var(--accent);
+    background: var(--warm);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  /* ── ATMUNG ── */
+  .atmung-group { display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+  .atmung-group label {
+    font-size: 1.4rem;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 4px 10px;
+    background: var(--sand);
+    transition: all 0.15s;
+  }
+  .atmung-group input[type="radio"] { display: none; }
+  .atmung-group label.checked {
+    border-color: var(--accent);
+    background: var(--warm);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  /* ── YES/NO TOGGLE ── */
+  .yn-group { display: flex; gap: 8px; margin-top: 6px; }
+  .yn-group label {
+    flex: 1;
+    text-align: center;
+    padding: 9px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.88rem;
+    background: var(--sand);
+    transition: all 0.15s;
+  }
+  .yn-group input[type="radio"] { display: none; }
+  .yn-group label.checked-yes { background: var(--green); border-color: var(--green); color: white; }
+  .yn-group label.checked-no { background: var(--red); border-color: var(--red); color: white; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: var(--dark);
+    color: var(--sand);
+    border: none;
+    border-radius: 11px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 18px;
+    transition: background 0.18s;
+    letter-spacing: 0.02em;
+  }
+  .btn:hover { background: var(--brown); }
+  .btn.btn-accent { background: var(--accent); }
+  .btn.btn-accent:hover { background: var(--brown); }
+  .btn.btn-danger { background: var(--red); }
+  .btn.btn-sm {
+    width: auto;
+    display: inline-block;
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    margin-top: 0;
+  }
+
+  /* ── VERLAUF ── */
+  .entry-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+  }
+  .entry-card:hover { box-shadow: 0 4px 14px var(--shadow); }
+  .entry-card .entry-date {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    color: var(--brown);
+  }
+  .entry-card .entry-meta {
+    font-size: 0.78rem;
+    color: #888;
+    margin-top: 3px;
+  }
+  .entry-card .entry-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  .entry-card .tag {
+    background: var(--warm);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.73rem;
+    color: var(--brown);
+  }
+  .entry-detail { display: none; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .entry-detail.open { display: block; }
+  .detail-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px; }
+  .detail-row span:first-child { color: var(--brown); font-weight: 600; }
+
+  /* ── BUDGET / FUTTER ── */
+  .table-container { overflow-x: auto; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  th {
+    background: var(--warm);
+    color: var(--brown);
+    font-weight: 600;
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  td input, td select { padding: 5px 8px; font-size: 0.82rem; }
+  .total-row td { font-weight: 700; background: var(--warm); color: var(--brown); }
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 6px;
+    border-radius: 5px;
+  }
+  .delete-btn:hover { background: #fee; }
+
+  /* ── SUCCESS TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--dark);
+    color: var(--sand);
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 999;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── PROFIL ── */
+  .profil-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 400px) { .profil-grid { grid-template-columns: 1fr; } }
+
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  .prev-entry-banner {
+    background: var(--warm);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+    color: var(--brown);
+  }
+  .prev-entry-banner strong { color: var(--dark); }
+
+  /* ── MONTH SELECT ── */
+  .month-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: 14px;
+    padding-bottom: 4px;
+  }
+  .month-bar::-webkit-scrollbar { display: none; }
+  .month-btn {
+    flex: 0 0 auto;
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    background: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    cursor: pointer;
+    color: var(--brown);
+    transition: all 0.15s;
+  }
+  .month-btn.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #aaa;
+  }
+  .empty-state .emoji { font-size: 3rem; margin-bottom: 10px; }
+  .empty-state p { font-size: 0.88rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="horse-icon">🐴</div>
+  <div>
+    <h1>Ludwig</h1>
+    <p>Trakehner-Deutsch Reitpony Mix · 23 J. · 160 cm · ~550 kg</p>
+  </div>
+  <div class="spacer"></div>
+  <div class="badge">2026</div>
+</header>
+
+<nav>
+  <button class="active" onclick="showPage('training')">📋 Protokoll</button>
+  <button onclick="showPage('verlauf')">📅 Verlauf</button>
+  <button onclick="showPage('gesundheit')">🏥 Gesundheit</button>
+  <button onclick="showPage('futter')">🌾 Futter</button>
+  <button onclick="showPage('budget')">💶 Budget</button>
+</nav>
+
+<!-- ════════════════════════════════════════════
+     PAGE 1: TÄGLICHES PROTOKOLL
+════════════════════════════════════════════ -->
+<div class="page active" id="page-training">
+
+  <!-- Vorheriger Eintrag Banner -->
+  <div class="prev-entry-banner" id="prev-banner" style="display:none">
+    📌 <strong>Gestern:</strong> <span id="prev-summary"></span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Tägliches Protokoll</div>
+
+    <label class="field-label">Wie war die Einheit? 🌟</label>
+    <div class="mood-group" id="t-stimmung">
+      <label title="Wütend"><input type="radio" name="stimmung" value="😡 Wütend" /><span>😡</span></label>
+      <label title="Frustriert"><input type="radio" name="stimmung" value="😤 Frustriert" /><span>😤</span></label>
+      <label title="Gestresst"><input type="radio" name="stimmung" value="😰 Gestresst" /><span>😰</span></label>
+      <label title="Unruhig"><input type="radio" name="stimmung" value="😬 Unruhig" /><span>😬</span></label>
+      <label title="Mäßig"><input type="radio" name="stimmung" value="😐 Mäßig" /><span>😐</span></label>
+      <label title="Okay"><input type="radio" name="stimmung" value="🙂 Okay" /><span>🙂</span></label>
+      <label title="Entspannt"><input type="radio" name="stimmung" value="😌 Entspannt" /><span>😌</span></label>
+      <label title="Gut"><input type="radio" name="stimmung" value="😊 Gut" /><span>😊</span></label>
+      <label title="Toll"><input type="radio" name="stimmung" value="🥰 Toll" /><span>🥰</span></label>
+      <label title="Fantastisch"><input type="radio" name="stimmung" value="🤩 Fantastisch" /><span>🤩</span></label>
+      <label title="Herzchenaugen"><input type="radio" name="stimmung" value="😍 Herzchenaugen" /><span>😍</span></label>
+    </div>
+
+    <label class="field-label">Datum</label>
+    <input type="date" id="t-datum" />
+
+    <label class="field-label">Wer hat geritten / gearbeitet?</label>
+    <input type="text" id="t-wer" placeholder="Name eingeben…" />
+
+    <label class="field-label">Wetter</label>
+    <div class="weather-group" id="t-wetter">
+      <label><input type="radio" name="wetter" value="☀️" /><span>☀️</span></label>
+      <label><input type="radio" name="wetter" value="🌤️" /><span>🌤️</span></label>
+      <label><input type="radio" name="wetter" value="⛅" /><span>⛅</span></label>
+      <label><input type="radio" name="wetter" value="☁️" /><span>☁️</span></label>
+      <label><input type="radio" name="wetter" value="🌧️" /><span>🌧️</span></label>
+      <label><input type="radio" name="wetter" value="🌦️" /><span>🌦️</span></label>
+      <label><input type="radio" name="wetter" value="⛈️" /><span>⛈️</span></label>
+      <label><input type="radio" name="wetter" value="🌬️" /><span>🌬️</span></label>
+      <label><input type="radio" name="wetter" value="❄️" /><span>❄️</span></label>
+      <label><input type="radio" name="wetter" value="🌫️" /><span>🌫️</span></label>
+    </div>
+
+    <label class="field-label">Temperatur (°C)</label>
+    <input type="number" id="t-temp" placeholder="z.B. 18" style="width:120px" />
+  </div>
+
+  <div class="card">
+    <div class="card-title">🏇 Training</div>
+
+    <label class="field-label">Trainingsart</label>
+    <div class="check-group" id="t-art">
+      <label><input type="checkbox" value="Ausreiten" /><span>🌲 Ausreiten</span></label>
+      <label><input type="checkbox" value="Dressur" /><span>🎯 Dressur</span></label>
+      <label><input type="checkbox" value="Springen" /><span>🏆 Springen</span></label>
+      <label><input type="checkbox" value="Reitstunde" /><span>👩‍🏫 Reitstunde</span></label>
+      <label><input type="checkbox" value="Working Equitation" /><span>🤠 Working Equitation</span></label>
+      <label><input type="checkbox" value="Dual-Aktivierung" /><span>⚡ Dual-Aktivierung</span></label>
+      <label><input type="checkbox" value="Equikinetik" /><span>🔄 Equikinetik</span></label>
+      <label><input type="checkbox" value="Handarbeit" /><span>🤝 Handarbeit</span></label>
+      <label><input type="checkbox" value="Bodenarbeit" /><span>🦶 Bodenarbeit</span></label>
+      <label><input type="checkbox" value="Freiarbeit" /><span>🕊️ Freiarbeit</span></label>
+      <label><input type="checkbox" value="Kappzaumlonge" /><span>⭕ Kappzaumlonge</span></label>
+      <label><input type="checkbox" value="Doppellonge" /><span>〰️ Doppellonge</span></label>
+      <label><input type="checkbox" value="Equi-Classic-Work" /><span>🌀 Equi-Classic-Work</span></label>
+    </div>
+
+    <label class="field-label">Dauer (Minuten)</label>
+    <input type="number" id="t-dauer" placeholder="z.B. 45" style="width:120px" />
+  </div>
+
+  <div class="card">
+    <div class="card-title">🎠 Ausrüstung</div>
+
+    <label class="field-label">Zäumung</label>
+    <div class="check-group" id="t-zaeum">
+      <label><input type="checkbox" value="Kandare" /><span>Kandare</span></label>
+      <label><input type="checkbox" value="Trense" /><span>Trense</span></label>
+      <label><input type="checkbox" value="Gebisslos" /><span>Gebisslos</span></label>
+      <label><input type="checkbox" value="Bosal" /><span>Bosal</span></label>
+    </div>
+    <input type="text" id="t-zaeum-sonstige" placeholder="Sonstige Zäumung…" style="margin-top:8px" />
+
+    <label class="field-label">Sattel</label>
+    <div class="check-group" id="t-sattel">
+      <label><input type="checkbox" value="Dressursattel" /><span>Dressursattel</span></label>
+      <label><input type="checkbox" value="Springsattel" /><span>Springsattel</span></label>
+      <label><input type="checkbox" value="Barocksattel Deuber (schwarz)" /><span>Barocksattel Deuber ⬛</span></label>
+      <label><input type="checkbox" value="Barocksattel Everluck (braun)" /><span>Barocksattel Everluck 🟫</span></label>
+      <label><input type="checkbox" value="Westernsattel" /><span>Westernsattel</span></label>
+      <label><input type="checkbox" value="Reitpad" /><span>Reitpad</span></label>
+      <label><input type="checkbox" value="Damensattel" /><span>Damensattel</span></label>
+      <label><input type="checkbox" value="Ohne Sattel" /><span>Ohne Sattel</span></label>
+    </div>
+    <input type="text" id="t-sattel-sonstige" placeholder="Sonstiger Sattel…" style="margin-top:8px" />
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌿 Gesundheit & Futter</div>
+
+    <label class="field-label">Futter gemäß Plan?</label>
+    <div class="yn-group" id="t-futter-plan">
+      <label onclick="ynSelect('t-futter-plan','Ja','yes')"><input type="radio" name="futterplan" value="Ja" /> ✅ Ja</label>
+      <label onclick="ynSelect('t-futter-plan','Nein','no')"><input type="radio" name="futterplan" value="Nein" /> ❌ Nein</label>
+    </div>
+    <input type="text" id="t-futter-abweich" placeholder="Abweichung beschreiben…" style="margin-top:8px" />
+
+    <label class="field-label">Verdauung</label>
+    <div class="verdauung-group" id="t-verdauung">
+      <label title="Sehr gut"><input type="radio" name="verdauung" value="💚 Sehr gut" /><span>💚</span></label>
+      <label title="Gut"><input type="radio" name="verdauung" value="🟢 Gut" /><span>🟢</span></label>
+      <label title="Mittel"><input type="radio" name="verdauung" value="🟡 Mittel" /><span>🟡</span></label>
+      <label title="Auffällig"><input type="radio" name="verdauung" value="🟠 Auffällig" /><span>🟠</span></label>
+      <label title="Problematisch"><input type="radio" name="verdauung" value="🔴 Problematisch" /><span>🔴</span></label>
+    </div>
+
+    <label class="field-label">Atmung</label>
+    <div class="atmung-group" id="t-atmung">
+      <label title="Normal"><input type="radio" name="atmung" value="🦄 Normal" /><span>🦄</span></label>
+      <label title="Schnauben"><input type="radio" name="atmung" value="😮‍💨 Schnauben" /><span>😮‍💨</span></label>
+      <label title="Husten" ><input type="radio" name="atmung" value="🤧 Husten" /><span>🤧</span></label>
+      <label title="Schnaufen"><input type="radio" name="atmung" value="😤 Schnaufen" /><span>😤</span></label>
+      <label title="Krank"><input type="radio" name="atmung" value="😷 Krank" /><span>😷</span></label>
+    </div>
+
+    <label class="field-label">Verletzung?</label>
+    <div class="yn-group" id="t-verletzung">
+      <label onclick="ynSelect('t-verletzung','Ja','yes')"><input type="radio" name="verletzung" value="Ja" /> ⚠️ Ja</label>
+      <label onclick="ynSelect('t-verletzung','Nein','no')"><input type="radio" name="verletzung" value="Nein" /> ✅ Nein</label>
+    </div>
+    <input type="text" id="t-verletzung-welche" placeholder="Welche Verletzung?" style="margin-top:8px" />
+  </div>
+
+  <div class="card">
+    <div class="card-title">💬 Kommentar</div>
+    <textarea id="t-kommentar" placeholder="Wie war die Einheit? Besonderheiten, Stimmung, Fortschritte…"></textarea>
+  </div>
+
+  <button class="btn btn-accent" onclick="saveTraining()">✅ Protokoll speichern</button>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     PAGE 2: VERLAUF
+════════════════════════════════════════════ -->
+<div class="page" id="page-verlauf">
+  <div class="card">
+    <div class="card-title">📅 Alle Einträge</div>
+    <input type="text" id="search-input" placeholder="🔍 Suchen (Name, Datum, Aktivität…)" oninput="renderVerlauf()" />
+  </div>
+  <div id="verlauf-list"></div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     PAGE 3: GESUNDHEIT
+════════════════════════════════════════════ -->
+<div class="page" id="page-gesundheit">
+  <div class="card">
+    <div class="card-title">🏥 Gesundheitseintrag</div>
+
+    <label class="field-label">Datum</label>
+    <input type="date" id="g-datum" />
+
+    <label class="field-label">Art des Eintrags</label>
+    <select id="g-art">
+      <option value="">– bitte wählen –</option>
+      <option>Tierarztbesuch</option>
+      <option>Hufschmied</option>
+      <option>Osteopath</option>
+      <option>Zahnarzt (Pferd)</option>
+      <option>Impfung</option>
+      <option>Wurmkur</option>
+      <option>Verletzung</option>
+      <option>Krankheit</option>
+      <option>Sonstiges</option>
+    </select>
+
+    <label class="field-label">Behandelnde Person / Praxis</label>
+    <input type="text" id="g-person" placeholder="Name eingeben…" />
+
+    <label class="field-label">Befund / Diagnose</label>
+    <textarea id="g-befund" placeholder="Was wurde festgestellt?"></textarea>
+
+    <label class="field-label">Behandlung / Maßnahmen</label>
+    <textarea id="g-behandlung" placeholder="Was wurde gemacht?"></textarea>
+
+    <label class="field-label">Nächster Termin</label>
+    <input type="date" id="g-naechster" />
+
+    <label class="field-label">Kosten (€)</label>
+    <input type="number" id="g-kosten" placeholder="0.00" step="0.01" style="width:150px" />
+
+    <label class="field-label">Notizen</label>
+    <textarea id="g-notizen" placeholder="Weitere Anmerkungen…"></textarea>
+
+    <button class="btn btn-accent" onclick="saveGesundheit()">✅ Eintrag speichern</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Gesundheitsverlauf</div>
+    <div id="gesundheit-list"></div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     PAGE 4: FUTTER
+════════════════════════════════════════════ -->
+<div class="page" id="page-futter">
+  <div class="card">
+    <div class="card-title">🌾 Futterplan</div>
+
+    <div class="month-bar" id="futter-months"></div>
+
+    <div class="table-container">
+      <table id="futter-table">
+        <thead>
+          <tr>
+            <th>Futtermittel</th>
+            <th>Kategorie</th>
+            <th>Dosierung</th>
+            <th>Häufigkeit</th>
+            <th>Notizen</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="futter-body"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-accent" style="margin-top:12px" onclick="addFutterRow()">➕ Zeile hinzufügen</button>
+    <button class="btn" onclick="saveFutter()">💾 Futterplan speichern</button>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     PAGE 5: BUDGET
+════════════════════════════════════════════ -->
+<div class="page" id="page-budget">
+  <div class="card">
+    <div class="card-title">💶 Ausgabenübersicht</div>
+
+    <div class="month-bar" id="budget-months"></div>
+
+    <div class="table-container">
+      <table id="budget-table">
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Leistung / Produkt</th>
+            <th>Betrag (€)</th>
+            <th>Notizen</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="budget-body"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="2">Gesamt</td>
+            <td id="budget-total">0,00 €</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <button class="btn btn-accent" style="margin-top:12px" onclick="addBudgetRow()">➕ Ausgabe hinzufügen</button>
+    <button class="btn" onclick="saveBudget()">💾 Budget speichern</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast">✅ Gespeichert!</div>
+
+<script>
+// ═══════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════
+const $ = id => document.getElementById(id);
+const store = {
+  get: k => JSON.parse(localStorage.getItem('ludwig_' + k) || '[]'),
+  set: (k, v) => localStorage.setItem('ludwig_' + k, JSON.stringify(v)),
+  getObj: k => JSON.parse(localStorage.getItem('ludwig_' + k) || '{}'),
+  setObj: (k, v) => localStorage.setItem('ludwig_' + k, JSON.stringify(v)),
+};
+
+function showToast(msg = '✅ Gespeichert!') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  $('page-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'verlauf') renderVerlauf();
+  if (name === 'gesundheit') renderGesundheit();
+  if (name === 'futter') { renderMonthBar('futter'); renderFutter(); }
+  if (name === 'budget') { renderMonthBar('budget'); renderBudget(); }
+}
+
+// ═══════════════════════════════════
+// CHECKBOX / RADIO GROUPS
+// ═══════════════════════════════════
+document.querySelectorAll('.check-group').forEach(group => {
+  group.querySelectorAll('label').forEach(label => {
+    label.addEventListener('click', () => {
+      const cb = label.querySelector('input[type="checkbox"]');
+      setTimeout(() => {
+        label.classList.toggle('checked', cb.checked);
+      }, 0);
+    });
+  });
+});
+
+document.querySelectorAll('.weather-group, .verdauung-group, .atmung-group, .mood-group').forEach(group => {
+  group.querySelectorAll('label').forEach(label => {
+    label.addEventListener('click', () => {
+      group.querySelectorAll('label').forEach(l => l.classList.remove('checked'));
+      label.classList.add('checked');
+    });
+  });
+});
+
+function ynSelect(groupId, val, type) {
+  const group = $(groupId);
+  group.querySelectorAll('label').forEach(l => {
+    l.classList.remove('checked-yes', 'checked-no');
+  });
+  const labels = group.querySelectorAll('label');
+  if (type === 'yes') labels[0].classList.add('checked-yes');
+  else labels[1].classList.add('checked-no');
+}
+
+function getChecked(groupId) {
+  const group = $(groupId);
+  if (!group) return '';
+  return [...group.querySelectorAll('input[type="checkbox"]:checked')]
+    .map(i => i.value).join(', ');
+}
+
+function getRadio(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+
+function clearForm() {
+  // Checkboxes
+  document.querySelectorAll('.check-group label').forEach(l => {
+    l.classList.remove('checked');
+    const cb = l.querySelector('input');
+    if (cb) cb.checked = false;
+  });
+  // Radios
+  document.querySelectorAll('.weather-group label, .verdauung-group label, .atmung-group label, .mood-group label, .yn-group label').forEach(l => {
+    l.classList.remove('checked', 'checked-yes', 'checked-no');
+  });
+  document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+  // Text inputs
+  ['t-wer','t-temp','t-dauer','t-zaeum-sonstige','t-sattel-sonstige','t-futter-abweich','t-verletzung-welche','t-kommentar'].forEach(id => {
+    const el = $(id);
+    if (el) el.value = '';
+  });
+}
+
+// ═══════════════════════════════════
+// TRAINING PROTOKOLL
+// ═══════════════════════════════════
+function initTrainingForm() {
+  const today = new Date().toISOString().split('T')[0];
+  $('t-datum').value = today;
+
+  // Show yesterday's entry
+  const entries = store.get('training');
+  if (entries.length > 0) {
+    const last = entries[entries.length - 1];
+    $('prev-banner').style.display = 'block';
+    $('prev-summary').textContent =
+      `${last.datum} · ${last.wer || 'unbekannt'} · ${last.art || '–'} · ${last.verdauung || '–'}`;
+  }
+}
+
+function saveTraining() {
+  const entry = {
+    stimmung: getRadio('stimmung'),
+    datum: $('t-datum').value,
+    wer: $('t-wer').value,
+    wetter: getRadio('wetter'),
+    temp: $('t-temp').value,
+    art: getChecked('t-art'),
+    dauer: $('t-dauer').value,
+    zaeum: getChecked('t-zaeum'),
+    zaeum_sonstige: $('t-zaeum-sonstige').value,
+    sattel: getChecked('t-sattel'),
+    sattel_sonstige: $('t-sattel-sonstige').value,
+    futter_plan: getRadio('futterplan'),
+    futter_abweich: $('t-futter-abweich').value,
+    verdauung: getRadio('verdauung'),
+    atmung: getRadio('atmung'),
+    verletzung: getRadio('verletzung'),
+    verletzung_welche: $('t-verletzung-welche').value,
+    kommentar: $('t-kommentar').value,
+    ts: Date.now(),
+  };
+
+  if (!entry.datum) { alert('Bitte Datum eingeben!'); return; }
+
+  const entries = store.get('training');
+  // Replace if same date
+  const idx = entries.findIndex(e => e.datum === entry.datum);
+  if (idx >= 0) entries[idx] = entry;
+  else entries.push(entry);
+  entries.sort((a,b) => a.datum.localeCompare(b.datum));
+  store.set('training', entries);
+
+  showToast('✅ Protokoll gespeichert!');
+  clearForm();
+  initTrainingForm();
+}
+
+// ═══════════════════════════════════
+// VERLAUF
+// ═══════════════════════════════════
+function renderVerlauf() {
+  const entries = store.get('training');
+  const q = ($('search-input').value || '').toLowerCase();
+  const list = $('verlauf-list');
+
+  const filtered = entries
+    .slice().reverse()
+    .filter(e => {
+      if (!q) return true;
+      return JSON.stringify(e).toLowerCase().includes(q);
+    });
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="emoji">🐴</div><p>Noch keine Einträge vorhanden.</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((e, i) => `
+    <div class="entry-card" onclick="toggleDetail('ec-${i}')">
+      <div class="entry-date">${formatDate(e.datum)}</div>
+      <div class="entry-meta">${e.wer || 'Unbekannt'} · ${e.dauer ? e.dauer + ' Min' : '–'} · ${e.wetter || ''} ${e.temp ? e.temp + '°C' : ''}</div>
+      <div class="entry-tags">
+        ${e.art ? e.art.split(', ').map(a => `<span class="tag">${a}</span>`).join('') : ''}
+        ${e.verdauung ? `<span class="tag">${e.verdauung}</span>` : ''}
+        ${e.atmung ? `<span class="tag">${e.atmung}</span>` : ''}
+        ${e.verletzung === 'Ja' ? `<span class="tag" style="background:#fee;color:#a03030">⚠️ Verletzung</span>` : ''}
+      </div>
+      <div class="entry-detail" id="ec-${i}">
+        <div class="divider"></div>
+        ${row('Zäumung', e.zaeum)}
+        ${row('Sattel', e.sattel)}
+        ${row('Futter', e.futter_plan + (e.futter_abweich ? ' – ' + e.futter_abweich : ''))}
+        ${row('Verletzung', e.verletzung === 'Ja' ? '⚠️ ' + (e.verletzung_welche || 'Ja') : '–')}
+        ${e.kommentar ? `<div style="margin-top:8px;font-size:0.82rem;color:#555;font-style:italic">"${e.kommentar}"</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function row(label, val) {
+  if (!val) return '';
+  return `<div class="detail-row"><span>${label}</span><span>${val}</span></div>`;
+}
+
+function toggleDetail(id) {
+  const el = $(id);
+  el.classList.toggle('open');
+}
+
+function formatDate(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+// ═══════════════════════════════════
+// GESUNDHEIT
+// ═══════════════════════════════════
+function saveGesundheit() {
+  const entry = {
+    datum: $('g-datum').value,
+    art: $('g-art').value,
+    person: $('g-person').value,
+    befund: $('g-befund').value,
+    behandlung: $('g-behandlung').value,
+    naechster: $('g-naechster').value,
+    kosten: $('g-kosten').value,
+    notizen: $('g-notizen').value,
+    ts: Date.now(),
+  };
+  if (!entry.datum) { alert('Bitte Datum eingeben!'); return; }
+  const entries = store.get('gesundheit');
+  entries.push(entry);
+  entries.sort((a,b) => a.datum.localeCompare(b.datum));
+  store.set('gesundheit', entries);
+  ['g-datum','g-person','g-befund','g-behandlung','g-naechster','g-kosten','g-notizen'].forEach(id => $(id).value = '');
+  $('g-art').value = '';
+  showToast('✅ Gesundheitseintrag gespeichert!');
+  renderGesundheit();
+}
+
+function renderGesundheit() {
+  const entries = store.get('gesundheit').slice().reverse();
+  const list = $('gesundheit-list');
+  if (entries.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="emoji">🏥</div><p>Noch keine Einträge.</p></div>`;
+    return;
+  }
+  list.innerHTML = entries.map(e => `
+    <div style="border-bottom:1px solid var(--border);padding:10px 0">
+      <div style="font-weight:600;font-size:0.9rem">${formatDate(e.datum)} · ${e.art || '–'}</div>
+      <div style="font-size:0.8rem;color:#777;margin-top:2px">${e.person || ''}</div>
+      ${e.befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${e.befund}</div>` : ''}
+      ${e.behandlung ? `<div style="font-size:0.82rem">💊 ${e.behandlung}</div>` : ''}
+      ${e.naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(e.naechster)}</div>` : ''}
+      ${e.kosten ? `<div style="font-size:0.78rem;color:var(--brown)">💶 ${parseFloat(e.kosten).toFixed(2)} €</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════
+// MONTH BAR
+// ═══════════════════════════════════
+const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+let currentFutterMonth = new Date().getMonth();
+let currentBudgetMonth = new Date().getMonth();
+
+function renderMonthBar(type) {
+  const bar = $(type + '-months');
+  const current = type === 'futter' ? currentFutterMonth : currentBudgetMonth;
+  bar.innerHTML = MONTHS.map((m, i) => `
+    <button class="month-btn ${i === current ? 'active' : ''}"
+      onclick="selectMonth('${type}', ${i}, this)">${m}</button>
+  `).join('');
+}
+
+function selectMonth(type, idx, btn) {
+  if (type === 'futter') currentFutterMonth = idx;
+  else currentBudgetMonth = idx;
+  btn.closest('.month-bar').querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (type === 'futter') renderFutter();
+  else renderBudget();
+}
+
+// ═══════════════════════════════════
+// FUTTER
+// ═══════════════════════════════════
+function addFutterRow(f = {}) {
+  const body = $('futter-body');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" value="${f.name || ''}" placeholder="z.B. Heu" /></td>
+    <td>
+      <select>
+        <option ${f.kat==='Grundfutter'?'selected':''}>Grundfutter</option>
+        <option ${f.kat==='Kräuter'?'selected':''}>Kräuter</option>
+        <option ${f.kat==='Zusätze'?'selected':''}>Zusätze</option>
+        <option ${f.kat==='Kraftfutter'?'selected':''}>Kraftfutter</option>
+        <option ${f.kat==='Sonstiges'?'selected':''}>Sonstiges</option>
+      </select>
+    </td>
+    <td><input type="text" value="${f.dosierung || ''}" placeholder="z.B. 2 kg" /></td>
+    <td>
+      <select>
+        <option ${f.haeuf==='täglich'?'selected':''}>täglich</option>
+        <option ${f.haeuf==='2x täglich'?'selected':''}>2x täglich</option>
+        <option ${f.haeuf==='3x täglich'?'selected':''}>3x täglich</option>
+        <option ${f.haeuf==='wöchentlich'?'selected':''}>wöchentlich</option>
+        <option ${f.haeuf==='nach Bedarf'?'selected':''}>nach Bedarf</option>
+      </select>
+    </td>
+    <td><input type="text" value="${f.notizen || ''}" placeholder="Notizen…" /></td>
+    <td><button class="delete-btn" onclick="this.closest('tr').remove()">🗑️</button></td>
+  `;
+  body.appendChild(tr);
+}
+
+function saveFutter() {
+  const rows = [...$('futter-body').querySelectorAll('tr')].map(tr => {
+    const inputs = tr.querySelectorAll('input, select');
+    return { name: inputs[0].value, kat: inputs[1].value, dosierung: inputs[2].value, haeuf: inputs[3].value, notizen: inputs[4].value };
+  });
+  const data = store.getObj('futter');
+  data[currentFutterMonth] = rows;
+  store.setObj('futter', data);
+  showToast('✅ Futterplan gespeichert!');
+}
+
+function renderFutter() {
+  const data = store.getObj('futter');
+  const rows = data[currentFutterMonth] || [];
+  $('futter-body').innerHTML = '';
+  if (rows.length === 0) addFutterRow();
+  else rows.forEach(r => addFutterRow(r));
+}
+
+// ═══════════════════════════════════
+// BUDGET
+// ═══════════════════════════════════
+function addBudgetRow(b = {}) {
+  const body = $('budget-body');
+  const tr = document.createElement('tr');
+  const today = new Date().toISOString().split('T')[0];
+  tr.innerHTML = `
+    <td><input type="date" value="${b.datum || today}" /></td>
+    <td><input type="text" value="${b.leistung || ''}" placeholder="z.B. Hufschmied" /></td>
+    <td><input type="number" value="${b.betrag || ''}" placeholder="0.00" step="0.01" oninput="updateTotal()" /></td>
+    <td><input type="text" value="${b.notizen || ''}" placeholder="Notizen…" /></td>
+    <td><button class="delete-btn" onclick="this.closest('tr').remove();updateTotal()">🗑️</button></td>
+  `;
+  body.appendChild(tr);
+  updateTotal();
+}
+
+function updateTotal() {
+  const vals = [...$('budget-body').querySelectorAll('input[type="number"]')]
+    .map(i => parseFloat(i.value) || 0);
+  const sum = vals.reduce((a,b) => a+b, 0);
+  $('budget-total').textContent = sum.toFixed(2).replace('.', ',') + ' €';
+}
+
+function saveBudget() {
+  const rows = [...$('budget-body').querySelectorAll('tr')].map(tr => {
+    const inputs = tr.querySelectorAll('input');
+    return { datum: inputs[0].value, leistung: inputs[1].value, betrag: inputs[2].value, notizen: inputs[3].value };
+  });
+  const data = store.getObj('budget');
+  data[currentBudgetMonth] = rows;
+  store.setObj('budget', data);
+  showToast('✅ Budget gespeichert!');
+}
+
+function renderBudget() {
+  const data = store.getObj('budget');
+  const rows = data[currentBudgetMonth] || [];
+  $('budget-body').innerHTML = '';
+  if (rows.length === 0) addBudgetRow();
+  else rows.forEach(r => addBudgetRow(r));
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+initTrainingForm();
+</script>
+</body>
+</html>
