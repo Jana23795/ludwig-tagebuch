@@ -538,6 +538,8 @@ const HORSES = {
 };
 
 let currentHorse = 'ludwig';
+let LUDWIG_AVATAR_ORIG = null;
+
 
 const PDFS = {
   blutbild: 'docs/blutbild.pdf',
@@ -578,7 +580,8 @@ function setHorse(key) {
       avatarImg.alt = 'Minstrel';
     }
     if (key === 'ludwig') {
-      // Ludwig-Bild bleibt original (bereits im HTML als base64)
+      if (!LUDWIG_AVATAR_ORIG) LUDWIG_AVATAR_ORIG = avatarImg.src;
+      avatarImg.src = LUDWIG_AVATAR_ORIG;
       avatarImg.alt = 'Ludwig';
     }
   }
@@ -602,7 +605,15 @@ function setHorse(key) {
   if (active.id === 'page-woche') { weekData = {}; renderWoche(); }
 }
 
-function openDrawer() { document.body.classList.add('drawer-open'); renderProfile(); }
+function openDrawer() {
+  // capture original Ludwig avatar src once
+  if (!LUDWIG_AVATAR_ORIG) {
+    const img = document.querySelector('header .avatar-btn img');
+    if (img) LUDWIG_AVATAR_ORIG = img.src;
+  }
+  document.body.classList.add('drawer-open');
+  renderProfile();
+}
 function closeDrawer() { document.body.classList.remove('drawer-open'); }
 
 function renderProfile() {
@@ -1275,7 +1286,7 @@ async function saveDayEntry(dateStr) {
     const rows = await loadSheet(tab);
     const matches = [];
     for (let i = 1; i < rows.length; i++) {
-      if (String(rows[i][0] || '').trim() === dateStr) matches.push(i + 1); // sheet row index
+      if (normalizeDateKey(rows[i][0]) === dateStr) matches.push(i + 1); // sheet row index
     }
     for (let i = matches.length - 1; i >= 0; i--) {
       await deleteRow(tab, matches[i]);
