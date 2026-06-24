@@ -493,7 +493,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvP4jvpw3MKcjaqUp0-wm4gWghOLi9hFLoh0Us3XqhdQG2D_vqjMEl275MZQxlJnzZ-w/exec';
-const APP_BUILD = '2026-06-24-week-windowfilter-3';
+const APP_BUILD = '2026-06-24-week-datekeycolumn-4';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -1126,6 +1126,9 @@ const WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag
 let weekOffset = 0;
 let weekData = {}; // key: YYYY-MM-DD → {person, training, note}
 
+// Wochenplan: stabiles DateKey-Format (Text), damit Sheets/Zeitzonen nie wieder “Vortag” machen.
+// Sheet-Header: Datum | DateKey | Person | Training | Notiz
+
 function getMonday(offset = 0) {
   // Monday based on LOCAL calendar date (Europe/Berlin), robust across DST.
   const now = new Date();
@@ -1253,9 +1256,6 @@ async function renderWoche() {
   if (!container) return;
   container.innerHTML = '<div class="loader">⏳ Lade Wochenplan…</div>';
 
-  // IMPORTANT: We only show entries inside the currently visible Monday→Sunday window.
-  // This prevents “ghost shifts” where a value parses to the previous day and then
-  // appears in the previous week (e.g. Monday shows up on Sunday of the prior week).
   const monday = getMonday(weekOffset);
   const startKey = isoDate(monday);
   const end = new Date(monday);
@@ -1266,10 +1266,10 @@ async function renderWoche() {
     const rows = await loadSheet(HORSES[currentHorse].tabs.woche);
     weekData = {};
     rows.slice(1).forEach(r => {
-      const key = normalizeDateKey(r[0]);
+      const key = getWeekRowKey(r);
       if (!key) return;
-      if (key < startKey || key > endKey) return; // filter to visible week
-      weekData[key] = { person: r[1] || '', training: r[2] || '', note: r[3] || '' };
+      if (key < startKey || key > endKey) return;
+      weekData[key] = getWeekRowPayload(r);
     });
   } catch(e) {
     weekData = {};
@@ -1281,6 +1281,20 @@ async function renderWoche() {
 function toggleDayForm(dateStr) {
   const form = $('form-' + dateStr);
   form.classList.toggle('open');
+}
+
+function getWeekRowKey(r) {
+  // Prefer DateKey column (text) if present, fallback to Datum.
+  return normalizeDateKey((r && r[1]) || (r && r[0]) || '');
+}
+
+function getWeekRowPayload(r) {
+  // Handles both formats:
+  // old: [Datum, Person, Training, Notiz]
+  // new: [Datum, DateKey, Person, Training, Notiz]
+  if (!r) return { person:'', training:'', note:'' };
+  if (r.length >= 5) return { person: r[2] || '', training: r[3] || '', note: r[4] || '' };
+  return { person: r[1] || '', training: r[2] || '', note: r[3] || '' };
 }
 
 async function saveDayEntry(dateStr) {
@@ -1310,14 +1324,16 @@ async function saveDayEntry(dateStr) {
     const rows = await loadSheet(tab);
     const matches = [];
     for (let i = 1; i < rows.length; i++) {
-      if (normalizeDateKey(rows[i][0]) === dateStr) matches.push(i + 1); // sheet row index
+      const key = getWeekRowKey(rows[i]);
+      if (key === dateStr) matches.push(i + 1); // sheet row index
     }
     for (let i = matches.length - 1; i >= 0; i--) {
       await deleteRow(tab, matches[i]);
       await new Promise(r => setTimeout(r, 250));
     }
 
-    await appendRow(tab, [dateStr, person, training, note]);
+    // New sheet format: Datum | DateKey | Person | Training | Notiz
+    await appendRow(tab, [dateStr, dateStr, person, training, note]);
 
     // Re-read to confirm + keep in sync
     await new Promise(r => setTimeout(r, 800));
@@ -1339,10 +1355,10 @@ async function clearDayEntry(dateStr) {
   const tab = HORSES[currentHorse].tabs.woche;
   const rows = await loadSheet(tab);
 
-  // delete ALL rows matching this day (even if sheet stores ISO timestamps)
+  // delete ALL rows matching this day (prefer DateKey column)
   const matches = [];
   for (let i = 1; i < rows.length; i++) {
-    const key = normalizeDateKey(rows[i][0]);
+    const key = getWeekRowKey(rows[i]);
     if (key === dateStr) matches.push(i + 1);
   }
 
