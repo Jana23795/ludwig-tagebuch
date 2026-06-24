@@ -1340,10 +1340,10 @@ async function saveDayEntry(dateStr) {
       await new Promise(r => setTimeout(r, 250));
     }
 
-    // Persist in OLD format (compatible with existing Apps Script expectations):
-    // Datum | Person | Training | Notiz
-    // (DateKey is derived from Datum on read; DateKey column in the sheet may exist but is optional.)
-    await appendRow(tab, [dateStr, person, training, note]);
+    // Persist in NEW format (5 columns):
+    // Datum | DateKey | Person | Training | Notiz
+    // DateKey is a stable YYYY-MM-DD text value to avoid timezone shifts.
+    await appendRow(tab, [dateStr, dateStr, person, training, note]);
 
     // Re-read to confirm + keep in sync
     await new Promise(r => setTimeout(r, 800));
