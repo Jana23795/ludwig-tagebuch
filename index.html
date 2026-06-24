@@ -493,7 +493,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvP4jvpw3MKcjaqUp0-wm4gWghOLi9hFLoh0Us3XqhdQG2D_vqjMEl275MZQxlJnzZ-w/exec';
-const APP_BUILD = '2026-06-24-week-mondayfix-1';
+const APP_BUILD = '2026-06-24-weekdatekeyfix-2';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -1146,18 +1146,19 @@ function isoDate(d) {
 }
 
 function normalizeDateKey(v) {
+  // Goal: produce a stable YYYY-MM-DD key that NEVER shifts to the previous day.
+  // Rule: if we already have a plain date, we NEVER feed it into Date().
   if (v == null) return '';
   const str = String(v).trim();
   if (!str) return '';
 
-  // Already a plain date
-  const head = str.substring(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(head)) return head;
+  // 1) Plain date anywhere in the string → take it as-is (do not parse)
+  const mPlain = str.match(/\d{4}-\d{2}-\d{2}/);
+  if (mPlain) return mPlain[0];
 
-  // ISO timestamp from Sheets/Apps Script (e.g. 2026-06-21T22:00:00.000Z)
+  // 2) Only for real timestamps: parse + format to Europe/Berlin day
   const d = new Date(str);
   if (!isNaN(d)) {
-    // Format in Europe/Berlin regardless of user locale, so the day doesn't shift
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/Berlin',
       year: 'numeric',
@@ -1165,12 +1166,12 @@ function normalizeDateKey(v) {
       day: '2-digit'
     }).formatToParts(d);
     const y = parts.find(p=>p.type==='year')?.value;
-    const m = parts.find(p=>p.type==='month')?.value;
+    const mo = parts.find(p=>p.type==='month')?.value;
     const da = parts.find(p=>p.type==='day')?.value;
-    if (y && m && da) return `${y}-${m}-${da}`;
+    if (y && mo && da) return `${y}-${mo}-${da}`;
   }
 
-  return head;
+  return '';
 }
 
 function changeWeek(dir) {
