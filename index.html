@@ -919,11 +919,13 @@ async function renderWoche() {
   const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
 
   const fmt = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
-  .textContent = fmt(monday) + ' – ' + fmt(sunday) + ' ' + monday.getFullYear();
+  $('week-label').textContent = fmt(monday) + ' – ' + fmt(sunday) + ' ' + monday.getFullYear();
 
   // Load from Sheet
-  const container = ;
+  const container = $('week-days');
+  if (!container) return;
   container.innerHTML = '<div class="loader">⏳ Lade Wochenplan…</div>';
+
   try {
     const rows = await loadSheet('Wochenplan');
     weekData = {};
