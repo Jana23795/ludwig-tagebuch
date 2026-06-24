@@ -160,6 +160,37 @@
   .empty-state { text-align: center; padding: 40px 20px; color: #aaa; }
   .empty-state .emoji { font-size: 3rem; margin-bottom: 10px; }
   .empty-state p { font-size: 0.88rem; }
+
+  /* ── WOCHENPLAN ── */
+  .week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .week-nav h2 { font-family: "Playfair Display", serif; font-size: 1rem; color: var(--brown); text-align: center; flex: 1; }
+  .week-arrow { background: none; border: 1.5px solid var(--border); border-radius: 9px; padding: 7px 14px; font-size: 1rem; cursor: pointer; color: var(--brown); transition: all 0.15s; }
+  .week-arrow:hover { border-color: var(--accent); color: var(--accent); }
+
+  .day-card { border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; border: 2px solid transparent; transition: all 0.2s; }
+  .day-card.free    { background: #fff0f0; border-color: #e0a0a0; }
+  .day-card.planned { background: #f0fff4; border-color: #7abf8a; }
+  .day-card.today   { box-shadow: 0 0 0 3px var(--accent); }
+
+  .day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .day-name { font-family: "Playfair Display", serif; font-size: 1rem; color: var(--dark); }
+  .day-date-small { font-size: 0.75rem; color: #999; margin-top: 1px; }
+  .day-status { font-size: 1.2rem; }
+
+  .day-person { font-size: 0.88rem; font-weight: 600; color: var(--dark); margin-bottom: 4px; }
+  .day-training { font-size: 0.8rem; color: var(--brown); }
+  .day-note { font-size: 0.78rem; color: #888; font-style: italic; margin-top: 3px; }
+
+  .day-form { margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 10px; display: none; }
+  .day-form.open { display: block; }
+  .day-form input, .day-form select, .day-form textarea { margin-bottom: 7px; font-size: 0.85rem; padding: 8px 10px; }
+  .day-form textarea { min-height: 50px; }
+  .day-form-row { display: flex; gap: 8px; }
+  .day-form-row .btn-save { flex: 1; margin-top: 0; padding: 9px; font-size: 0.85rem; background: var(--green); }
+  .day-form-row .btn-clear { margin-top: 0; padding: 9px 12px; font-size: 0.85rem; background: none; border: 1.5px solid var(--red); color: var(--red); border-radius: 9px; cursor: pointer; font-family: "DM Sans", sans-serif; font-weight: 600; }
+  .day-form-row .btn-clear:hover { background: var(--red); color: white; }
+  .day-edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 0.75rem; cursor: pointer; color: var(--brown); font-family: "DM Sans", sans-serif; transition: all 0.15s; }
+  .day-edit-btn:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -180,6 +211,7 @@
   <button onclick="showPage('gesundheit', this)">🏥 Gesundheit</button>
   <button onclick="showPage('futter', this)">🌾 Futter</button>
   <button onclick="showPage('budget', this)">💶 Budget</button>
+  <button onclick="showPage('woche', this)">📅 Wochenplan</button>
 </nav>
 
 <!-- ═══ PAGE 1: PROTOKOLL ═══ -->
@@ -393,6 +425,18 @@
   </div>
 </div>
 
+<!-- ═══ PAGE 6: WOCHENPLAN ═══ -->
+<div class="page" id="page-woche">
+  <div class="week-nav">
+    <button class="week-arrow" onclick="changeWeek(-1)">◀</button>
+    <div>
+      <h2 id="week-label">Woche wird geladen…</h2>
+    </div>
+    <button class="week-arrow" onclick="changeWeek(1)">▶</button>
+  </div>
+  <div id="week-days"></div>
+</div>
+
 <div id="toast">✅ Gespeichert!</div>
 
 <script>
@@ -424,6 +468,7 @@ function showPage(name, btn) {
   if (name === 'gesundheit') renderGesundheit();
   if (name === 'futter') { renderMonthBar('futter'); renderFutter(); }
   if (name === 'budget') { renderMonthBar('budget'); renderBudget(); }
+  if (name === 'woche') renderWoche();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -689,7 +734,11 @@ function initTrainingForm() {
 
 function formatDate(str) {
   if (!str) return '';
-  const d = new Date(str + 'T12:00:00');
+  // Handle full ISO timestamps (2026-06-24T07:...) or plain dates (2026-06-24)
+  const plain = String(str).substring(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(plain)) return String(str);
+  const d = new Date(plain + 'T12:00:00');
+  if (isNaN(d)) return String(str);
   return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 }
 
@@ -846,6 +895,144 @@ function renderBudget() {
   $('budget-body').innerHTML = '';
   if (rows.length === 0) addBudgetRow();
   else rows.forEach(r => addBudgetRow(r));
+}
+
+// ═══════════════════════════════════════════════════════
+// WOCHENPLAN
+// ═══════════════════════════════════════════════════════
+const WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+let weekOffset = 0;
+let weekData = {}; // key: YYYY-MM-DD → {person, training, note}
+
+function getMonday(offset = 0) {
+  const d = new Date();
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1 + offset * 7);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function isoDate(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  renderWoche();
+}
+
+async function renderWoche() {
+  const monday = getMonday(weekOffset);
+  const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+
+  const fmt = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+  .textContent = fmt(monday) + ' – ' + fmt(sunday) + ' ' + monday.getFullYear();
+
+  // Load from Sheet
+  const container = ;
+  container.innerHTML = '<div class="loader">⏳ Lade Wochenplan…</div>';
+  try {
+    const rows = await loadSheet('Wochenplan');
+    weekData = {};
+    rows.slice(1).forEach(r => {
+      if (r[0]) weekData[r[0]] = { person: r[1], training: r[2], note: r[3] };
+    });
+  } catch(e) { weekData = {}; }
+
+  const todayStr = isoDate(new Date());
+  container.innerHTML = '';
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday); d.setDate(d.getDate() + i);
+    const dateStr = isoDate(d);
+    const entry = weekData[dateStr];
+    const isToday = dateStr === todayStr;
+    const hasEntry = entry && entry.person;
+    const statusClass = hasEntry ? 'planned' : 'free';
+    const statusEmoji = hasEntry ? '✅' : '🔴';
+
+    const div = document.createElement('div');
+    div.className = 'day-card ' + statusClass + (isToday ? ' today' : '');
+    div.id = 'day-' + dateStr;
+    div.innerHTML = `
+      <div class="day-header">
+        <div>
+          <div class="day-name">${WEEKDAYS[i]} ${isToday ? '· <span style="color:var(--accent);font-size:0.75rem">Heute</span>' : ''}</div>
+          <div class="day-date-small">${d.toLocaleDateString('de-DE', {day:'2-digit', month:'long'})}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="day-status">${statusEmoji}</span>
+          <button class="day-edit-btn" onclick="toggleDayForm('${dateStr}')">${hasEntry ? '✏️ Ändern' : '➕ Eintragen'}</button>
+        </div>
+      </div>
+      ${hasEntry ? `
+        <div class="day-person">👤 ${entry.person}</div>
+        ${entry.training ? `<div class="day-training">🏇 ${entry.training}</div>` : ''}
+        ${entry.note ? `<div class="day-note">💬 ${entry.note}</div>` : ''}
+      ` : '<div style="font-size:0.8rem;color:#bbb">Noch niemand eingetragen</div>'}
+      <div class="day-form" id="form-${dateStr}">
+        <input type="text" id="fp-${dateStr}" placeholder="Name (z.B. Jana)" value="${hasEntry ? entry.person : ''}" />
+        <select id="ft-${dateStr}">
+          <option value="">– Trainingsart –</option>
+          <option ${entry?.training==='Ausreiten'?'selected':''}>Ausreiten</option>
+          <option ${entry?.training==='Dressur'?'selected':''}>Dressur</option>
+          <option ${entry?.training==='Springen'?'selected':''}>Springen</option>
+          <option ${entry?.training==='Reitstunde'?'selected':''}>Reitstunde</option>
+          <option ${entry?.training==='Working Equitation'?'selected':''}>Working Equitation</option>
+          <option ${entry?.training==='Bodenarbeit'?'selected':''}>Bodenarbeit</option>
+          <option ${entry?.training==='Handarbeit'?'selected':''}>Handarbeit</option>
+          <option ${entry?.training==='Freiarbeit'?'selected':''}>Freiarbeit</option>
+          <option ${entry?.training==='Equikinetik'?'selected':''}>Equikinetik</option>
+          <option ${entry?.training==='Equi-Classic-Work'?'selected':''}>Equi-Classic-Work</option>
+          <option ${entry?.training==='Nur nach Ludwig schauen'?'selected':''}>🐴 Nur nach Ludwig schauen</option>
+        </select>
+        <textarea id="fn-${dateStr}" placeholder="Notiz (optional)…">${hasEntry ? (entry.note||'') : ''}</textarea>
+        <div class="day-form-row">
+          <button class="btn btn-save" onclick="saveDayEntry('${dateStr}')">💾 Speichern</button>
+          ${hasEntry ? `<button class="btn-clear" onclick="clearDayEntry('${dateStr}')">🗑️ Löschen</button>` : ''}
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  }
+}
+
+function toggleDayForm(dateStr) {
+  const form = ;
+  form.classList.toggle('open');
+}
+
+async function saveDayEntry(dateStr) {
+  const person = .value.trim();
+  if (!person) { alert('Bitte einen Namen eintragen!'); return; }
+  const training = .value;
+  const note = .value.trim();
+
+  // Find existing row index or append
+  const rows = await loadSheet('Wochenplan');
+  let rowIndex = -1;
+  rows.forEach((r, i) => { if (r[0] === dateStr) rowIndex = i + 1; });
+
+  if (rowIndex > 0) {
+    // Update: delete old row then append
+    await deleteRow('Wochenplan', rowIndex + 1);
+    await new Promise(r => setTimeout(r, 600));
+  }
+  await appendRow('Wochenplan', [dateStr, person, training, note]);
+  showToast('✅ Eintrag gespeichert!');
+  renderWoche();
+}
+
+async function clearDayEntry(dateStr) {
+  if (!confirm('Eintrag für diesen Tag löschen?')) return;
+  const rows = await loadSheet('Wochenplan');
+  let rowIndex = -1;
+  rows.forEach((r, i) => { if (r[0] === dateStr) rowIndex = i + 1; });
+  if (rowIndex > 0) {
+    await deleteRow('Wochenplan', rowIndex + 1);
+    showToast('🗑️ Eintrag gelöscht!');
+    renderWoche();
+  }
 }
 
 // ═══════════════════════════════════════════════════════
