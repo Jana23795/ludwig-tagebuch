@@ -493,7 +493,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvP4jvpw3MKcjaqUp0-wm4gWghOLi9hFLoh0Us3XqhdQG2D_vqjMEl275MZQxlJnzZ-w/exec';
-const APP_BUILD = '2026-06-24-week-tz-berlin-1';
+const APP_BUILD = '2026-06-24-week-mondayfix-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -1127,13 +1127,14 @@ let weekOffset = 0;
 let weekData = {}; // key: YYYY-MM-DD → {person, training, note}
 
 function getMonday(offset = 0) {
-  // Use local noon to avoid DST/UTC edge-cases when calculating week boundaries
-  const d = new Date();
-  d.setHours(12,0,0,0);
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() - day + 1 + offset * 7);
-  d.setHours(12,0,0,0);
-  return d;
+  // Monday based on LOCAL calendar date (Europe/Berlin), robust across DST.
+  const now = new Date();
+  // Use local noon to avoid edge cases
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+  const day = base.getDay() || 7; // Sun=7
+  base.setDate(base.getDate() - day + 1 + offset * 7);
+  base.setHours(12, 0, 0, 0);
+  return base;
 }
 
 function isoDate(d) {
