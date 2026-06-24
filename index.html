@@ -202,7 +202,7 @@
 <p>Trakehner-Deutsch Reitpony Mix · 23 J. · 160 cm · ~550 kg</p>
 </div>
 <div class="spacer"></div>
-<div class="badge">2026</div>
+<div class="badge">2026 · <span id="build" style="opacity:.75"></span></div>
 </header>
 <nav>
 <button class="active" data-page="training">📋 Protokoll</button>
@@ -421,6 +421,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvP4jvpw3MKcjaqUp0-wm4gWghOLi9hFLoh0Us3XqhdQG2D_vqjMEl275MZQxlJnzZ-w/exec';
+const APP_BUILD = '2026-06-24-navfix-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 // ═══════════════════════════════════════════════════════
@@ -595,6 +596,9 @@ async function saveTraining() {
     showToast('✅ Protokoll gespeichert!');
     clearForm();
     initTrainingForm();
+// Build marker
+const buildEl = document.getElementById('build');
+if (buildEl) buildEl.textContent = (typeof APP_BUILD !== 'undefined' ? APP_BUILD : '');
   } catch(e) {
     showToast('❌ Fehler beim Speichern!');
   }
@@ -987,15 +991,15 @@ async function renderWoche() {
 }
 
 function toggleDayForm(dateStr) {
-  const form = ;
+  const form = $('form-' + dateStr);
   form.classList.toggle('open');
 }
 
 async function saveDayEntry(dateStr) {
-  const person = .value.trim();
+  const person = $('fp-' + dateStr).value.trim();
   if (!person) { alert('Bitte einen Namen eintragen!'); return; }
-  const training = .value;
-  const note = .value.trim();
+  const training = $('ft-' + dateStr).value;
+  const note = $('fn-' + dateStr).value.trim();
 
   // Find existing row index or append
   const rows = await loadSheet('Wochenplan');
