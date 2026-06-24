@@ -1141,11 +1141,22 @@ function getMonday(offset = 0) {
 }
 
 function isoDate(d) {
-  // Local date (Europe/Berlin) – avoid UTC shifts
+  // Local calendar date → stable YYYY-MM-DD
   const y = d.getFullYear();
   const m = String(d.getMonth()+1).padStart(2,'0');
   const day = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
+}
+
+function dateKeyToLocalDate(dateKey) {
+  // IMPORTANT: never use new Date('YYYY-MM-DD') (treated as UTC by JS)
+  if (!dateKey) return new Date(NaN);
+  const m = String(dateKey).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return new Date(NaN);
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  return new Date(y, mo - 1, d, 12, 0, 0, 0); // local noon = DST safe
 }
 
 function normalizeDateKey(v) {
@@ -1220,8 +1231,8 @@ function drawWeekUI() {
       </div>
       ${hasEntry ? `
         <div class="day-person">👤 ${entry.person}</div>
-        ${entry.training ? `<div class="day-training">🏇 ${entry.training}</div>` : ''}
-        ${entry.note ? `<div class="day-note">💬 ${entry.note}</div>` : ''}
+        ${entry.training ? `<div class=\"day-training\">🏇 ${entry.training}</div>` : ''}
+        ${entry.note ? `<div class=\"day-note\">💬 ${entry.note}</div>` : ''}
       ` : '<div style="font-size:0.8rem;color:#bbb">Noch niemand eingetragen</div>'}
       <div class="day-form" id="form-${dateStr}">
         <input type="text" id="fp-${dateStr}" placeholder="Name (z.B. Jana)" value="${hasEntry ? entry.person : ''}" />
@@ -1301,15 +1312,22 @@ function getWeekRowKey(r) {
 
 function getWeekRowPayload(r) {
   // Payload detection:
-  // Case 1 (new): [Datum, DateKey, Person, Training, Notiz]
-  // Case 2 (old but shifted by inserted DateKey col): [Datum, Person, Training, Notiz] now sits in A,B,C,D
-  // We decide by checking whether col B is a date.
+  // Expected (new): [Datum, DateKey, Person, Training, Notiz]
+  // Legacy variants might still exist, so we detect by checking whether col B is a plain date.
   if (!r) return { person:'', training:'', note:'' };
   const b = r[1] ? String(r[1]).trim() : '';
   const bIsDate = /^\d{4}-\d{2}-\d{2}$/.test(b);
   if (bIsDate && r.length >= 5) return { person: r[2] || '', training: r[3] || '', note: r[4] || '' };
-  // Old/shifted: treat B,C,D as Person,Training,Notiz
   return { person: r[1] || '', training: r[2] || '', note: r[3] || '' };
+}
+
+function safeDayLabelFromKey(key) {
+  // If something accidentally passes a timestamp string, normalize it to a date key first.
+  const dateKey = normalizeDateKey(key);
+  if (!dateKey) return String(key || '');
+  const d = dateKeyToLocalDate(dateKey);
+  if (isNaN(d)) return dateKey;
+  return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' });
 }
 
 async function saveDayEntry(dateStr) {
