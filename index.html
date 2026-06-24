@@ -400,7 +400,7 @@
 // KONFIGURATION – Google Apps Script Web App URL
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxg6T6Lqxky9doDlnQAckqWYnjIVSD1EIJEqP0jWLT5YwD47IuElAOIj72y9Iqa_w2R9Q/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvP4jvpw3MKcjaqUp0-wm4gWghOLi9hFLoh0Us3XqhdQG2D_vqjMEl275MZQxlJnzZ-w/exec';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 // ═══════════════════════════════════════════════════════
@@ -429,27 +429,36 @@ function showPage(name, btn) {
 // ═══════════════════════════════════════════════════════
 // GOOGLE SHEETS API
 // ═══════════════════════════════════════════════════════
-async function sheetRequest(action, payload = {}) {
-  const url = SCRIPT_URL + '?action=' + action;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ sheetId: SHEET_ID, ...payload }),
+// LESEN via JSONP (umgeht CORS)
+function loadSheet(tab) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Math.random().toString(36).slice(2);
+    const params = new URLSearchParams({ sheetId: SHEET_ID, tab, callback: cbName });
+    const script = document.createElement('script');
+    script.src = SCRIPT_URL + '?' + params.toString();
+    window[cbName] = (data) => {
+      delete window[cbName];
+      document.body.removeChild(script);
+      resolve(data.data || []);
+    };
+    script.onerror = () => { delete window[cbName]; document.body.removeChild(script); reject(); };
+    document.body.appendChild(script);
   });
-  return res.json();
 }
 
-async function loadSheet(tab) {
-  const res = await sheetRequest('read', { tab });
-  return res.data || [];
-}
-
+// SCHREIBEN via fetch no-cors (fire and forget)
 async function appendRow(tab, row) {
-  return sheetRequest('append', { tab, row });
+  const body = JSON.stringify({ sheetId: SHEET_ID, action: 'append', tab, row });
+  await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body });
+  // no-cors gibt keine Antwort, kurz warten damit Sheet Zeit hat
+  await new Promise(r => setTimeout(r, 1200));
 }
 
+// LÖSCHEN via fetch no-cors
 async function deleteRow(tab, rowIndex) {
-  return sheetRequest('delete', { tab, rowIndex });
+  const body = JSON.stringify({ sheetId: SHEET_ID, action: 'delete', tab, rowIndex });
+  await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body });
+  await new Promise(r => setTimeout(r, 1200));
 }
 
 // ═══════════════════════════════════════════════════════
