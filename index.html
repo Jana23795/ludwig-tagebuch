@@ -436,9 +436,11 @@ function showToast(msg = '✅ Gespeichert!') {
 }
 
 function showPage(name, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pages = document.querySelectorAll('.page');
+  pages.forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  $('page-' + name).classList.add('active');
+  const pageEl = document.getElementById('page-' + name);
+  if (pageEl) { pageEl.classList.add('active'); pageEl.style.display = 'block'; }
   if (btn) btn.classList.add('active');
   if (name === 'verlauf') renderVerlauf();
   if (name === 'gesundheit') renderGesundheit();
