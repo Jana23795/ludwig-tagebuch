@@ -1284,16 +1284,24 @@ function toggleDayForm(dateStr) {
 }
 
 function getWeekRowKey(r) {
-  // Prefer DateKey column (text) if present, fallback to Datum.
-  return normalizeDateKey((r && r[1]) || (r && r[0]) || '');
+  // Robust key detection:
+  // - If column B looks like a date (YYYY-MM-DD), use it as DateKey.
+  // - Otherwise (e.g. old scripts writing Person into col B), fall back to column A (Datum).
+  const b = r && r[1] ? String(r[1]).trim() : '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(b)) return b;
+  return normalizeDateKey((r && r[0]) || b || '');
 }
 
 function getWeekRowPayload(r) {
-  // Handles both formats:
-  // old: [Datum, Person, Training, Notiz]
-  // new: [Datum, DateKey, Person, Training, Notiz]
+  // Payload detection:
+  // Case 1 (new): [Datum, DateKey, Person, Training, Notiz]
+  // Case 2 (old but shifted by inserted DateKey col): [Datum, Person, Training, Notiz] now sits in A,B,C,D
+  // We decide by checking whether col B is a date.
   if (!r) return { person:'', training:'', note:'' };
-  if (r.length >= 5) return { person: r[2] || '', training: r[3] || '', note: r[4] || '' };
+  const b = r[1] ? String(r[1]).trim() : '';
+  const bIsDate = /^\d{4}-\d{2}-\d{2}$/.test(b);
+  if (bIsDate && r.length >= 5) return { person: r[2] || '', training: r[3] || '', note: r[4] || '' };
+  // Old/shifted: treat B,C,D as Person,Training,Notiz
   return { person: r[1] || '', training: r[2] || '', note: r[3] || '' };
 }
 
