@@ -1295,19 +1295,17 @@ function toggleDayForm(dateStr) {
 }
 
 function getWeekRowKey(r) {
-  // Robust key detection:
-  // Prefer DateKey in column B if it is a plain date (YYYY-MM-DD).
-  // Else, try to extract a plain date from column A.
-  // Important: NEVER parse "YYYY-MM-DD" through Date() (timezone shift risk).
-  const b = r && r[1] ? String(r[1]).trim() : '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(b)) return b;
+  if (!r) return '';
+  const b = (r[1] == null) ? '' : String(r[1]);
+  const a = (r[0] == null) ? '' : String(r[0]);
 
-  const a = r && r[0] ? String(r[0]).trim() : '';
-  const mA = a.match(/\d{4}-\d{2}-\d{2}/);
-  if (mA) return mA[0];
+  const mb = b.match(/\d{4}-\d{2}-\d{2}/);
+  if (mb) return mb[0];
 
-  // As a last resort, attempt normalization on whatever we have.
-  return normalizeDateKey(a || b || '');
+  const ma = a.match(/\d{4}-\d{2}-\d{2}/);
+  if (ma) return ma[0];
+
+  return '';
 }
 
 function getWeekRowPayload(r) {
