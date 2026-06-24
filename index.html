@@ -25,7 +25,7 @@
   header .spacer { flex: 1; }
   header .badge { background: var(--accent); color: white; font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
 
-  nav { display: flex; background: var(--warm); border-bottom: 2px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  nav { display: flex; background: var(--warm); border-bottom: 2px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 72px; z-index: 90; }
   nav::-webkit-scrollbar { display: none; }
   nav button {
     flex: 0 0 auto; padding: 12px 18px; background: none; border: none;
@@ -148,7 +148,7 @@
   .month-btn.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
 
   /* TOAST */
-  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--dark); color: var(--sand); padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; z-index: 999; transition: transform 0.3s ease; white-space: nowrap; }
+  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--dark); color: var(--sand); padding: 12px 24px; border-radius: 30px; font-size: 0.9rem; font-weight: 600; z-index: 999; transition: transform 0.3s ease; white-space: nowrap; pointer-events: none; }
   #toast.show { transform: translateX(-50%) translateY(0); }
 
   /* LOADER */
