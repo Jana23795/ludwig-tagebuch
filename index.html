@@ -1285,11 +1285,18 @@ function toggleDayForm(dateStr) {
 
 function getWeekRowKey(r) {
   // Robust key detection:
-  // - If column B looks like a date (YYYY-MM-DD), use it as DateKey.
-  // - Otherwise (e.g. old scripts writing Person into col B), fall back to column A (Datum).
+  // Prefer DateKey in column B if it is a plain date (YYYY-MM-DD).
+  // Else, try to extract a plain date from column A.
+  // Important: NEVER parse "YYYY-MM-DD" through Date() (timezone shift risk).
   const b = r && r[1] ? String(r[1]).trim() : '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(b)) return b;
-  return normalizeDateKey((r && r[0]) || b || '');
+
+  const a = r && r[0] ? String(r[0]).trim() : '';
+  const mA = a.match(/\d{4}-\d{2}-\d{2}/);
+  if (mA) return mA[0];
+
+  // As a last resort, attempt normalization on whatever we have.
+  return normalizeDateKey(a || b || '');
 }
 
 function getWeekRowPayload(r) {
