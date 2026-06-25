@@ -1129,7 +1129,15 @@ async function saveFutter() {
     // 1) delete all rows for this month
     const sheetRows = await loadSheet(tab);
     const matches = [];
-    for (let i = 1; i < sheetRows.length; i++) {
+
+    // If row 1 is the header, we must start at i=1.
+    // But if the sheet has NO header, row 1 contains data.
+    // So: treat row 1 as header ONLY if A1 is not a number.
+    const a1 = sheetRows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+
+    for (let i = startIdx; i < sheetRows.length; i++) {
       const mi = parseInt(String(sheetRows[i][0] ?? '').trim(), 10);
       if (mi === monthIdx) matches.push(i + 1);
     }
@@ -1165,7 +1173,8 @@ async function renderFutter() {
   try {
     const sheetRows = await loadSheet(tab);
     const rows = [];
-    for (let i = 1; i < sheetRows.length; i++) {
+    // Start index depends on whether the first row is a header.
+    for (let i = startIdx; i < sheetRows.length; i++) {
       const r = sheetRows[i];
       const mi = parseInt(String(r[0] ?? '').trim(), 10);
       if (mi !== monthIdx) continue;
@@ -1258,7 +1267,15 @@ async function saveBudget() {
     // 1) delete all rows for this month
     const sheetRows = await loadSheet(tab);
     const matches = [];
-    for (let i = 1; i < sheetRows.length; i++) {
+
+    // If row 1 is the header, we must start at i=1.
+    // But if the sheet has NO header, row 1 contains data.
+    // So: treat row 1 as header ONLY if A1 is not a number.
+    const a1 = sheetRows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+
+    for (let i = startIdx; i < sheetRows.length; i++) {
       const mi = parseInt(String(sheetRows[i][0] ?? '').trim(), 10);
       if (mi === monthIdx) matches.push(i + 1);
     }
@@ -1294,7 +1311,8 @@ async function renderBudget() {
   try {
     const sheetRows = await loadSheet(tab);
     const rows = [];
-    for (let i = 1; i < sheetRows.length; i++) {
+    // Start index depends on whether the first row is a header.
+    for (let i = startIdx; i < sheetRows.length; i++) {
       const r = sheetRows[i];
       const mi = parseInt(String(r[0] ?? '').trim(), 10);
       if (mi !== monthIdx) continue;
