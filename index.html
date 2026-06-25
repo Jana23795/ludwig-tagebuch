@@ -717,7 +717,43 @@ function loadSheet(tab) {
       done = true;
       delete window[cbName];
       if (script.parentNode) document.body.removeChild(script);
-      resolve(data.data || []);
+      const rows = data.data || [];
+
+      // Date-safety: Some tabs may return ISO timestamps (…Z). We normalize the *date columns*
+      // to stable YYYY-MM-DD keys so rendering never shifts by timezone.
+      const norm = (v) => {
+        if (v == null) return '';
+        const s = String(v).trim();
+        if (!s) return '';
+        const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+        return m ? `${m[1]}-${m[2]}-${m[3]}` : s;
+      };
+
+      const tabKey = String(tab || '').toLowerCase();
+      const out = rows.map((row, i) => {
+        if (!Array.isArray(row)) return row;
+        if (i === 0) return row; // keep header untouched
+        const r = row.slice();
+
+        // Wochenplan schema: [ts, dateKey, ...] OR [ts, datum, ...]
+        if (tabKey.includes('wochen') || tabKey.includes('woche')) {
+          if (r.length > 1) r[1] = norm(r[1]);
+        }
+
+        // Verlauf/Protokoll schema: [ts, datum, ...]
+        if (tabKey.includes('verlauf') || tabKey.includes('protokoll')) {
+          if (r.length > 1) r[1] = norm(r[1]);
+        }
+
+        // Gesundheit schema: [ts, datum, ...] OR [EntryId, ts, datum, ...]
+        if (tabKey.includes('gesund')) {
+          // detect EntryId variant (first cell looks like id)
+                  }
+
+        return r;
+      });
+
+      resolve(out);
     };
     script.onerror = () => {
       if (!done) { delete window[cbName]; if (script.parentNode) document.body.removeChild(script); reject(); }
