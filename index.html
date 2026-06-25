@@ -1173,6 +1173,11 @@ async function renderFutter() {
   try {
     const sheetRows = await loadSheet(tab);
     const rows = [];
+
+    const a1 = sheetRows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+
     // Start index depends on whether the first row is a header.
     for (let i = startIdx; i < sheetRows.length; i++) {
       const r = sheetRows[i];
@@ -1311,6 +1316,11 @@ async function renderBudget() {
   try {
     const sheetRows = await loadSheet(tab);
     const rows = [];
+
+    const a1 = sheetRows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+
     // Start index depends on whether the first row is a header.
     for (let i = startIdx; i < sheetRows.length; i++) {
       const r = sheetRows[i];
