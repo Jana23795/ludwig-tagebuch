@@ -249,7 +249,7 @@
 <p id="header-sub">Trakehner-Deutsch Reitpony Mix · 23 Jahre · 160 cm · ~550 kg</p>
 </div>
 <div class="spacer"></div>
-<div class="badge">2026 · <span id="build" style="opacity:.75"></span></div>
+<div class="badge">2026</div>
 </header>
 
 <div class="drawer-backdrop" onclick="closeDrawer()"></div>
@@ -966,14 +966,28 @@ function initTrainingForm() {
   }).catch(() => {});
 }
 
-function formatDate(str) {
-  if (!str) return '';
-  // Handle full ISO timestamps (2026-06-24T07:...) or plain dates (2026-06-24)
-  const plain = String(str).substring(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(plain)) return String(str);
-  const d = new Date(plain + 'T12:00:00');
-  if (isNaN(d)) return String(str);
-  return d.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+function formatDate(value) {
+  if (value == null) return '';
+  const s = String(value).trim();
+  if (!s) return '';
+
+  // IMPORTANT: Never feed a plain YYYY-MM-DD into Date() in a timezone-sensitive way.
+  // If the value contains a plain date, render that exact local day.
+  const m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return s;
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const local = new Date(y, mo - 1, d, 12, 0, 0, 0); // local noon = DST safe
+
+  if (isNaN(local)) return s;
+  return local.toLocaleDateString('de-DE', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1718,10 +1732,8 @@ async function saveDayEntry(dateStr) {
     // DateKey is a stable YYYY-MM-DD text value to avoid timezone shifts.
     await appendRow(tab, [dateStr, dateStr, person, training, note]);
 
-    // Re-read to confirm + keep in sync
-    await new Promise(r => setTimeout(r, 800));
-    await renderWoche();
-
+      // Keep UI snappy: do NOT reload the whole week here.
+    // We already did an optimistic update, and the Sheet write is done.
     showToast('✅ Eintrag gespeichert!');
   } catch(e) {
     showToast('⚠️ Gespeichert – bitte kurz neu laden, falls Anzeige nicht aktualisiert.');
