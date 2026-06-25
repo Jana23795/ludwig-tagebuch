@@ -999,21 +999,58 @@ async function saveGesundheit() {
 async function renderGesundheit() {
   const list = $('gesundheit-list');
   list.innerHTML = '<div class="loader">⏳ Lade…</div>';
+
+  const tab = HORSES[currentHorse].tabs.gesundheit;
+
   try {
-    const rows = await loadSheet(HORSES[currentHorse].tabs.gesundheit);
-    const data = rows.slice(1).reverse();
-    if (data.length === 0) { list.innerHTML = '<div class="empty-state"><div class="emoji">🏥</div><p>Noch keine Einträge.</p></div>'; return; }
-    list.innerHTML = data.map(r => `
-      <div style="border-bottom:1px solid var(--border);padding:10px 0">
-        <div style="font-weight:600;font-size:0.9rem">${formatDate(r[1])} · ${r[2] || '–'}</div>
-        <div style="font-size:0.8rem;color:#777;margin-top:2px">${r[3] || ''}</div>
-        ${r[4] ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${r[4]}</div>` : ''}
-        ${r[5] ? `<div style="font-size:0.82rem">💊 ${r[5]}</div>` : ''}
-        ${r[6] ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(r[6])}</div>` : ''}
-        ${r[7] ? `<div style="font-size:0.78rem;color:var(--brown)">💶 ${parseFloat(r[7]).toFixed(2)} €</div>` : ''}
-      </div>
-    `).join('');
-  } catch(e) { list.innerHTML = '<div class="empty-state"><p>Fehler beim Laden.</p></div>'; }
+    const rows = await loadSheet(tab);
+
+    // Header-Handling wie bei Futter/Budget:
+    // Wenn A1 eine Zahl ist (z.B. MonatIdx/EntryId), dann gibt es KEINEN Header.
+    const a1 = rows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+
+    const data = rows.slice(startIdx).reverse();
+    if (data.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="emoji">🏥</div><p>Noch keine Einträge.</p></div>';
+      return;
+    }
+
+    list.innerHTML = data.map(r => {
+      // Unterstützt beide Schemas:
+      // ALT: [ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
+      // NEU (wenn wir später EntryId hinzufügen): [EntryId, ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
+      const hasEntryId = (r.length >= 10 && (typeof r[0] === 'string' || typeof r[0] === 'number') && String(r[0]).length >= 6);
+      const off = hasEntryId ? 1 : 0;
+
+      const datum = r[1 + off];
+      const art = r[2 + off];
+      const person = r[3 + off];
+      const befund = r[4 + off];
+      const behandlung = r[5 + off];
+      const naechster = r[6 + off];
+      const kosten = r[7 + off];
+
+      const costNum = parseFloat(String(kosten ?? '').replace(',', '.'));
+      const costLine = (kosten !== undefined && kosten !== null && String(kosten).trim() !== '' && !isNaN(costNum))
+        ? `<div style="font-size:0.78rem;color:var(--brown)">💶 ${costNum.toFixed(2)} €</div>`
+        : '';
+
+      return `
+        <div style="border-bottom:1px solid var(--border);padding:10px 0">
+          <div style="font-weight:600;font-size:0.9rem">${formatDate(datum)} · ${art || '–'}</div>
+          <div style="font-size:0.8rem;color:#777;margin-top:2px">${person || ''}</div>
+          ${befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${befund}</div>` : ''}
+          ${behandlung ? `<div style="font-size:0.82rem">💊 ${behandlung}</div>` : ''}
+          ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(naechster)}</div>` : ''}
+          ${costLine}
+        </div>
+      `;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="empty-state"><p>Fehler beim Laden.</p></div>';
+  }
 }
 
 // ═══════════════════════════════════════════════════════
