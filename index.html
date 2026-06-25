@@ -979,21 +979,103 @@ function formatDate(str) {
 // ═══════════════════════════════════════════════════════
 // GESUNDHEIT
 // ═══════════════════════════════════════════════════════
+async function upsertBudgetFromGesundheit(entry) {
+  // entry: {entryId, datum, kategorie, leistung, betrag, notizen}
+  // Writes into current horse's Budget sheet for the month of entry.datum.
+
+  if (!entry || !entry.datum) return;
+
+  const amount = parseFloat(String(entry.betrag ?? '').replace(',', '.'));
+  if (isNaN(amount) || amount <= 0) return; // only costs
+
+  const monthIdx = dateKeyToLocalDate(normalizeDateKey(entry.datum)).getMonth();
+  const tab = HORSES[currentHorse].tabs.budget;
+
+  // Ensure header (existing schema)
+  await ensureBudgetSheet();
+
+  const sheetRows = await loadSheet(tab);
+  const a1 = sheetRows?.[0]?.[0];
+  const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+  const startIdx = hasHeader ? 1 : 0;
+
+  // We don't have an EntryId column in Budget yet.
+  // So we do a safe, minimal approach:
+  // - append a budget row for the month
+  // - do NOT attempt updates/dedup (we can add EntryId later if you want)
+  await appendRow(tab, [
+    monthIdx,
+    normalizeDateKey(entry.datum),
+    entry.kategorie || '',
+    entry.leistung || '',
+    String(amount.toFixed(2)),
+    entry.notizen || ''
+  ]);
+  await new Promise(r => setTimeout(r, 120));
+
+  // If user currently looks at same month in Budget, refresh it.
+  try {
+    if (typeof currentBudgetMonth !== 'undefined' && currentBudgetMonth === monthIdx) {
+      await renderBudget();
+    }
+  } catch(e) {}
+}
+
 async function saveGesundheit() {
   const datum = $('g-datum').value;
   if (!datum) { alert('Bitte Datum eingeben!'); return; }
+
+  const art = String($('g-art').value || '').trim();
+  const person = String($('g-person').value || '').trim();
+  const befund = String($('g-befund').value || '').trim();
+  const behandlung = String($('g-behandlung').value || '').trim();
+  const naechster = String($('g-naechster').value || '').trim();
+  const kostenRaw = String($('g-kosten').value || '').trim();
+  const notizen = String($('g-notizen').value || '').trim();
+
   const row = [
-    new Date().toISOString(), datum, $('g-art').value, $('g-person').value,
-    $('g-befund').value, $('g-behandlung').value, $('g-naechster').value,
-    $('g-kosten').value, $('g-notizen').value
+    new Date().toISOString(),
+    datum,
+    art,
+    person,
+    befund,
+    behandlung,
+    naechster,
+    kostenRaw,
+    notizen
   ];
+
   try {
     await appendRow(HORSES[currentHorse].tabs.gesundheit, row);
+
+    // Auto-Transfer ins Budget (wenn Kosten gesetzt)
+    const kategorie = (art === 'Tierarztbesuch') ? 'Tierarzt'
+      : (art === 'Hufschmied') ? 'Hufschmied'
+      : (art === 'Osteopath') ? 'Osteopath'
+      : (art && /impfung|wurm/i.test(art)) ? 'Wurmkur/Impfung'
+      : 'Sonstiges';
+
+    const leistung = [art, person].filter(Boolean).join(' · ');
+    const noteParts = [];
+    if (befund) noteParts.push('Befund: ' + befund);
+    if (behandlung) noteParts.push('Behandlung: ' + behandlung);
+    if (notizen) noteParts.push(notizen);
+
+    await upsertBudgetFromGesundheit({
+      datum,
+      kategorie,
+      leistung,
+      betrag: kostenRaw,
+      notizen: noteParts.join(' | ')
+    });
+
     ['g-datum','g-person','g-befund','g-behandlung','g-naechster','g-kosten','g-notizen'].forEach(id => $(id).value = '');
     $('g-art').value = '';
     showToast('✅ Gesundheitseintrag gespeichert!');
     renderGesundheit();
-  } catch(e) { showToast('❌ Fehler beim Speichern!'); }
+  } catch(e) {
+    showToast('❌ Fehler beim Speichern!');
+  }
 }
 
 async function renderGesundheit() {
