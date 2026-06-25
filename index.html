@@ -1174,11 +1174,11 @@ async function renderGesundheit() {
 
       return `
         <div style="border-bottom:1px solid var(--border);padding:10px 0">
-          <div style="font-weight:600;font-size:0.9rem">${formatDate(datum)} · ${art || '–'}</div>
+          <div style="font-weight:600;font-size:0.9rem">${formatDate(extractDateKey_(datum) || datum)} · ${art || '–'}</div>
           <div style="font-size:0.8rem;color:#777;margin-top:2px">${person || ''}</div>
           ${befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${befund}</div>` : ''}
           ${behandlung ? `<div style="font-size:0.82rem">💊 ${behandlung}</div>` : ''}
-          ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(naechster)}</div>` : ''}
+          ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(extractDateKey_(naechster) || naechster)}</div>` : ''}
           ${costLine}
         </div>
       `;
@@ -1379,7 +1379,7 @@ function addBudgetRow(b = {}) {
   const tr = document.createElement('tr');
   const today = new Date().toISOString().split('T')[0];
   tr.innerHTML = `
-    <td><input type="date" value="${b.datum||today}" /></td>
+    <td><input type="date" value="${extractDateKey_(b.datum)||b.datum||today}" /></td>
     <td>
       <select>
         <option value="">– Kategorie –</option>
@@ -1429,7 +1429,7 @@ async function saveBudget() {
     const notiz   = tds[4]?.querySelector('input')?.value || '';
 
     return {
-      datum: normalizeDateKey(dateVal),
+      datum: extractDateKey_(dateVal) || normalizeDateKey(dateVal),
       kategorie: String(katVal || '').trim(),
       leistung: String(leist || '').trim(),
       betrag: String(betrag || '').trim(),
@@ -1499,7 +1499,7 @@ async function renderBudget() {
       const mi = parseInt(String(r[0] ?? '').trim(), 10);
       if (mi !== monthIdx) continue;
       rows.push({
-        datum: normalizeDateKey(r[1] || ''),
+        datum: extractDateKey_(r[1] || '') || normalizeDateKey(r[1] || ''),
         kategorie: r[2] || '',
         leistung: r[3] || '',
         betrag: r[4] || '',
