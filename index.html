@@ -902,7 +902,7 @@ async function renderVerlauf() {
     const headers = rows[0] || [];
     const data = rows.slice(1).map((r, i) => ({
       _rowIndex: i + 2, // 1-based, +1 for header
-      ts: r[0], datum: r[1], wer: r[2], stimmung: r[3],
+      ts: r[0], datum: extractDateKey_(r[1]) || r[1], wer: r[2], stimmung: r[3],
       wetter: r[4], temp: r[5], art: r[6], dauer: r[7],
       zaeum: r[8], zaeum_s: r[9], sattel: r[10], sattel_s: r[11],
       futter_plan: r[12], futter_abw: r[13], verdauung: r[14],
