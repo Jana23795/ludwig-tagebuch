@@ -1584,7 +1584,7 @@ function drawWeekUI() {
       <div class="day-header">
         <div>
           <div class="day-name">${WEEKDAYS[i]} ${isToday ? '· <span style="color:var(--accent);font-size:0.75rem">Heute</span>' : ''}</div>
-          <div class="day-date-small">${d.toLocaleDateString('de-DE', {day:'2-digit', month:'long'})}</div>
+          <div class="day-date-small">${formatDate(dateStr)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="day-status">${statusEmoji}</span>
