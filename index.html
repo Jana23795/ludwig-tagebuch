@@ -466,7 +466,7 @@
 <div class="month-bar" id="budget-months"></div>
 <div class="table-container">
 <table>
-<thead><tr><th>Datum</th><th>Leistung / Produkt</th><th>Betrag (€)</th><th>Notizen</th><th></th></tr></thead>
+<thead><tr><th>Datum</th><th>Kategorie</th><th>Leistung / Produkt</th><th>Betrag (€)</th><th>Notizen</th><th></th></tr></thead>
 <tbody id="budget-body"></tbody>
 <tfoot><tr class="total-row"><td colspan="2">Gesamt</td><td id="budget-total">0,00 €</td><td colspan="2"></td></tr></tfoot>
 </table>
@@ -492,7 +492,7 @@
 // KONFIGURATION – Google Apps Script Web App URL
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyiYgF_Md_Bd1VxRqMDbiBOKG-u_HTZHQQZXQWilEGrZov-twLtFtMt0iQuBH-Ae8s7CA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzvP4jvpw3MKcjaqUp0-wm4gWghOLi9hFLoh0Us3XqhdQG2D_vqjMEl275MZQxlJnzZ-w/exec';
 const APP_BUILD = '2026-06-24-week-datekeycolumn-4';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
@@ -505,12 +505,18 @@ const HORSES = {
     meta: {
       rasse: 'Trakehner-Deutsch Reitpony Mix',
       alter: '23 Jahre',
-      geburtstag: '01.01.2023',
+      geburtstag: '—',
       groesse: '160 cm',
       gewicht: '~550 kg',
-      allergien: 'siehe Allergietest (PDF), Soja, Gräserpollen',
+      allergien: 'siehe Allergietest (PDF)',
     },
-    tabs: { protokolle: 'Ludwig_Protokolle', gesundheit: 'Ludwig_Gesundheit', woche: 'Ludwig_Wochenplan' },
+    tabs: {
+      protokolle: 'Ludwig_Protokolle',
+      gesundheit: 'Ludwig_Gesundheit',
+      woche: 'Ludwig_Wochenplan',
+      futter: 'Ludwig_Futter',
+      budget: 'Ludwig_Budget'
+    },
     pedigree: [
       { name: 'Duval 35', note: 'Vater' },
       { name: 'Herzzauber', note: 'Vater vom Vater (von Marduc, aus der Herzminze)' },
@@ -530,9 +536,15 @@ const HORSES = {
       groesse: '~145 cm',
       gewicht: '~400 kg',
       allergien: 'Heustaub, Milben, Pollen',
-      Erkrankungen: 'COB'
+      cob: 'COB'
     },
-    tabs: { protokolle: 'Minstrel_Protokolle', gesundheit: 'Minstrel_Gesundheit', woche: 'Minstrel_Wochenplan' },
+    tabs: {
+      protokolle: 'Minstrel_Protokolle',
+      gesundheit: 'Minstrel_Gesundheit',
+      woche: 'Minstrel_Wochenplan',
+      futter: 'Minstrel_Futter',
+      budget: 'Minstrel_Budget'
+    },
     pedigree: [ { name: 'Abstammung', note: 'noch nicht bekannt' } ]
   }
 };
@@ -1005,13 +1017,14 @@ async function renderGesundheit() {
 }
 
 // ═══════════════════════════════════════════════════════
-// FUTTER & BUDGET (weiterhin lokal – selten geteilt)
+// FUTTER & BUDGET (Google Sheets)
 // ═══════════════════════════════════════════════════════
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 let currentFutterMonth = new Date().getMonth();
 let currentBudgetMonth = new Date().getMonth();
 
 const localStore = {
+  // Legacy local storage (kept for backward-compat, no longer used for futter/budget)
   get: k => JSON.parse(localStorage.getItem('ludwig_' + k) || '[]'),
   set: (k, v) => localStorage.setItem('ludwig_' + k, JSON.stringify(v)),
   getObj: k => JSON.parse(localStorage.getItem('ludwig_' + k) || '{}'),
@@ -1026,13 +1039,45 @@ function renderMonthBar(type) {
   `).join('');
 }
 
-function selectMonth(type, idx, btn) {
+async function selectMonth(type, idx, btn) {
   if (type === 'futter') currentFutterMonth = idx;
   else currentBudgetMonth = idx;
   btn.closest('.month-bar').querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (type === 'futter') renderFutter();
-  else renderBudget();
+
+  if (type === 'futter') {
+    await ensureFutterSheet();
+    renderFutter();
+  } else {
+    await ensureBudgetSheet();
+    renderBudget();
+  }
+}
+
+function ensureSheetHeader(tab, header) {
+  // Best-effort: create header row if sheet is empty.
+  // (Apps Script cannot replace rows via API here, so we only append if empty.)
+  return (async () => {
+    try {
+      const rows = await loadSheet(tab);
+      if (!rows || rows.length === 0) {
+        await appendRow(tab, header);
+        await new Promise(r => setTimeout(r, 250));
+      }
+    } catch(e) {
+      // ignore
+    }
+  })();
+}
+
+async function ensureFutterSheet() {
+  const tab = HORSES[currentHorse].tabs.futter;
+  await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
+}
+
+async function ensureBudgetSheet() {
+  const tab = HORSES[currentHorse].tabs.budget;
+  await ensureSheetHeader(tab, ['MonatIdx','Datum','Kategorie','Leistung','Betrag','Notizen']);
 }
 
 function addFutterRow(f = {}) {
@@ -1061,23 +1106,86 @@ function addFutterRow(f = {}) {
   body.appendChild(tr);
 }
 
-function saveFutter() {
+async function saveFutter() {
+  const btn = event?.target;
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Speichert…'; }
+
   const rows = [...$('futter-body').querySelectorAll('tr')].map(tr => {
     const inputs = tr.querySelectorAll('input, select');
-    return { name: inputs[0].value, kat: inputs[1].value, dosierung: inputs[2].value, haeuf: inputs[3].value, notizen: inputs[4].value };
-  });
-  const data = localStore.getObj('futter');
-  data[currentFutterMonth] = rows;
-  localStore.setObj('futter', data);
-  showToast('✅ Futterplan gespeichert!');
+    return {
+      name: (inputs[0].value || '').trim(),
+      kat: (inputs[1].value || '').trim(),
+      dosierung: (inputs[2].value || '').trim(),
+      haeuf: (inputs[3].value || '').trim(),
+      notizen: (inputs[4].value || '').trim(),
+    };
+  }).filter(r => r.name || r.kat || r.dosierung || r.haeuf || r.notizen);
+
+  const tab = HORSES[currentHorse].tabs.futter;
+  const monthIdx = currentFutterMonth;
+
+  try {
+    // 1) delete all rows for this month
+    const sheetRows = await loadSheet(tab);
+    const matches = [];
+    for (let i = 1; i < sheetRows.length; i++) {
+      const mi = parseInt(String(sheetRows[i][0] ?? '').trim(), 10);
+      if (mi === monthIdx) matches.push(i + 1);
+    }
+    for (let i = matches.length - 1; i >= 0; i--) {
+      await deleteRow(tab, matches[i]);
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    // 2) write rows for this month
+    for (const r of rows) {
+      await appendRow(tab, [monthIdx, r.name, r.kat, r.dosierung, r.haeuf, r.notizen]);
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    await new Promise(r => setTimeout(r, 500));
+    await renderFutter();
+    showToast('✅ Futterplan gespeichert!');
+  } catch(e) {
+    showToast('❌ Fehler beim Speichern (Futter).');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Futterplan speichern'; }
+  }
 }
 
-function renderFutter() {
-  const data = localStore.getObj('futter');
-  const rows = data[currentFutterMonth] || [];
-  $('futter-body').innerHTML = '';
-  if (rows.length === 0) addFutterRow();
-  else rows.forEach(r => addFutterRow(r));
+async function renderFutter() {
+  const body = $('futter-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="6" class="loader">⏳ Lade…</td></tr>';
+
+  const tab = HORSES[currentHorse].tabs.futter;
+  const monthIdx = currentFutterMonth;
+
+  try {
+    const sheetRows = await loadSheet(tab);
+    const rows = [];
+    for (let i = 1; i < sheetRows.length; i++) {
+      const r = sheetRows[i];
+      const mi = parseInt(String(r[0] ?? '').trim(), 10);
+      if (mi !== monthIdx) continue;
+      rows.push({
+        name: r[1] || '',
+        kat: r[2] || '',
+        dosierung: r[3] || '',
+        haeuf: r[4] || '',
+        notizen: r[5] || ''
+      });
+    }
+
+    body.innerHTML = '';
+    if (rows.length === 0) addFutterRow();
+    else rows.forEach(r => addFutterRow(r));
+  } catch(e) {
+    body.innerHTML = '';
+    addFutterRow();
+    showToast('⚠️ Konnte Futterplan nicht laden.');
+  }
 }
 
 function addBudgetRow(b = {}) {
@@ -1086,6 +1194,22 @@ function addBudgetRow(b = {}) {
   const today = new Date().toISOString().split('T')[0];
   tr.innerHTML = `
     <td><input type="date" value="${b.datum||today}" /></td>
+    <td>
+      <select>
+        <option value="">– Kategorie –</option>
+        <option ${b.kategorie==='Tierarzt'?'selected':''}>Tierarzt</option>
+        <option ${b.kategorie==='Hufschmied'?'selected':''}>Hufschmied</option>
+        <option ${b.kategorie==='Osteopath'?'selected':''}>Osteopath</option>
+        <option ${b.kategorie==='Zahnarzt'?'selected':''}>Zahnarzt</option>
+        <option ${b.kategorie==='Wurmkur/Impfung'?'selected':''}>Wurmkur/Impfung</option>
+        <option ${b.kategorie==='Futter'?'selected':''}>Futter</option>
+        <option ${b.kategorie==='Ausrüstung'?'selected':''}>Ausrüstung</option>
+        <option ${b.kategorie==='Unterricht/Training'?'selected':''}>Unterricht/Training</option>
+        <option ${b.kategorie==='Stall/Box'?'selected':''}>Stall/Box</option>
+        <option ${b.kategorie==='Turnier/Transport'?'selected':''}>Turnier/Transport</option>
+        <option ${b.kategorie==='Sonstiges'?'selected':''}>Sonstiges</option>
+      </select>
+    </td>
     <td><input type="text" value="${b.leistung||''}" placeholder="z.B. Hufschmied" /></td>
     <td><input type="number" value="${b.betrag||''}" placeholder="0.00" step="0.01" oninput="updateTotal()" /></td>
     <td><input type="text" value="${b.notizen||''}" placeholder="Notizen…" /></td>
@@ -1096,27 +1220,104 @@ function addBudgetRow(b = {}) {
 }
 
 function updateTotal() {
-  const sum = [...$('budget-body').querySelectorAll('input[type="number"]')].reduce((a, i) => a + (parseFloat(i.value)||0), 0);
+  const nums = [...$('budget-body').querySelectorAll('tr')].map(tr => {
+    const tds = tr.querySelectorAll('td');
+    const v = tds[3]?.querySelector('input[type="number"]')?.value;
+    return parseFloat(String(v ?? '').replace(',', '.')) || 0;
+  });
+  const sum = nums.reduce((a, n) => a + n, 0);
   $('budget-total').textContent = sum.toFixed(2).replace('.', ',') + ' €';
 }
 
-function saveBudget() {
+async function saveBudget() {
+  const btn = event?.target;
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Speichert…'; }
+
   const rows = [...$('budget-body').querySelectorAll('tr')].map(tr => {
-    const inputs = tr.querySelectorAll('input');
-    return { datum: inputs[0].value, leistung: inputs[1].value, betrag: inputs[2].value, notizen: inputs[3].value };
-  });
-  const data = localStore.getObj('budget');
-  data[currentBudgetMonth] = rows;
-  localStore.setObj('budget', data);
-  showToast('✅ Budget gespeichert!');
+    const tds = tr.querySelectorAll('td');
+    const dateVal = tds[0]?.querySelector('input')?.value || '';
+    const katVal  = tds[1]?.querySelector('select')?.value || '';
+    const leist   = tds[2]?.querySelector('input')?.value || '';
+    const betrag  = tds[3]?.querySelector('input')?.value || '';
+    const notiz   = tds[4]?.querySelector('input')?.value || '';
+
+    return {
+      datum: normalizeDateKey(dateVal),
+      kategorie: String(katVal || '').trim(),
+      leistung: String(leist || '').trim(),
+      betrag: String(betrag || '').trim(),
+      notizen: String(notiz || '').trim()
+    };
+  }).filter(r => r.datum || r.kategorie || r.leistung || r.betrag || r.notizen);
+
+  const tab = HORSES[currentHorse].tabs.budget;
+  const monthIdx = currentBudgetMonth;
+
+  try {
+    // 1) delete all rows for this month
+    const sheetRows = await loadSheet(tab);
+    const matches = [];
+    for (let i = 1; i < sheetRows.length; i++) {
+      const mi = parseInt(String(sheetRows[i][0] ?? '').trim(), 10);
+      if (mi === monthIdx) matches.push(i + 1);
+    }
+    for (let i = matches.length - 1; i >= 0; i--) {
+      await deleteRow(tab, matches[i]);
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    // 2) write rows for this month
+    for (const r of rows) {
+      await appendRow(tab, [monthIdx, r.datum, r.kategorie, r.leistung, r.betrag, r.notizen]);
+      await new Promise(r => setTimeout(r, 120));
+    }
+
+    await new Promise(r => setTimeout(r, 500));
+    await renderBudget();
+    showToast('✅ Budget gespeichert!');
+  } catch(e) {
+    showToast('❌ Fehler beim Speichern (Budget).');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Budget speichern'; }
+  }
 }
 
-function renderBudget() {
-  const data = localStore.getObj('budget');
-  const rows = data[currentBudgetMonth] || [];
-  $('budget-body').innerHTML = '';
-  if (rows.length === 0) addBudgetRow();
-  else rows.forEach(r => addBudgetRow(r));
+async function renderBudget() {
+  const body = $('budget-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="6" class="loader">⏳ Lade…</td></tr>';
+
+  const tab = HORSES[currentHorse].tabs.budget;
+  const monthIdx = currentBudgetMonth;
+
+  try {
+    const sheetRows = await loadSheet(tab);
+    const rows = [];
+    for (let i = 1; i < sheetRows.length; i++) {
+      const r = sheetRows[i];
+      const mi = parseInt(String(r[0] ?? '').trim(), 10);
+      if (mi !== monthIdx) continue;
+      rows.push({
+        datum: normalizeDateKey(r[1] || ''),
+        kategorie: r[2] || '',
+        leistung: r[3] || '',
+        betrag: r[4] || '',
+        notizen: r[5] || ''
+      });
+    }
+
+    body.innerHTML = '';
+    if (rows.length === 0) addBudgetRow();
+    else rows.forEach(r => addBudgetRow(r));
+
+    updateTotal();
+  } catch(e) {
+    body.innerHTML = '';
+    addBudgetRow();
+    updateTotal();
+    showToast('⚠️ Konnte Budget nicht laden.');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1295,28 +1496,30 @@ function toggleDayForm(dateStr) {
 }
 
 function getWeekRowKey(r) {
-  if (!r) return '';
-  const b = (r[1] == null) ? '' : String(r[1]);
-  const a = (r[0] == null) ? '' : String(r[0]);
+  // Robust key detection:
+  // Prefer DateKey in column B if it is a plain date (YYYY-MM-DD).
+  // Else, try to extract a plain date from column A.
+  // Important: NEVER parse "YYYY-MM-DD" through Date() (timezone shift risk).
+  const b = r && r[1] ? String(r[1]).trim() : '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(b)) return b;
 
-  const mb = b.match(/\d{4}-\d{2}-\d{2}/);
-  if (mb) return mb[0];
+  const a = r && r[0] ? String(r[0]).trim() : '';
+  const mA = a.match(/\d{4}-\d{2}-\d{2}/);
+  if (mA) return mA[0];
 
-  const ma = a.match(/\d{4}-\d{2}-\d{2}/);
-  if (ma) return ma[0];
-
-  return '';
+  // As a last resort, attempt normalization on whatever we have.
+  return normalizeDateKey(a || b || '');
 }
 
 function getWeekRowPayload(r) {
+  // Payload detection:
+  // Expected (new): [Datum, DateKey, Person, Training, Notiz]
+  // Legacy variants might still exist, so we detect by checking whether col B is a plain date.
   if (!r) return { person:'', training:'', note:'' };
-
-  // New schema (always): [Datum, DateKey, Person, Training, Notiz]
-  const person  = r[2] || '';
-  const training= r[3] || '';
-  const note    = r[4] || '';
-
-  return { person, training, note };
+  const b = r[1] ? String(r[1]).trim() : '';
+  const bIsDate = /^\d{4}-\d{2}-\d{2}$/.test(b);
+  if (bIsDate && r.length >= 5) return { person: r[2] || '', training: r[3] || '', note: r[4] || '' };
+  return { person: r[1] || '', training: r[2] || '', note: r[3] || '' };
 }
 
 function safeDayLabelFromKey(key) {
