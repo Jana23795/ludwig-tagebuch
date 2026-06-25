@@ -894,6 +894,10 @@ async function renderVerlauf() {
 
   try {
     const rows = await loadSheet(HORSES[currentHorse].tabs.protokolle);
+
+    // DEBUG: expose loaded protokoll rows in console
+    window.__lastProtokollRows = rows;
+
     // rows[0] = Header, rest = Daten
     const headers = rows[0] || [];
     const data = rows.slice(1).map((r, i) => ({
