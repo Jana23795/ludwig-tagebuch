@@ -508,7 +508,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5g-Ly_8Bvcppxwp8H1PZMorUb-8USYekJxqwBDIsAreuZYY5Tze75PxuWRTFdSywHzQ/exec';
-const APP_BUILD = '2026-07-08-edit-gesund-verlauf-1';
+const APP_BUILD = '2026-07-08-hotfix-nav-redeclare-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -1125,8 +1125,8 @@ async function saveGesundheitEdits() {
 
 
 // ===== Edit state =====
-let editingGesundheitRowIndex = null;
-let editingVerlaufRowIndex = null;
+window.editingGesundheitRowIndex = window.editingGesundheitRowIndex ?? null;
+window.editingVerlaufRowIndex = window.editingVerlaufRowIndex ?? null;
 
 function editGesundheitEntry(sheetRowIndex) {
   const rows = window.__lastGesundRows || [];
@@ -1354,7 +1354,7 @@ async function renderGesundheit() {
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 let currentFutterMonth = new Date().getMonth();
 let currentBudgetMonth = new Date().getMonth();
-let editingGesundheitRowIndex = null;
+window.editingGesundheitRowIndex = window.editingGesundheitRowIndex ?? null;
 let editingProtokollRowIndex = null;
 
 const localStore = {
