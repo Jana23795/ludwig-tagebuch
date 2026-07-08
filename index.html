@@ -508,7 +508,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5g-Ly_8Bvcppxwp8H1PZMorUb-8USYekJxqwBDIsAreuZYY5Tze75PxuWRTFdSywHzQ/exec';
-const APP_BUILD = '2026-06-25-scripturl-fix-date-stable-1';
+const APP_BUILD = '2026-07-08-edit-gesund-verlauf-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -868,6 +868,16 @@ async function saveTraining() {
   const btn = $('save-btn');
   btn.textContent = '⏳ Wird gespeichert…';
   btn.disabled = true;
+  if (editingVerlaufRowIndex) {
+    const kommentar = String($('t-kommentar')?.value || '').trim();
+    await updateRow(HORSES[currentHorse].tabs.protokolle, editingVerlaufRowIndex, { kommentar });
+    editingVerlaufRowIndex = null;
+    await renderVerlauf();
+    showToast('✅ Eintrag aktualisiert!');
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Speichern'; setTimeout(()=>{btn.textContent='✅ Speichern';},600);}
+    return;
+  }
+
   if (await saveProtokollEditIfNeeded()) { if (btn) { btn.disabled = false; btn.textContent = '✅ Gespeichert'; setTimeout(()=>{btn.textContent='✅ Speichern';},800);} return; }
 
   const row = [
@@ -1112,6 +1122,44 @@ async function saveGesundheitEdits() {
 }
 }
 
+
+
+// ===== Edit state =====
+let editingGesundheitRowIndex = null;
+let editingVerlaufRowIndex = null;
+
+function editGesundheitEntry(sheetRowIndex) {
+  const rows = window.__lastGesundRows || [];
+  const r = rows[sheetRowIndex - 1];
+  if (!r) { showToast('Eintrag nicht gefunden'); return; }
+  // [ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
+  $('g-datum').value = extractDateKey_(r[1]) || r[1] || '';
+  $('g-art').value = r[2] || '';
+  $('g-person').value = r[3] || '';
+  $('g-befund').value = r[4] || '';
+  $('g-behandlung').value = r[5] || '';
+  $('g-naechster').value = extractDateKey_(r[6]) || r[6] || '';
+  $('g-kosten').value = r[7] || '';
+  $('g-notizen').value = r[8] || '';
+  editingGesundheitRowIndex = sheetRowIndex;
+  showToast('✏️ Bearbeiten aktiv');
+}
+
+async function deleteGesundheitEntry(sheetRowIndex) {
+  if (!confirm('Eintrag wirklich löschen?')) return;
+  const tab = HORSES[currentHorse].tabs.gesundheit;
+  await deleteRow(tab, sheetRowIndex);
+  await renderGesundheit();
+  showToast('🗑️ Eintrag gelöscht');
+}
+
+function editVerlaufEntry(sheetRowIndex, kommentar) {
+  const el = document.getElementById('t-kommentar');
+  if (el) el.value = kommentar || '';
+  editingVerlaufRowIndex = sheetRowIndex;
+  showToast('✏️ Verlauf bearbeiten aktiv (nur Kommentar)');
+  document.getElementById('page-training')?.scrollIntoView({behavior:'smooth', block:'start'});
+}
 // ═══════════════════════════════════════════════════════
 // GESUNDHEIT
 // ═══════════════════════════════════════════════════════
