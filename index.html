@@ -795,6 +795,14 @@ async function deleteRow(tab, rowIndex) {
   await new Promise(r => setTimeout(r, 1200));
 }
 
+// UPDATE via fetch no-cors
+async function updateRow(tab, rowIndex, updates) {
+  const body = JSON.stringify({ sheetId: SHEET_ID, action: 'update', tab, rowIndex, updates });
+  await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body });
+  await new Promise(r => setTimeout(r, 1200));
+}
+
+
 // ═══════════════════════════════════════════════════════
 // CHECKBOX / RADIO GROUPS
 // ═══════════════════════════════════════════════════════
@@ -860,6 +868,7 @@ async function saveTraining() {
   const btn = $('save-btn');
   btn.textContent = '⏳ Wird gespeichert…';
   btn.disabled = true;
+  if (await saveProtokollEditIfNeeded()) { if (btn) { btn.disabled = false; btn.textContent = '✅ Gespeichert'; setTimeout(()=>{btn.textContent='✅ Speichern';},800);} return; }
 
   const row = [
     new Date().toISOString(),         // Timestamp
@@ -1010,6 +1019,26 @@ function showPrevBanner(data) {
     `${formatDate(last.datum)} · ${last.wer || 'unbekannt'} · ${last.art || '–'} · ${last.stimmung || ''} ${last.verdauung || ''}`;
 }
 
+
+
+function editProtokollEntry(rowIndex, entry) {
+  editingProtokollRowIndex = rowIndex;
+  // Prefill only comment field (text-only)
+  const el = document.getElementById('t-kommentar');
+  if (el) el.value = (entry && entry.kommentar) ? entry.kommentar : '';
+  showToast('✏️ Verlauf bearbeiten aktiv – Speichern aktualisiert Kommentar');
+  document.getElementById('page-training')?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function saveProtokollEditIfNeeded() {
+  if (!editingProtokollRowIndex) return false;
+  const kommentar = String(document.getElementById('t-kommentar')?.value || '').trim();
+  await updateRow(HORSES[currentHorse].tabs.protokolle, editingProtokollRowIndex, { kommentar });
+  editingProtokollRowIndex = null;
+  await renderVerlauf();
+  showToast('✅ Verlauf aktualisiert');
+  return true;
+}
 function initTrainingForm() {
   $('t-datum').value = isoDate(new Date());
   // Banner nachladen
@@ -1153,7 +1182,22 @@ async function saveGesundheit() {
   ];
 
   try {
-    await appendRow(HORSES[currentHorse].tabs.gesundheit, row);
+    
+    // If we are editing an existing entry, update text fields only
+    if (editingGesundheitRowIndex) {
+      await updateRow(HORSES[currentHorse].tabs.gesundheit, editingGesundheitRowIndex, {
+        person,
+        befund,
+        behandlung,
+        kosten: kostenRaw,
+        notizen
+      });
+      editingGesundheitRowIndex = null;
+      showToast('✅ Eintrag aktualisiert!');
+      await renderGesundheit();
+      return;
+    }
+await appendRow(HORSES[currentHorse].tabs.gesundheit, row);
 
     // Auto-Transfer ins Budget (wenn Kosten gesetzt)
     const kategorie = (art === 'Tierarztbesuch') ? 'Tierarzt'
@@ -1216,6 +1260,9 @@ async function renderGesundheit() {
       const hasEntryId = (r.length >= 10 && (typeof r[0] === 'string' || typeof r[0] === 'number') && String(r[0]).length >= 6);
       const off = hasEntryId ? 1 : 0;
 
+          const originalIdx = startIdx + (data.length - 1 - idx);
+          const sheetRowIndex = originalIdx + 1;
+
       const datum = r[1 + off];
       const art = r[2 + off];
       const person = r[3 + off];
@@ -1231,12 +1278,20 @@ async function renderGesundheit() {
 
       return `
         <div style="border-bottom:1px solid var(--border);padding:10px 0">
+              <div class="gesund-actions" style="display:flex;gap:8px;margin-top:6px">
+                <button class="day-edit-btn" style="padding:6px 10px;font-size:0.75rem" onclick="editGesundheitEntry(${startIdx} + ${'idx'} )">✏️ Bearbeiten</button>
+                <button class="delete-btn" style="border:1.5px solid var(--red);border-radius:8px;padding:6px 10px;font-size:0.75rem" onclick="deleteGesundheitEntry(${startIdx} + ${'idx'} )">🗑️ Löschen</button>
+              </div>
           <div style="font-weight:600;font-size:0.9rem">${formatDate(extractDateKey_(datum) || datum)} · ${art || '–'}</div>
           <div style="font-size:0.8rem;color:#777;margin-top:2px">${person || ''}</div>
           ${befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${befund}</div>` : ''}
           ${behandlung ? `<div style="font-size:0.82rem">💊 ${behandlung}</div>` : ''}
           ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(extractDateKey_(naechster) || naechster)}</div>` : ''}
           ${costLine}
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="day-edit-btn" style="padding:6px 10px;font-size:0.75rem" onclick="editGesundheitEntry(${sheetRowIndex})">✏️ Bearbeiten</button>
+                <button class="delete-btn" style="border:1.5px solid var(--red);border-radius:8px;padding:6px 10px;font-size:0.75rem" onclick="deleteGesundheitEntry(${sheetRowIndex})">🗑️ Löschen</button>
+              </div>
         </div>
       `;
     }).join('');
@@ -1251,6 +1306,8 @@ async function renderGesundheit() {
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 let currentFutterMonth = new Date().getMonth();
 let currentBudgetMonth = new Date().getMonth();
+let editingGesundheitRowIndex = null;
+let editingProtokollRowIndex = null;
 
 const localStore = {
   // Legacy local storage (kept for backward-compat, no longer used for futter/budget)
