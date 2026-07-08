@@ -337,6 +337,7 @@
 <label><input type="checkbox" value="Working Equitation"/><span>🤠 Working Equitation</span></label>
 <label><input type="checkbox" value="Dual-Aktivierung"/><span>⚡ Dual-Aktivierung</span></label>
 <label><input type="checkbox" value="Equikinetik"/><span>🔄 Equikinetik</span></label>
+<label><input type="checkbox" value="Spaziergang"/><span>🚶 Spaziergang</span></label>
 <label><input type="checkbox" value="Handarbeit"/><span>🤝 Handarbeit</span></label>
 <label><input type="checkbox" value="Bodenarbeit"/><span>🦶 Bodenarbeit</span></label>
 <label><input type="checkbox" value="Freiarbeit"/><span>🕊️ Freiarbeit</span></label>
@@ -1368,8 +1369,8 @@ async function renderFutter() {
     // Start index depends on whether the first row is a header.
     for (let i = startIdx; i < sheetRows.length; i++) {
       const r = sheetRows[i];
-      const mi = parseInt(String(r[0] ?? '').trim(), 10);
-      if (mi !== monthIdx) continue;
+      if (!r || r.length < 2) continue;
+      // Futter is a static plan - show all entries regardless of month
       rows.push({
         name: r[1] || '',
         kat: r[2] || '',
@@ -1389,6 +1390,8 @@ async function renderFutter() {
   }
 }
 
+let currentFutterplanMonth = new Date().getMonth();
+
 async function renderFutterplanView() {
   const view = document.getElementById('futterplan-view');
   if (!view) return;
@@ -1401,14 +1404,26 @@ async function renderFutterplanView() {
     const a1 = rows?.[0]?.[0];
     const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
     const startIdx = hasHeader ? 1 : 0;
-    const data = rows.slice(startIdx).filter(r => r && r.length > 1);
+    
+    // Filter by selected month
+    const allData = rows.slice(startIdx).filter(r => r && r.length > 1);
+    const data = allData.filter(r => {
+      const mi = parseInt(String(r[0] ?? '').trim(), 10);
+      return isNaN(mi) || mi === currentFutterplanMonth;
+    });
+    
+    // Month navigation bar
+    const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    const monthBar = `<div class="month-bar" style="margin-bottom:14px">${MONTHS.map((mn,idx) =>
+      `<button class="month-btn${idx===currentFutterplanMonth?' active':''}" onclick="currentFutterplanMonth=${idx};renderFutterplanView()">${mn}</button>`
+    ).join('')}</div>`;
 
     if (data.length === 0) {
-      view.innerHTML = '<div class="empty-state"><div class="emoji">🌾</div><p>Noch kein Futterplan eingetragen.</p></div>';
+      view.innerHTML = monthBar + '<div class="empty-state"><div class="emoji">🌾</div><p>Kein Futterplan für diesen Monat.</p></div>';
       return;
     }
 
-    view.innerHTML = data.map(r => {
+    view.innerHTML = monthBar + data.map(r => {
       const name     = r[1] || '';
       const kat      = r[2] || '';
       const dosierung= r[3] || '';
