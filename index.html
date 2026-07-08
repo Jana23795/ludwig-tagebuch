@@ -507,7 +507,7 @@
 // KONFIGURATION – Google Apps Script Web App URL
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZHInZLhC_YK22lK0ggriVyhr5eEzv7Rk2iReEc_Feu_B5xjqY2eQhqDIuDKmIVEIJVw/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5g-Ly_8Bvcppxwp8H1PZMorUb-8USYekJxqwBDIsAreuZYY5Tze75PxuWRTFdSywHzQ/exec';
 const APP_BUILD = '2026-06-25-scripturl-fix-date-stable-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
@@ -1043,6 +1043,44 @@ function formatDate(value) {
     month: 'long',
     year: 'numeric'
   });
+
+
+// ====== EDIT (Gesundheit & Protokoll - Text-only) ======
+function startEditGesundheit(entry) {
+  // entry has datum, art, person, befund, behandlung, naechster, kosten, notizen and _meta
+  // Fill only editable fields (text) and set a flag for save.
+  window.__editingGesundheit = entry || null;
+  $('g-art').value = entry.art || '';
+  $('g-person').value = entry.person || '';
+  $('g-befund').value = entry.befund || '';
+  $('g-behandlung').value = entry.behandlung || '';
+  $('g-kosten').value = entry.kosten || '';
+  $('g-notizen').value = entry.notizen || '';
+
+  // open the section (in case it was collapsed)
+  const wrap = document.getElementById('gesundheit-form');
+  if (wrap) wrap.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function saveGesundheitEdits() {
+  const e = window.__editingGesundheit;
+  if (!e) { showToast('Kein Eintrag zum Bearbeiten'); return; }
+
+  const updates = {
+    // text fields only
+    person: $('g-person')?.value ?? '',
+    befund: $('g-befund')?.value ?? '',
+    behandlung: $('g-behandlung')?.value ?? '',
+    kosten: $('g-kosten')?.value ?? '',
+    notizen: $('g-notizen')?.value ?? '',
+  };
+
+  await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ sheetId: SHEET_ID, action:'update', tab: HORSES[currentHorse].tabs.gesundheit, rowIndex: e.rowIndex, updates }) });
+  await new Promise(r=>setTimeout(r, 1200));
+  window.__editingGesundheit = null;
+  await renderGesundheit();
+  showToast('✅ Gesundheitseintrag aktualisiert');
+}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1155,6 +1193,7 @@ async function renderGesundheit() {
 
   try {
     const rows = await loadSheet(tab);
+        window.__lastGesundRows = rows;
 
     // Header-Handling wie bei Futter/Budget:
     // Wenn A1 eine Zahl ist (z.B. MonatIdx/EntryId), dann gibt es KEINEN Header.
@@ -1168,7 +1207,9 @@ async function renderGesundheit() {
       return;
     }
 
-    list.innerHTML = data.map(r => {
+    list.innerHTML = data.map((r, idx) => {
+          // compute actual sheet row index: idx in data starts after startIdx and includes reverse
+
       // Unterstützt beide Schemas:
       // ALT: [ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
       // NEU (wenn wir später EntryId hinzufügen): [EntryId, ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
@@ -1248,6 +1289,7 @@ function ensureSheetHeader(tab, header) {
   return (async () => {
     try {
       const rows = await loadSheet(tab);
+        window.__lastGesundRows = rows;
       if (!rows || rows.length === 0) {
         await appendRow(tab, header);
         await new Promise(r => setTimeout(r, 250));
@@ -1401,6 +1443,7 @@ async function renderFutterplanView() {
   try {
     const tab = HORSES[currentHorse].tabs.futter;
     const rows = await loadSheet(tab);
+        window.__lastGesundRows = rows;
 
     const a1 = rows?.[0]?.[0];
     const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
@@ -1847,6 +1890,7 @@ async function saveDayEntry(dateStr) {
 
     // Reload, remove duplicates for this date (from bottom to top), then write a single row
     const rows = await loadSheet(tab);
+        window.__lastGesundRows = rows;
     const matches = [];
     for (let i = 1; i < rows.length; i++) {
       const key = getWeekRowKey(rows[i]);
@@ -1879,6 +1923,7 @@ async function clearDayEntry(dateStr) {
 
   const tab = HORSES[currentHorse].tabs.woche;
   const rows = await loadSheet(tab);
+        window.__lastGesundRows = rows;
 
   // delete ALL rows matching this day (prefer DateKey column)
   const matches = [];
