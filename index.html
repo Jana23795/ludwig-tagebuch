@@ -282,6 +282,7 @@
 <button data-page="verlauf">📅 Verlauf</button>
 <button data-page="gesundheit">🏥 Gesundheit</button>
 <button data-page="futter">🌾 Futter</button>
+<button data-page="futterplan">📋 Futterplan</button>
 <button data-page="budget">💶 Budget</button>
 </nav>
 <!-- ═══ PAGE 1: PROTOKOLL ═══ -->
@@ -393,6 +394,11 @@
 <label title="Schnaufen"><input name="atmung" type="radio" value="😤 Schnaufen"/><span>😤</span></label>
 <label title="Krank"><input name="atmung" type="radio" value="😷 Krank"/><span>😷</span></label>
 </div>
+<label class="field-label">Inhaliert</label>
+<div class="yn-group" id="t-inhaliert">
+<label id="t-inhaliert-ja" onclick="setYN('t-inhaliert','ja')">✅ Ja</label>
+<label id="t-inhaliert-nein" onclick="setYN('t-inhaliert','nein')">❌ Nein</label>
+</div>
 <label class="field-label">Verletzung?</label>
 <div class="yn-group" id="t-verletzung">
 <label onclick="ynSelect('t-verletzung','yes')"><input name="verletzung" type="radio" value="Ja"/> ⚠️ Ja</label>
@@ -459,6 +465,14 @@
 <button class="btn" onclick="saveFutter()">💾 Futterplan speichern</button>
 </div>
 </div>
+<!-- ═══ PAGE 5b: FUTTERPLAN (Ansicht) ═══ -->
+<div class="page" id="page-futterplan">
+  <div style="padding:16px">
+    <h2 style="font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--brown);margin-bottom:14px">📋 Futterplan</h2>
+    <div id="futterplan-view"><div class="loader">⏳ Lade…</div></div>
+  </div>
+</div>
+
 <!-- ═══ PAGE 5: BUDGET ═══ -->
 <div class="page" id="page-budget">
 <div class="card">
@@ -492,7 +506,7 @@
 // KONFIGURATION – Google Apps Script Web App URL
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyiYgF_Md_Bd1VxRqMDbiBOKG-u_HTZHQQZXQWilEGrZov-twLtFtMt0iQuBH-Ae8s7CA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyZHInZLhC_YK22lK0ggriVyhr5eEzv7Rk2iReEc_Feu_B5xjqY2eQhqDIuDKmIVEIJVw/exec';
 const APP_BUILD = '2026-06-25-scripturl-fix-date-stable-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
@@ -687,6 +701,7 @@ function showPage(name, btn) {
   if (name === 'gesundheit') renderGesundheit();
   if (name === 'futter') { renderMonthBar('futter'); renderFutter(); }
   if (name === 'budget') { renderMonthBar('budget'); renderBudget(); }
+  if (name === 'futterplan') renderFutterplanView();
   if (name === 'woche') renderWoche();
 }
 
@@ -995,7 +1010,7 @@ function showPrevBanner(data) {
 }
 
 function initTrainingForm() {
-  $('t-datum').value = new Date().toISOString().split('T')[0];
+  $('t-datum').value = isoDate(new Date());
   // Banner nachladen
   loadSheet(HORSES[currentHorse].tabs.protokolle).then(rows => {
     const data = rows.slice(1);
@@ -1374,10 +1389,60 @@ async function renderFutter() {
   }
 }
 
+async function renderFutterplanView() {
+  const view = document.getElementById('futterplan-view');
+  if (!view) return;
+  view.innerHTML = '<div class="loader">⏳ Lade Futterplan…</div>';
+
+  try {
+    const tab = HORSES[currentHorse].tabs.futter;
+    const rows = await loadSheet(tab);
+
+    const a1 = rows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+    const data = rows.slice(startIdx).filter(r => r && r.length > 1);
+
+    if (data.length === 0) {
+      view.innerHTML = '<div class="empty-state"><div class="emoji">🌾</div><p>Noch kein Futterplan eingetragen.</p></div>';
+      return;
+    }
+
+    view.innerHTML = data.map(r => {
+      const name     = r[1] || '';
+      const kat      = r[2] || '';
+      const dosierung= r[3] || '';
+      const haeuf    = r[4] || '';
+      const notizen  = r[5] || '';
+
+      if (!name && !kat) return '';
+
+      return `
+        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px var(--shadow)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:1.5rem">🌾</span>
+            <div>
+              <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--dark)">${name}</div>
+              ${kat ? `<div style="font-size:0.78rem;color:var(--brown);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${kat}</div>` : ''}
+            </div>
+          </div>
+          ${dosierung ? `<div style="display:flex;align-items:center;gap:8px;font-size:0.88rem;margin-bottom:4px">⚖️ <strong>Menge:</strong> ${dosierung}</div>` : ''}
+          ${haeuf ? `<div style="display:flex;align-items:center;gap:8px;font-size:0.88rem;margin-bottom:4px">🔁 <strong>Häufigkeit:</strong> ${haeuf}</div>` : ''}
+          ${notizen ? `<div style="font-size:0.82rem;color:#777;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">💬 ${notizen}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+  } catch(e) {
+    view.innerHTML = '<div class="empty-state"><p>Fehler beim Laden des Futterplans.</p></div>';
+  }
+}
+
+
 function addBudgetRow(b = {}) {
   const body = $('budget-body');
   const tr = document.createElement('tr');
-  const today = new Date().toISOString().split('T')[0];
+  const today = isoDate(new Date());
   tr.innerHTML = `
     <td><input type="date" value="${extractDateKey_(b.datum)||b.datum||today}" /></td>
     <td>
