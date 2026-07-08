@@ -1326,10 +1326,7 @@ async function renderGesundheit() {
 
       return `
         <div style="border-bottom:1px solid var(--border);padding:10px 0">
-              <div class="gesund-actions" style="display:flex;gap:8px;margin-top:6px">
-                <button class="day-edit-btn" style="padding:6px 10px;font-size:0.75rem" onclick="editGesundheitEntry(${startIdx} + ${'idx'} )">✏️ Bearbeiten</button>
-                <button class="delete-btn" style="border:1.5px solid var(--red);border-radius:8px;padding:6px 10px;font-size:0.75rem" onclick="deleteGesundheitEntry(${startIdx} + ${'idx'} )">🗑️ Löschen</button>
-              </div>
+
           <div style="font-weight:600;font-size:0.9rem">${formatDate(extractDateKey_(datum) || datum)} · ${art || '–'}</div>
           <div style="font-size:0.8rem;color:#777;margin-top:2px">${person || ''}</div>
           ${befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${befund}</div>` : ''}
