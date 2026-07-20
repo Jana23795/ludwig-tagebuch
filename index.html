@@ -284,6 +284,7 @@
 <button data-page="futter">🌾 Futter</button>
 <button data-page="futterplan">📋 Futterplan</button>
 <button data-page="budget">💶 Budget</button>
+<button data-page="kommandos">🎛️ Kommandozentrale</button>
 </nav>
 <!-- ═══ PAGE 1: PROTOKOLL ═══ -->
 <div class="page active" id="page-training">
@@ -683,7 +684,7 @@
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5g-Ly_8Bvcppxwp8H1PZMorUb-8USYekJxqwBDIsAreuZYY5Tze75PxuWRTFdSywHzQ/exec';
-const APP_BUILD = '2026-07-08-rollback-stable-kommandozentrale-off';
+const APP_BUILD = '2026-07-08-kommandozentrale-linkonly-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -879,11 +880,125 @@ function showPage(name, btn) {
   if (name === 'budget') { renderMonthBar('budget'); renderBudget(); }
   if (name === 'futterplan') renderFutterplanView();
   if (name === 'woche') renderWoche();
+  if (name === 'kommandos') renderKommandos();
 }
 
 
 
 
+
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'cmd-search') renderKommandos();
+});
+
+
+// ===== Kommandozentrale (Link-only, no recording) =====
+function getKommandosTab_() {
+  return HORSES[currentHorse].tabs.kommandos;
+}
+
+function selectCmdCat(cat, btn) {
+  btn?.closest('.month-bar')?.querySelectorAll('.month-btn')?.forEach(b => b.classList.remove('active'));
+  btn?.classList.add('active');
+  renderKommandos();
+}
+
+async function renderKommandos() {
+  const list = document.getElementById('cmd-list');
+  if (!list) return;
+  list.innerHTML = '<div class="loader">⏳ Lade…</div>';
+
+  const tab = getKommandosTab_();
+  try {
+    const rows = await loadSheet(tab);
+    const a1 = rows?.[0]?.[0];
+    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+
+    // schema: [ts, action, signal, contexts, category, fehler, audioLink]
+    const data = rows.slice(startIdx).map((r, i) => ({
+      _rowIndex: i + 1 + startIdx + 1,
+      ts: r[0] || '',
+      action: r[1] || '',
+      signal: r[2] || '',
+      contexts: r[3] || '',
+      category: r[4] || '',
+      fehler: r[5] || '',
+      audioLink: r[6] || ''
+    }));
+
+    const q = (document.getElementById('cmd-search')?.value || '').toLowerCase().trim();
+    const activeCat = document.querySelector('#cmd-categories .month-btn.active')?.dataset?.cat || '';
+
+    const filtered = data.filter(c => {
+      const hay = `${c.action} ${c.signal} ${c.contexts} ${c.category} ${c.fehler} ${c.audioLink}`.toLowerCase();
+      if (q && !hay.includes(q)) return false;
+      if (activeCat && c.category !== activeCat) return false;
+      return true;
+    });
+
+    const cats = Array.from(new Set(data.map(d => d.category).filter(Boolean))).sort();
+    const catBar = document.getElementById('cmd-categories');
+    if (catBar) {
+      const btnAll = `<button class="month-btn ${activeCat===''?'active':''}" data-cat="" onclick="selectCmdCat('', this)">Alle</button>`;
+      catBar.innerHTML = btnAll + cats.map(c => `<button class="month-btn ${activeCat===c?'active':''}" data-cat="${c}" onclick="selectCmdCat('${c}', this)">${c}</button>`).join('');
+    }
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state"><div class="emoji">🎛️</div><p>Keine Kommandos gefunden.</p></div>';
+      return;
+    }
+
+    list.innerHTML = filtered.map(c => `
+      <div class="entry-card" style="border-radius:14px">
+        <div style="display:flex;justify-content:space-between;gap:10px">
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--dark);font-weight:700">${c.action || '—'}</div>
+            <div style="font-size:0.85rem;color:#777;margin-top:2px"><strong>Signal:</strong> ${c.signal || '—'}</div>
+            <div style="font-size:0.78rem;color:var(--brown);margin-top:6px">${[c.contexts,c.category].filter(Boolean).join(' · ')}</div>
+          </div>
+          <button class="btn-delete" onclick="deleteCommand(${c._rowIndex})">🗑️</button>
+        </div>
+        ${c.fehler ? `<div style="margin-top:10px;font-size:0.82rem"><strong>Fehlerbild:</strong> ${c.fehler}</div>` : ''}
+        ${c.audioLink ? `<div style="margin-top:10px"><a class="btn-toggle" href="${c.audioLink}" target="_blank" rel="noopener" style="display:inline-block">🔊 Audio öffnen</a></div>` : ''}
+      </div>
+    `).join('');
+
+  } catch(e) {
+    list.innerHTML = '<div class="empty-state"><p>Fehler beim Laden.</p></div>';
+  }
+}
+
+async function saveCommand() {
+  const tab = getKommandosTab_();
+  const action = (document.getElementById('cmd-action')?.value || '').trim();
+  const signal = (document.getElementById('cmd-signal')?.value || '').trim();
+  const contexts = getChecked('cmd-context');
+  const category = (document.getElementById('cmd-category')?.value || '').trim();
+  const fehler = (document.getElementById('cmd-fehler')?.value || '').trim();
+  const audioLink = (document.getElementById('cmd-audio-link')?.value || '').trim();
+
+  if (!action || !signal) {
+    showToast('Bitte Aktion und Signal ausfüllen');
+    return;
+  }
+
+  await appendRow(tab, [new Date().toISOString(), action, signal, contexts, category, fehler, audioLink]);
+  ['cmd-action','cmd-signal','cmd-fehler','cmd-audio-link'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  // clear contexts
+  document.querySelectorAll('#cmd-context input[type="checkbox"]').forEach(cb => cb.checked = false);
+  document.querySelectorAll('#cmd-context label').forEach(l => l.classList.remove('checked'));
+  showToast('✅ Kommando gespeichert');
+  await renderKommandos();
+}
+
+async function deleteCommand(rowIndex) {
+  if (!confirm('Kommando löschen?')) return;
+  const tab = getKommandosTab_();
+  await deleteRow(tab, rowIndex);
+  showToast('🗑️ Gelöscht');
+  await renderKommandos();
+}
 
 document.addEventListener('input', (e) => {
   if (e.target && e.target.id === 'cmd-search') renderKommandos();
