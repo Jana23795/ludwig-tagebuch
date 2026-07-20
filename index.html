@@ -330,20 +330,51 @@
 <div class="card-title">🏇 Training</div>
 <label class="field-label">Trainingsart</label>
 <div class="check-group" id="t-art">
-<label><input type="checkbox" value="Ausreiten"/><span>🌲 Ausreiten</span></label>
-<label><input type="checkbox" value="Dressur"/><span>🎯 Dressur</span></label>
-<label><input type="checkbox" value="Springen"/><span>🏆 Springen</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:6px 0 4px 0;width:100%">🏇 Standard</div>
+<label><input type="checkbox" value="Dressur"/><span>🎩 Dressur</span></label>
+<label><input type="checkbox" value="Springen"/><span>🚧 Springen</span></label>
 <label><input type="checkbox" value="Reitstunde"/><span>👩‍🏫 Reitstunde</span></label>
-<label><input type="checkbox" value="Working Equitation"/><span>🤠 Working Equitation</span></label>
-<label><input type="checkbox" value="Dual-Aktivierung"/><span>⚡ Dual-Aktivierung</span></label>
-<label><input type="checkbox" value="Equikinetik"/><span>🔄 Equikinetik</span></label>
+<label><input type="checkbox" value="Sitzlonge"/><span>🎯 Sitzlonge</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🌲 Gelände</div>
+<label><input type="checkbox" value="Ausreiten alleine"/><span>🌲 Ausreiten alleine</span></label>
+<label><input type="checkbox" value="Ausreiten in der Gruppe"/><span>👥 Ausreiten in der Gruppe</span></label>
 <label><input type="checkbox" value="Spaziergang"/><span>🚶 Spaziergang</span></label>
+<label><input type="checkbox" value="Geländetraining"/><span>🏞️ Geländetraining</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🤝 Bodenarbeit</div>
 <label><input type="checkbox" value="Handarbeit"/><span>🤝 Handarbeit</span></label>
-<label><input type="checkbox" value="Bodenarbeit"/><span>🦶 Bodenarbeit</span></label>
 <label><input type="checkbox" value="Freiarbeit"/><span>🕊️ Freiarbeit</span></label>
 <label><input type="checkbox" value="Kappzaumlonge"/><span>⭕ Kappzaumlonge</span></label>
-<label><input type="checkbox" value="Doppellonge"/><span>〰️ Doppellonge</span></label>
+<label><input type="checkbox" value="Doppellonge"/><span>🔄 Doppellonge</span></label>
+<label><input type="checkbox" value="Bodenarbeit"/><span>🦶 Bodenarbeit</span></label>
+<label><input type="checkbox" value="Langzügelarbeit"/><span>↔️ Langzügelarbeit</span></label>
+<label><input type="checkbox" value="Clickertraining"/><span>🎯 Clickertraining</span></label>
+<label><input type="checkbox" value="Freispringen"/><span>🐎 Freispringen</span></label>
+<label><input type="checkbox" value="Gelassenheitstraining"/><span>🧘 Gelassenheitstraining</span></label>
+<label><input type="checkbox" value="Zirkuslektionen"/><span>🎪 Zirkuslektionen</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">⚡ Geitner</div>
+<label><input type="checkbox" value="Dual-Aktivierung"/><span>⚡ Dual-Aktivierung</span></label>
+<label><input type="checkbox" value="Equikinetik"/><span>🔄 Equikinetik</span></label>
 <label><input type="checkbox" value="Equi-Classic-Work"/><span>🌀 Equi-Classic-Work</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">⭐ Specials</div>
+<label><input type="checkbox" value="Pylonenarbeit"/><span>🔶 Pylonenarbeit</span></label>
+<label><input type="checkbox" value="Working-Equitation"/><span>🤠 Working-Equitation</span></label>
+<label><input type="checkbox" value="Trail"/><span>🛤️ Trail</span></label>
+<label><input type="checkbox" value="Garrocha"/><span>🎋 Garrocha</span></label>
+<label><input type="checkbox" value="Voltigieren"/><span>🤸 Voltigieren</span></label>
+<label><input type="checkbox" value="Stangenarbeit"/><span>📏 Stangenarbeit</span></label>
+<label><input type="checkbox" value="Cavalettitraining"/><span>🪵 Cavalettitraining</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🚗 Fahren</div>
+<label><input type="checkbox" value="Fahren am Boden"/><span>🚗 Fahren am Boden</span></label>
+<label><input type="checkbox" value="Schleppe ziehen"/><span>🪵 Schleppe ziehen</span></label>
+<label><input type="checkbox" value="Kutsche fahren"/><span>🪄 Kutsche fahren</span></label>
+<label><input type="checkbox" value="Schlitten fahren"/><span>⛷️ Schlitten fahren</span></label>
+
 </div>
 
 <label class="field-label" style="margin-top:16px">THERAPIE</label>
@@ -588,8 +619,8 @@
 // KONFIGURATION – Google Apps Script Web App URL
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz5g-Ly_8Bvcppxwp8H1PZMorUb-8USYekJxqwBDIsAreuZYY5Tze75PxuWRTFdSywHzQ/exec';
-const APP_BUILD = '2026-07-08-hotfix-nav-redeclare-1';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyiYgF_Md_Bd1VxRqMDbiBOKG-u_HTZHQQZXQWilEGrZov-twLtFtMt0iQuBH-Ae8s7CA/exec';
+const APP_BUILD = '2026-07-08-trainingsart-therapie-sliders-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
