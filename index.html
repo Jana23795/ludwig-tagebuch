@@ -625,26 +625,22 @@
     <label class="field-label">Signal</label>
     <input id="cmd-signal" placeholder="z.B. 1× Schnalzen" />
 
-    <label class="field-label">Kontext</label>
-    <select id="cmd-context">
-      <option value="">– wählen –</option>
-      <option>Boden</option>
-      <option>Reiten</option>
-      <option>Longieren</option>
-      <option>Therapie</option>
-      <option>Notfall</option>
-    </select>
+    <label class="field-label">Kontext (mehrfach)</label>
+    <div class="check-group" id="cmd-context">
+      <label><input type="checkbox" value="Boden"/><span>🟫 Boden</span></label>
+      <label><input type="checkbox" value="Reiten"/><span>🐎 Reiten</span></label>
+      <label><input type="checkbox" value="Longieren"/><span>⭕ Longieren</span></label>
+      <label><input type="checkbox" value="Therapie"/><span>🩹 Therapie</span></label>
+      <label><input type="checkbox" value="Notfall"/><span>🚨 Notfall</span></label>
+    </div>
 
     <label class="field-label">Kategorie</label>
     <select id="cmd-category">
       <option value="">– wählen –</option>
-      <option>Gangarten</option>
+      <option>Gangarten / Übergänge</option>
       <option>Seitengänge</option>
-      <option>Übergänge</option>
-      <option>Longieren</option>
-      <option>Gymnastik</option>
-      <option>Trail/Umwelt</option>
-      <option>Therapie</option>
+      <option>Tricks</option>
+      <option>Allgemeiner Umgang</option>
       <option>Notfall</option>
     </select>
 
@@ -659,6 +655,9 @@
       <button class="btn-toggle" type="button" onclick="downloadCmdRecording()">⬇️ Speichern</button>
     </div>
     <div style="font-size:0.75rem;color:#888;margin-top:6px" id="cmd-audio-hint">Audio wird lokal gespeichert (Download). Im Sheet speichern wir nur den Dateinamen/Notiz.</div>
+
+    <label class="field-label">Audio-Link (Drive/URL)</label>
+    <input id="cmd-audio-link" placeholder="https://..." />
 
     <label class="field-label">Audio-Notiz / Dateiname</label>
     <input id="cmd-audio-note" placeholder="z.B. pfiff-schulterherein-01" />
@@ -684,8 +683,8 @@
 // KONFIGURATION – Google Apps Script Web App URL
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyiYgF_Md_Bd1VxRqMDbiBOKG-u_HTZHQQZXQWilEGrZov-twLtFtMt0iQuBH-Ae8s7CA/exec';
-const APP_BUILD = '2026-07-08-kommandozentrale-1';
+const SCRIPT_URL = https://script.google.com/macros/s/AKfycbz5g-Ly_8Bvcppxwp8H1PZMorUb-8USYekJxqwBDIsAreuZYY5Tze75PxuWRTFdSywHzQ/exec';
+const APP_BUILD = '2026-07-08-kommandozentrale-audiolink-contextmulti-1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 
 
@@ -919,14 +918,15 @@ async function renderKommandos() {
       context: r[3] || '',
       category: r[4] || '',
       fehler: r[5] || '',
-      audio: r[6] || ''
+      audio: r[6] || '',
+      audioLink: r[7] || ''
     }));
 
     const q = (document.getElementById('cmd-search')?.value || '').toLowerCase().trim();
     const activeCat = document.querySelector('#cmd-categories .month-btn.active')?.dataset?.cat || '';
 
     const filtered = data.filter(c => {
-      const hay = `${c.action} ${c.signal} ${c.context} ${c.category} ${c.fehler} ${c.audio}`.toLowerCase();
+      const hay = `${c.action} ${c.signal} ${c.context} ${c.category} ${c.fehler} ${c.audio} ${c.audioLink}`.toLowerCase();
       if (q && !hay.includes(q)) return false;
       if (activeCat && c.category !== activeCat) return false;
       return true;
@@ -957,6 +957,7 @@ async function renderKommandos() {
         </div>
         ${c.fehler ? `<div style="margin-top:10px;font-size:0.82rem"><strong>Fehlerbild:</strong> ${c.fehler}</div>` : ''}
         ${c.audio ? `<div style="margin-top:8px;font-size:0.78rem;color:#888"><strong>Audio:</strong> ${c.audio}</div>` : ''}
+        ${c.audioLink ? `<div style="margin-top:8px"><a class="btn-toggle" href="${c.audioLink}" target="_blank" rel="noopener" style="display:inline-block">🔊 Audio öffnen</a></div>` : ''}
       </div>
     `).join('');
 
@@ -975,9 +976,10 @@ async function saveCommand() {
   const tab = getKommandosTab_();
   const action = (document.getElementById('cmd-action')?.value || '').trim();
   const signal = (document.getElementById('cmd-signal')?.value || '').trim();
-  const context = (document.getElementById('cmd-context')?.value || '').trim();
+  const context = getChecked('cmd-context');
   const category = (document.getElementById('cmd-category')?.value || '').trim();
   const fehler = (document.getElementById('cmd-fehler')?.value || '').trim();
+  const audioLink = (document.getElementById('cmd-audio-link')?.value || '').trim();
   const audio = (document.getElementById('cmd-audio-note')?.value || '').trim();
 
   if (!action || !signal) {
@@ -985,7 +987,7 @@ async function saveCommand() {
     return;
   }
 
-  await appendRow(tab, [new Date().toISOString(), action, signal, context, category, fehler, audio]);
+  await appendRow(tab, [new Date().toISOString(), action, signal, context, category, fehler, audio, audioLink]);
   // clear
   ['cmd-action','cmd-signal','cmd-fehler','cmd-audio-note'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   showToast('✅ Kommando gespeichert');
