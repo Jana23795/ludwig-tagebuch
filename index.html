@@ -345,7 +345,88 @@
 <label><input type="checkbox" value="Doppellonge"/><span>〰️ Doppellonge</span></label>
 <label><input type="checkbox" value="Equi-Classic-Work"/><span>🌀 Equi-Classic-Work</span></label>
 </div>
-<label class="field-label">Dauer (Minuten)</label>
+
+<label class="field-label" style="margin-top:16px">THERAPIE</label>
+<div class="check-group" id="t-therapie">
+<label><input type="checkbox" value="Kinesiotaping"/><span>🩹 Kinesiotaping</span></label>
+<label><input type="checkbox" value="Crosstaping"/><span>➕ Crosstaping</span></label>
+<label><input type="checkbox" value="Massagedecke"/><span>🔲 Massagedecke</span></label>
+<label><input type="checkbox" value="Novafon"/><span>📳 Novafon</span></label>
+<label><input type="checkbox" value="Masterson-Therapie"/><span>🤲 Masterson-Therapie</span></label>
+<label><input type="checkbox" value="Tellington-Therapie"/><span>🌀 Tellington-Therapie</span></label>
+<label><input type="checkbox" value="Tellington Wraps"/><span>🎀 Tellington Wraps</span></label>
+<label><input type="checkbox" value="Akupunktur"/><span>📍 Akupunktur</span></label>
+<label><input type="checkbox" value="Akupressur"/><span>👆 Akupressur</span></label>
+<label><input type="checkbox" value="Faszienrad"/><span>⚙️ Faszienrad</span></label>
+<label><input type="checkbox" value="Massage"/><span>💆 Massage</span></label>
+<label><input type="checkbox" value="Energetisches Putzen"/><span>✨ Energetisches Putzen</span></label>
+<label><input type="checkbox" value="Lymphdrainage"/><span>💧 Lymphdrainage</span></label>
+<label><input type="checkbox" value="Ohrakupunktur"/><span>👂 Ohrakupunktur</span></label>
+<label><input type="checkbox" value="Balancepads"/><span>🟡 Balancepads</span></label>
+<label><input type="checkbox" value="TENS-Gerät"/><span>⚡ TENS-Gerät</span></label>
+<label><input type="checkbox" value="Faszienmassage"/><span>🖐️ Faszienmassage</span></label>
+<label><input type="checkbox" value="Back-on-Track-Decke"/><span>🟦 Back-on-Track-Decke</span></label>
+<label><input type="checkbox" value="Back-on-Track-Gamaschen"/><span>🟦 Back-on-Track-Gamaschen</span></label>
+<label><input type="checkbox" value="Massage-Gamaschen"/><span>🦵 Massage-Gamaschen</span></label>
+<label><input type="checkbox" value="Physiotherapie"/><span>🏥 Physiotherapie</span></label>
+<label><input type="checkbox" value="Osteopathie"/><span>🦴 Osteopathie</span></label>
+</div>
+<textarea id="t-therapie-notiz" placeholder="Therapie-Notizen (z.B. welche Akupunkturpunkte, wo Tape…)" style="margin-top:8px;width:100%;min-height:60px;padding:10px;border:1.5px solid var(--border);border-radius:9px;background:var(--sand);font-family:'DM Sans',sans-serif;font-size:0.88rem;resize:vertical;color:var(--dark);outline:none"></textarea>
+
+<label class="field-label" style="margin-top:20px">TAGESFORM (Schieber 1–10)</label>
+<div id="t-sliders" style="display:flex;flex-direction:column;gap:18px;margin-top:8px">
+
+<div class="slider-row">
+  <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--brown);margin-bottom:4px">
+    <span>Energie Level</span><span id="lbl-energie">5</span>
+  </div>
+  <input type="range" id="t-energie" min="1" max="10" value="5" oninput="$('lbl-energie').textContent=this.value" style="width:100%;accent-color:var(--accent)"/>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#aaa;margin-top:2px"><span>Matt</span><span>Fleißig</span><span>Überdreht</span></div>
+</div>
+
+<div class="slider-row">
+  <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--brown);margin-bottom:4px">
+    <span>Losgelassenheit</span><span id="lbl-losgelassenheit">5</span>
+  </div>
+  <input type="range" id="t-losgelassenheit" min="1" max="10" value="5" oninput="$('lbl-losgelassenheit').textContent=this.value" style="width:100%;accent-color:var(--accent)"/>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#aaa;margin-top:2px"><span>Angespannt</span><span>Losgelassen</span><span>Auseinanderfallend</span></div>
+</div>
+
+<div class="slider-row">
+  <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--brown);margin-bottom:4px">
+    <span>Durchlässigkeit</span><span id="lbl-durchlaessigkeit">5</span>
+  </div>
+  <input type="range" id="t-durchlaessigkeit" min="1" max="10" value="5" oninput="$('lbl-durchlaessigkeit').textContent=this.value" style="width:100%;accent-color:var(--accent)"/>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#aaa;margin-top:2px"><span>Undurchlässig</span><span>Hilfen angenommen</span><span>Überreagierend</span></div>
+</div>
+
+<div class="slider-row">
+  <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--brown);margin-bottom:4px">
+    <span>Verlauf der Einheit</span><span id="lbl-verlauf-einheit">5</span>
+  </div>
+  <input type="range" id="t-verlauf-einheit" min="1" max="10" value="5" oninput="$('lbl-verlauf-einheit').textContent=this.value" style="width:100%;accent-color:var(--accent)"/>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#aaa;margin-top:2px"><span>Schlechter Anfang</span><span>Konstant gut</span><span>Schlechtes Ende</span></div>
+</div>
+
+<div class="slider-row">
+  <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--brown);margin-bottom:4px">
+    <span>Meine Verfassung</span><span id="lbl-verfassung">5</span>
+  </div>
+  <input type="range" id="t-verfassung" min="1" max="10" value="5" oninput="$('lbl-verfassung').textContent=this.value" style="width:100%;accent-color:var(--accent)"/>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#aaa;margin-top:2px"><span>Unkonzentriert</span><span>Fokussiert</span><span>Verbissen</span></div>
+</div>
+
+<div class="slider-row">
+  <div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--brown);margin-bottom:4px">
+    <span>Kooperation</span><span id="lbl-kooperation">5</span>
+  </div>
+  <input type="range" id="t-kooperation" min="1" max="10" value="5" oninput="$('lbl-kooperation').textContent=this.value" style="width:100%;accent-color:var(--accent)"/>
+  <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:#aaa;margin-top:2px"><span>Stur</span><span>Kooperativ</span><span>Überengagiert</span></div>
+</div>
+
+</div>
+
+<label class="field-label" style="margin-top:16px">DAUER (MINUTEN)</label>
 <input id="t-dauer" placeholder="z.B. 45" style="width:120px" type="number"/>
 </div>
 <div class="card">
@@ -844,6 +925,12 @@ function getRadio(name) {
 }
 
 function clearForm() {
+  ['t-energie','t-losgelassenheit','t-durchlaessigkeit','t-verlauf-einheit','t-verfassung','t-kooperation'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = 5; const lbl = document.getElementById('lbl-'+id.replace('t-','')); if(lbl) lbl.textContent='5'; }
+  });
+  const tn = document.getElementById('t-therapie-notiz');
+  if (tn) tn.value = '';
   document.querySelectorAll('.check-group label').forEach(l => {
     l.classList.remove('checked');
     const cb = l.querySelector('input');
@@ -901,6 +988,14 @@ async function saveTraining() {
     getRadio('verletzung'),           // Verletzung
     $('t-verletzung-welche').value,   // Verletzung welche
     $('t-kommentar').value,           // Kommentar
+    getChecked('t-therapie'),         // Therapie
+    $('t-therapie-notiz').value,      // Therapie Notizen
+    $('t-energie').value,             // Schieber: Energie
+    $('t-losgelassenheit').value,     // Schieber: Losgelassenheit
+    $('t-durchlaessigkeit').value,    // Schieber: Durchlässigkeit
+    $('t-verlauf-einheit').value,     // Schieber: Verlauf
+    $('t-verfassung').value,          // Schieber: Verfassung
+    $('t-kooperation').value,         // Schieber: Kooperation
   ];
 
   try {
