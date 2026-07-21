@@ -1241,7 +1241,10 @@ async function renderVerlauf() {
       wetter: r[4], temp: r[5], art: r[6], dauer: r[7],
       zaeum: r[8], zaeum_s: r[9], sattel: r[10], sattel_s: r[11],
       futter_plan: r[12], futter_abw: r[13], verdauung: r[14],
-      atmung: r[15], verletzung: r[16], verletzung_w: r[17], kommentar: r[18],
+      atmung: r[15], inhaliert: r[16], verletzung: r[17], verletzung_w: r[18], kommentar: r[19],
+      therapie: r[20], therapie_notiz: r[21],
+      energie: r[22], losgelassenheit: r[23], durchlaessigkeit: r[24],
+      verlauf_einheit: r[25], verfassung: r[26], kooperation: r[27],
     }));
 
     cachedEntries = data.slice().reverse();
@@ -1286,11 +1289,28 @@ function renderVerlaufList() {
 
       <div class="entry-detail" id="detail-${i}">
         <div class="divider"></div>
-        ${detailRow('Zäumung', e.zaeum + (e.zaeum_s ? ' / ' + e.zaeum_s : ''))}
-        ${detailRow('Sattel', e.sattel + (e.sattel_s ? ' / ' + e.sattel_s : ''))}
-        ${detailRow('Futter', e.futter_plan + (e.futter_abw ? ' – ' + e.futter_abw : ''))}
-        ${e.verletzung === 'Ja' ? detailRow('Verletzung', '⚠️ ' + (e.verletzung_w || 'Ja')) : ''}
-        ${e.kommentar ? `<div style="margin-top:8px;font-size:0.82rem;color:#555;font-style:italic;padding:8px;background:var(--sand);border-radius:8px">"${e.kommentar}"</div>` : ''}
+
+        ${e.verletzung === 'Ja' ? `<div style="background:#fee;border:1.5px solid #a03030;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:0.85rem;color:#a03030;font-weight:600">⚠️ Verletzung: ${e.verletzung_w || 'Ja'}</div>` : ''}
+
+        ${detailRow('Zäumung', (e.zaeum || '') + (e.zaeum_s ? ' / ' + e.zaeum_s : ''))}
+        ${detailRow('Sattel', (e.sattel || '') + (e.sattel_s ? ' / ' + e.sattel_s : ''))}
+        ${detailRow('Futter gemäß Plan', e.futter_plan + (e.futter_abw ? ' – Abw.: ' + e.futter_abw : ''))}
+        ${e.inhaliert ? detailRow('Inhaliert', e.inhaliert) : ''}
+        ${e.therapie ? detailRow('Therapie', e.therapie + (e.therapie_notiz ? ' · ' + e.therapie_notiz : '')) : ''}
+
+        ${(e.energie || e.losgelassenheit || e.durchlaessigkeit || e.verlauf_einheit || e.verfassung || e.kooperation) ? `
+        <div style="margin-top:12px;margin-bottom:4px;font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em">Tagesform</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          ${e.energie ? sliderBadge('⚡ Energie', e.energie) : ''}
+          ${e.losgelassenheit ? sliderBadge('🌊 Losgelassenheit', e.losgelassenheit) : ''}
+          ${e.durchlaessigkeit ? sliderBadge('🎯 Durchlässigkeit', e.durchlaessigkeit) : ''}
+          ${e.verlauf_einheit ? sliderBadge('📈 Verlauf', e.verlauf_einheit) : ''}
+          ${e.verfassung ? sliderBadge('💚 Verfassung', e.verfassung) : ''}
+          ${e.kooperation ? sliderBadge('🤝 Kooperation', e.kooperation) : ''}
+        </div>` : ''}
+
+        ${e.kommentar ? `<div style="margin-top:10px;font-size:0.84rem;color:#444;font-style:italic;padding:10px 12px;background:var(--sand);border-radius:10px;border-left:3px solid var(--accent);line-height:1.5">💬 ${e.kommentar}</div>` : ''}
+
         <div class="entry-actions">
           <button class="btn-delete" onclick="confirmDelete(${e._rowIndex}, ${i})">🗑️ Eintrag löschen</button>
           <button class="btn-toggle" onclick="toggleDetail('detail-${i}')">▲ Schließen</button>
