@@ -1255,6 +1255,16 @@ async function renderVerlauf() {
   }
 }
 
+function sliderBadge(label, v) {
+  const val = parseFloat(v);
+  if (isNaN(val)) return '';
+  const pct = Math.round(((val - 1) / 9) * 100);
+  let color = '#5A7A52';
+  if (pct < 34) color = '#A03030';
+  else if (pct < 67) color = '#B8864E';
+  return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--sand);border:1px solid var(--border);border-radius:8px;padding:3px 9px;font-size:0.75rem;font-weight:600;color:${color}">${label} ${val}/10</span>`;
+}
+
 function renderVerlaufList() {
   const list = $('verlauf-list');
   const q = ($('search-input').value || '').toLowerCase();
