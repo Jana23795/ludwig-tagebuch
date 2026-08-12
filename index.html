@@ -239,6 +239,49 @@
   .tree .node strong { color: var(--dark); }
   .tree .node .meta { font-size: .78rem; color: var(--brown); margin-top: 2px; }
 
+
+  /* ═══ PAT – wöchentlicher Vitaldaten-Check ═══ */
+  .pat-reminder { display:flex; align-items:flex-start; gap:12px; background:#fff3e0; border:1.5px solid #f0c080; color:#7a5c38; border-radius:12px; padding:12px 14px; margin-bottom:16px; font-size:.84rem; line-height:1.45; }
+  .pat-reminder.ok { background:#e8f5e2; border-color:#b2d9a0; color:#3f6539; }
+  .pat-reminder .pat-reminder-icon { font-size:1.35rem; line-height:1; }
+  .pat-ref { background:var(--warm); border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--brown); font-size:.78rem; line-height:1.65; margin-bottom:16px; }
+  .pat-ref strong { color:var(--dark); }
+  .pat-input-row { display:flex; gap:10px; align-items:flex-end; }
+  .pat-input-row > div:first-child { flex:1; }
+  .pat-unit { color:var(--brown); font-size:.8rem; padding-bottom:11px; white-space:nowrap; }
+  .pat-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:.76rem; font-weight:700; margin-top:7px; }
+  .pat-badge.none { background:var(--warm); border:1px solid var(--border); color:#999; }
+  .pat-badge.ok { background:#e8f5e2; border:1.5px solid #b2d9a0; color:var(--green); }
+  .pat-badge.warn { background:#fff3e0; border:1.5px solid #f0c080; color:var(--accent); }
+  .pat-badge.danger { background:#fdecea; border:1.5px solid #e8a0a0; color:var(--red); }
+  .pat-choice-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .pat-choice { flex:1; min-width:125px; padding:9px 10px; border:1.5px solid var(--border); border-radius:10px; background:var(--sand); color:var(--dark); cursor:pointer; font:600 .8rem 'DM Sans',sans-serif; text-align:center; transition:all .15s; }
+  .pat-choice:hover { border-color:var(--accent); }
+  .pat-choice.selected-ok { background:#e8f5e2; border-color:var(--green); color:var(--green); }
+  .pat-choice.selected-warn { background:#fff3e0; border-color:var(--accent); color:var(--accent); }
+  .pat-choice.selected-danger { background:#fdecea; border-color:var(--red); color:var(--red); }
+  .pat-darm-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .pat-darm-cell, .pat-leg-cell { background:var(--sand); border:1.5px solid var(--border); border-radius:11px; padding:10px; }
+  .pat-mini-label { color:var(--brown); font-size:.7rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:7px; }
+  .pat-darm-cell select, .pat-leg-cell select { padding:7px 8px; font-size:.8rem; }
+  .pat-leg-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .pat-entry { background:var(--white); border:1px solid var(--border); border-radius:14px; padding:15px; margin-bottom:12px; box-shadow:0 2px 8px var(--shadow); }
+  .pat-entry-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; cursor:pointer; }
+  .pat-entry-date { font-family:'Playfair Display',serif; color:var(--brown); font-size:1rem; }
+  .pat-entry-meta { color:#888; font-size:.78rem; margin-top:3px; }
+  .pat-entry-detail { display:none; border-top:1px solid var(--border); margin-top:12px; padding-top:12px; }
+  .pat-entry-detail.open { display:block; }
+  .pat-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:.8rem; }
+  .pat-detail-row { display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-bottom:1px dashed rgba(0,0,0,.08); }
+  .pat-detail-row strong { color:var(--brown); }
+  .pat-detail-row span:last-child { text-align:right; }
+  .pat-entry-actions { display:flex; gap:8px; margin-top:12px; }
+  .pat-delete { background:none; border:1.5px solid var(--red); color:var(--red); border-radius:8px; padding:6px 12px; cursor:pointer; font:600 .78rem 'DM Sans',sans-serif; }
+  .pat-delete:hover { background:var(--red); color:#fff; }
+  .pat-nav-badge { display:inline-flex; align-items:center; justify-content:center; min-width:19px; height:19px; padding:0 5px; margin-left:4px; border-radius:999px; background:var(--red); color:white; font-size:.65rem; font-weight:700; vertical-align:middle; }
+  .pat-nav-badge.ok { background:var(--green); }
+  @media (max-width:520px) { .pat-detail-grid { grid-template-columns:1fr; } .pat-darm-grid, .pat-leg-grid { gap:8px; } .pat-choice { min-width:110px; } }
+
 </style>
 </head>
 <body>
@@ -280,6 +323,7 @@
 <button class="active" data-page="training">📋 Protokoll</button>
 <button data-page="woche">📅 Wochenplan</button>
 <button data-page="verlauf">📅 Verlauf</button>
+<button data-page="pat">🩺 PAT <span id="pat-nav-badge" class="pat-nav-badge" style="display:none"></span></button>
 <button data-page="gesundheit">🏥 Gesundheit</button>
 <button data-page="futter">🌾 Futter</button>
 <button data-page="futterplan">📋 Futterplan</button>
@@ -537,6 +581,129 @@
 </div>
 <div id="verlauf-list"></div>
 </div>
+
+<!-- ═══ PAGE 3: PAT ═══ -->
+<div class="page" id="page-pat">
+  <div id="pat-reminder" class="pat-reminder" style="display:none"></div>
+  <div class="pat-ref">
+    📌 <strong>Ludwigs aktueller Referenzwert:</strong> Temperatur meist <strong>36,8–36,9 °C</strong> · persönliche Basiswerte für Puls, Atmung und die übrigen Checks werden aus den wöchentlichen Einträgen sichtbar.
+  </div>
+
+  <div class="card">
+    <div class="card-title">🩺 Wöchentlicher PAT-Check</div>
+    <label class="field-label">Datum</label>
+    <input id="pat-datum" type="date" style="max-width:210px"/>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌡️ Temperatur, Puls & Atmung</div>
+    <label class="field-label">🌡️ Temperatur</label>
+    <div class="pat-input-row"><div><input id="pat-temp" type="number" step="0.1" min="34" max="42" placeholder="z. B. 36,9" oninput="updatePATAmpel()"/></div><div class="pat-unit">°C</div></div>
+    <div id="pat-temp-badge" class="pat-badge none">— Wert fehlt</div>
+    <label class="field-label">💓 Puls / Herzfrequenz</label>
+    <div class="pat-input-row"><div><input id="pat-puls" type="number" step="1" min="5" max="120" placeholder="z. B. 36" oninput="updatePATAmpel()"/></div><div class="pat-unit">/min</div></div>
+    <div id="pat-puls-badge" class="pat-badge none">— Wert fehlt</div>
+    <label class="field-label">🫁 Atemfrequenz</label>
+    <div class="pat-input-row"><div><input id="pat-atmung" type="number" step="1" min="2" max="80" placeholder="z. B. 12" oninput="updatePATAmpel()"/></div><div class="pat-unit">/min</div></div>
+    <div id="pat-atmung-badge" class="pat-badge none">— Wert fehlt</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👄 Schleimhäute & KRZ</div>
+    <label class="field-label">Schleimhautfarbe</label>
+    <div class="pat-choice-grid" data-pat-group="schleimhaut">
+      <button class="pat-choice" data-value="rosa" data-level="ok" onclick="selectPATChoice(this,'schleimhaut')">✅ Glatt, rosa, glänzend</button>
+      <button class="pat-choice" data-value="blass" data-level="warn" onclick="selectPATChoice(this,'schleimhaut')">⚠️ Blass</button>
+      <button class="pat-choice" data-value="rot/blau/trocken" data-level="danger" onclick="selectPATChoice(this,'schleimhaut')">🚨 Rot / blau / trocken</button>
+    </div>
+    <div id="pat-schleimhaut-badge" class="pat-badge none">— Bitte auswählen</div>
+    <label class="field-label">⏱️ Kapilläre Rückfüllzeit</label>
+    <div class="pat-choice-grid" data-pat-group="krz">
+      <button class="pat-choice" data-value="0-1 Sek." data-level="ok" onclick="selectPATChoice(this,'krz')">✅ 0–1 Sek.</button>
+      <button class="pat-choice" data-value="2-3 Sek." data-level="warn" onclick="selectPATChoice(this,'krz')">⚠️ 2–3 Sek.</button>
+      <button class="pat-choice" data-value=">4 Sek." data-level="danger" onclick="selectPATChoice(this,'krz')">🚨 &gt; 4 Sek.</button>
+    </div>
+    <div id="pat-krz-badge" class="pat-badge none">— Bitte auswählen</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔊 Darmgeräusche – alle 4 Quadranten</div>
+    <p style="font-size:.8rem;color:#888;margin-bottom:8px">Je Quadrant ungefähr eine Minute abhören.</p>
+    <div class="pat-darm-grid">
+      <div class="pat-darm-cell"><div class="pat-mini-label">🔼 Links oben</div><select id="pat-darm-lo" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="normal">✅ Normal</option><option value="reduziert">⚠️ Reduziert</option><option value="gesteigert">⚠️ Gesteigert</option><option value="keine">🚨 Keine</option><option value="sehr laut">🚨 Sehr laut</option></select></div>
+      <div class="pat-darm-cell"><div class="pat-mini-label">🔼 Rechts oben</div><select id="pat-darm-ro" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="normal">✅ Normal</option><option value="reduziert">⚠️ Reduziert</option><option value="gesteigert">⚠️ Gesteigert</option><option value="keine">🚨 Keine</option><option value="sehr laut">🚨 Sehr laut</option></select></div>
+      <div class="pat-darm-cell"><div class="pat-mini-label">🔽 Links unten</div><select id="pat-darm-lu" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="normal">✅ Normal</option><option value="reduziert">⚠️ Reduziert</option><option value="gesteigert">⚠️ Gesteigert</option><option value="keine">🚨 Keine</option><option value="sehr laut">🚨 Sehr laut</option></select></div>
+      <div class="pat-darm-cell"><div class="pat-mini-label">🔽 Rechts unten</div><select id="pat-darm-ru" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="normal">✅ Normal</option><option value="reduziert">⚠️ Reduziert</option><option value="gesteigert">⚠️ Gesteigert</option><option value="keine">🚨 Keine</option><option value="sehr laut">🚨 Sehr laut</option></select></div>
+    </div>
+    <div id="pat-darm-badge" class="pat-badge none">— Bitte auswählen</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💧 Hydration & Allgemeinzustand</div>
+    <label class="field-label">Hautfaltentest</label>
+    <div class="pat-choice-grid" data-pat-group="haut">
+      <button class="pat-choice" data-value="0-1 Sek." data-level="ok" onclick="selectPATChoice(this,'haut')">✅ 0–1 Sek.</button>
+      <button class="pat-choice" data-value="2-3 Sek." data-level="warn" onclick="selectPATChoice(this,'haut')">⚠️ 2–3 Sek.</button>
+      <button class="pat-choice" data-value=">4 Sek." data-level="danger" onclick="selectPATChoice(this,'haut')">🚨 &gt; 4 Sek.</button>
+    </div>
+    <div id="pat-haut-badge" class="pat-badge none">— Bitte auswählen</div>
+    <label class="field-label">💪 Muskulatur</label>
+    <div class="pat-choice-grid" data-pat-group="muskulatur">
+      <button class="pat-choice" data-value="weich, entspannt" data-level="ok" onclick="selectPATChoice(this,'muskulatur')">✅ Weich, entspannt</button>
+      <button class="pat-choice" data-value="druckempfindlich" data-level="warn" onclick="selectPATChoice(this,'muskulatur')">⚠️ Druckempfindlich</button>
+      <button class="pat-choice" data-value="fest, schmerzhaft" data-level="danger" onclick="selectPATChoice(this,'muskulatur')">🚨 Fest, schmerzhaft</button>
+    </div>
+    <div id="pat-muskulatur-badge" class="pat-badge none">— Bitte auswählen</div>
+    <label class="field-label">🧠 Verhalten</label>
+    <div class="pat-choice-grid" data-pat-group="verhalten">
+      <button class="pat-choice" data-value="ruhig und aufmerksam" data-level="ok" onclick="selectPATChoice(this,'verhalten')">✅ Ruhig & aufmerksam</button>
+      <button class="pat-choice" data-value="ungewöhnlich" data-level="warn" onclick="selectPATChoice(this,'verhalten')">⚠️ Ungewöhnlich</button>
+      <button class="pat-choice" data-value="apathisch / frisst nicht" data-level="danger" onclick="selectPATChoice(this,'verhalten')">🚨 Apathisch / frisst nicht</button>
+    </div>
+    <div id="pat-verhalten-badge" class="pat-badge none">— Bitte auswählen</div>
+    <label class="field-label">👁️ Augen</label>
+    <div class="pat-choice-grid" data-pat-group="augen">
+      <button class="pat-choice" data-value="klar, glänzend" data-level="ok" onclick="selectPATChoice(this,'augen')">✅ Klar, glänzend</button>
+      <button class="pat-choice" data-value="glasig" data-level="warn" onclick="selectPATChoice(this,'augen')">⚠️ Glasig</button>
+      <button class="pat-choice" data-value="eingefallen, matt" data-level="danger" onclick="selectPATChoice(this,'augen')">🚨 Eingefallen, matt</button>
+    </div>
+    <div id="pat-augen-badge" class="pat-badge none">— Bitte auswählen</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🦵 Beine & Hufe</div>
+    <p style="font-size:.8rem;color:#888;margin-bottom:8px">Wärme, Schwellung, Fesselbeuge-Puls und Lahmheit prüfen.</p>
+    <div class="pat-leg-grid">
+      <div class="pat-leg-cell"><div class="pat-mini-label">🔼 Vorne links</div><select id="pat-bein-vl" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="unauffällig">✅ Unauffällig</option><option value="warm">⚠️ Warm</option><option value="geschwollen">⚠️ Geschwollen</option><option value="puls">🚨 Puls spürbar</option><option value="lahm">🚨 Lahmheit</option></select></div>
+      <div class="pat-leg-cell"><div class="pat-mini-label">🔼 Vorne rechts</div><select id="pat-bein-vr" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="unauffällig">✅ Unauffällig</option><option value="warm">⚠️ Warm</option><option value="geschwollen">⚠️ Geschwollen</option><option value="puls">🚨 Puls spürbar</option><option value="lahm">🚨 Lahmheit</option></select></div>
+      <div class="pat-leg-cell"><div class="pat-mini-label">🔽 Hinten links</div><select id="pat-bein-hl" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="unauffällig">✅ Unauffällig</option><option value="warm">⚠️ Warm</option><option value="geschwollen">⚠️ Geschwollen</option><option value="puls">🚨 Puls spürbar</option><option value="lahm">🚨 Lahmheit</option></select></div>
+      <div class="pat-leg-cell"><div class="pat-mini-label">🔽 Hinten rechts</div><select id="pat-bein-hr" onchange="updatePATAmpel()"><option value="">— wählen —</option><option value="unauffällig">✅ Unauffällig</option><option value="warm">⚠️ Warm</option><option value="geschwollen">⚠️ Geschwollen</option><option value="puls">🚨 Puls spürbar</option><option value="lahm">🚨 Lahmheit</option></select></div>
+    </div>
+    <div id="pat-beine-badge" class="pat-badge none">— Bitte auswählen</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚖️ Gewicht & Körperkondition</div>
+    <label class="field-label">Gewicht (optional)</label>
+    <div class="pat-input-row"><div><input id="pat-gewicht" type="number" step="1" min="100" max="1200" placeholder="z. B. 550"/></div><div class="pat-unit">kg</div></div>
+    <label class="field-label">BCS / Körperkondition (optional)</label>
+    <select id="pat-bcs" style="max-width:220px"><option value="">— nicht beurteilt —</option><option value="1">1 – sehr mager</option><option value="2">2 – mager</option><option value="3">3 – eher mager</option><option value="4">4 – schlank</option><option value="5">5 – ideal</option><option value="6">6 – leicht überkonditioniert</option><option value="7">7 – überkonditioniert</option><option value="8">8 – fett</option><option value="9">9 – sehr fett</option></select>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📝 Notizen</div>
+    <textarea id="pat-notiz" placeholder="Auffälligkeiten, Beobachtungen, Besonderheiten…"></textarea>
+  </div>
+
+  <div id="pat-gesamt" class="pat-reminder ok"><span class="pat-reminder-icon">🟢</span><div><strong>Check noch nicht ausgefüllt</strong><br><span>Die Ampel wird beim Eingeben aktualisiert.</span></div></div>
+  <button class="btn btn-accent" id="pat-save-btn" onclick="savePAT()">💾 PAT-Check speichern</button>
+
+  <div style="margin-top:26px">
+    <div class="card-title">📚 Frühere PAT-Checks</div>
+    <div id="pat-verlauf"><div class="loader">⏳ Lade PAT-Verlauf…</div></div>
+  </div>
+</div>
+
 <!-- ═══ PAGE 3: GESUNDHEIT ═══ -->
 <div class="page" id="page-gesundheit">
 <div class="card">
@@ -695,7 +862,8 @@ const HORSES = {
       woche: 'Ludwig_Wochenplan',
       futter: 'Ludwig_Futter',
       budget: 'Ludwig_Budget',
-      kommandos: 'Ludwig_Kommandos'
+      kommandos: 'Ludwig_Kommandos',
+      pat: 'Ludwig_PAT'
     },
     pedigree: [
       { name: 'Duval 35', note: 'Vater' },
@@ -724,7 +892,8 @@ const HORSES = {
       woche: 'Minstrel_Wochenplan',
       futter: 'Minstrel_Futter',
       budget: 'Minstrel_Budget',
-      kommandos: 'Minstrel_Kommandos'
+      kommandos: 'Minstrel_Kommandos',
+      pat: 'Minstrel_PAT'
     },
     pedigree: [ { name: 'Abstammung', note: 'noch nicht bekannt' } ]
   }
@@ -794,8 +963,14 @@ function setHorse(key) {
     }).catch(() => {});
   }
   if (active.id === 'page-verlauf') renderVerlauf();
+  if (active.id === 'page-pat') renderPAT();
   if (active.id === 'page-gesundheit') renderGesundheit();
   if (active.id === 'page-woche') { weekData = {}; renderWoche(); }
+
+  // PAT-Erinnerung auch im Hintergrund aktualisieren, damit der Nav-Badge stimmt.
+  if (active.id !== 'page-pat') {
+    loadSheet(h.tabs.pat).then(rows => updatePATReminder(patReadRows(rows))).catch(() => {});
+  }
 }
 
 function openDrawer() {
@@ -865,6 +1040,7 @@ function showPage(name, btn) {
   if (pageEl) { pageEl.classList.add('active'); pageEl.style.display = 'block'; }
   if (btn) btn.classList.add('active');
   if (name === 'verlauf') renderVerlauf();
+  if (name === 'pat') renderPAT();
   if (name === 'gesundheit') renderGesundheit();
   if (name === 'futter') { renderMonthBar('futter'); renderFutter(); }
   if (name === 'budget') { renderMonthBar('budget'); renderBudget(); }
@@ -2376,11 +2552,214 @@ async function clearDayEntry(dateStr) {
   renderWoche();
 }
 
+
+// ═══════════════════════════════════════════════════════
+// PAT – wöchentlicher Vitaldaten-Check
+// ═══════════════════════════════════════════════════════
+const PAT_HEADERS = ['Timestamp','Datum','Temperatur','Puls','Atmung','Schleimhaut','KRZ','Darm links oben','Darm rechts oben','Darm links unten','Darm rechts unten','Hautfaltentest','Muskulatur','Verhalten','Augen','Bein VL','Bein VR','Bein HL','Bein HR','Gewicht','BCS','Gesamtstatus','Notiz'];
+const patState = { choices: {}, levels: {}, latestRows: [], hasHeader: false };
+
+function patTodayKey() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function patDateKey(v) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  const m = s.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (m) return `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  return s;
+}
+function patFormatDate(v) {
+  const k = patDateKey(v);
+  if (!k) return '—';
+  const m = k.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return k;
+  return new Date(+m[1], +m[2]-1, +m[3], 12).toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function patDaysSince(v) {
+  const k = patDateKey(v);
+  if (!k) return Infinity;
+  const a = new Date(k + 'T12:00:00');
+  const b = new Date(patTodayKey() + 'T12:00:00');
+  return Math.floor((b - a) / 86400000);
+}
+function patEsc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function patLevelLabel(level) { return level === 'danger' ? '🔴 Kritisch' : level === 'warn' ? '🟡 Auffällig' : level === 'ok' ? '🟢 Unauffällig' : '—'; }
+function patBadgeText(level, type) {
+  const texts = {
+    temp: {ok:'✅ Temperatur im persönlichen Bereich', warn:'🟡 Temperatur erhöht/abweichend – beobachten', danger:'🚨 Temperatur am kritischen Grenzwert'},
+    puls: {ok:'✅ Puls im Normalbereich', warn:'🟡 Puls auffällig – erneut in Ruhe prüfen', danger:'🚨 Puls am kritischen Grenzwert'},
+    atmung: {ok:'✅ Atmung im Normalbereich', warn:'🟡 Atmung auffällig – erneut in Ruhe prüfen', danger:'🚨 Atmung am kritischen Grenzwert'},
+    schleimhaut: {ok:'✅ Schleimhäute unauffällig', warn:'🟡 Schleimhäute blass – beobachten', danger:'🚨 Schleimhäute kritisch'},
+    krz: {ok:'✅ KRZ unauffällig', warn:'🟡 KRZ verlängert', danger:'🚨 KRZ kritisch'},
+    darm: {ok:'✅ Darmgeräusche unauffällig', warn:'🟡 Darmgeräusche auffällig', danger:'🚨 Darmgeräusche kritisch'},
+    haut: {ok:'✅ Hautfaltentest unauffällig', warn:'🟡 Hautfaltentest verlängert', danger:'🚨 Hinweis auf Dehydration'},
+    muskulatur: {ok:'✅ Muskulatur entspannt', warn:'🟡 Druckempfindlich', danger:'🚨 Fest/schmerzhaft'},
+    verhalten: {ok:'✅ Verhalten unauffällig', warn:'🟡 Ungewöhnliches Verhalten', danger:'🚨 Apathisch/frisst nicht'},
+    augen: {ok:'✅ Augen unauffällig', warn:'🟡 Augen glasig', danger:'🚨 Augen eingefallen/matt'},
+    beine: {ok:'✅ Beine unauffällig', warn:'🟡 Wärme/Schwellung', danger:'🚨 Puls/Lahmheit'}
+  };
+  return (texts[type] && texts[type][level]) || patLevelLabel(level);
+}
+function setPATBadge(id, level, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'pat-badge ' + (level || 'none');
+  el.textContent = level ? patBadgeText(level, type) : '— Bitte auswählen';
+}
+function patTempLevel(v) {
+  if (!Number.isFinite(v)) return null;
+  if (v >= 37.8 || v < 36.0) return 'danger';
+  if (v >= 37.2 || v < 36.5) return 'warn';
+  return 'ok';
+}
+function patPulsLevel(v) {
+  if (!Number.isFinite(v)) return null;
+  if (v >= 60 || v < 20) return 'danger';
+  if (v > 48 || v < 24) return 'warn';
+  return 'ok';
+}
+function patAtmungLevel(v) {
+  if (!Number.isFinite(v)) return null;
+  if (v > 24 || v < 6) return 'danger';
+  if (v > 16 || v < 8) return 'warn';
+  return 'ok';
+}
+function patDarmLevel(v) { return !v ? null : (v === 'keine' || v === 'sehr laut') ? 'danger' : v === 'normal' ? 'ok' : 'warn'; }
+function patBeinLevel(v) { return !v ? null : (v === 'puls' || v === 'lahm') ? 'danger' : v === 'unauffällig' ? 'ok' : 'warn'; }
+function patAggregate() {
+  const vals = [patState.levels.temp, patState.levels.puls, patState.levels.atmung, patState.levels.schleimhaut, patState.levels.krz, patState.levels.darm, patState.levels.haut, patState.levels.muskulatur, patState.levels.verhalten, patState.levels.augen, patState.levels.beine].filter(Boolean);
+  return vals.includes('danger') ? 'danger' : vals.includes('warn') ? 'warn' : vals.length ? 'ok' : null;
+}
+function updatePATOverall(level) {
+  const el = document.getElementById('pat-gesamt');
+  if (!el) return;
+  if (!level) { el.className='pat-reminder ok'; el.innerHTML='<span class="pat-reminder-icon">🩺</span><div><strong>Check noch nicht vollständig ausgefüllt</strong><br><span>Die Ampel wird beim Eingeben aktualisiert.</span></div>'; return; }
+  const icon = level === 'danger' ? '🔴' : level === 'warn' ? '🟡' : '🟢';
+  const title = level === 'danger' ? 'Kritische Veränderung erkannt' : level === 'warn' ? 'Auffälligkeit zum Beobachten' : 'Alle eingetragenen Werte unauffällig';
+  const sub = level === 'danger' ? 'Bitte die Messung in Ruhe wiederholen und bei Bestätigung tierärztlich abklären.' : level === 'warn' ? 'Einzelne Werte weichen ab – Verlauf und Gesamteindruck beachten.' : 'Das ist eine Dokumentationsampel, keine Diagnose.';
+  el.className = 'pat-reminder ' + (level === 'ok' ? 'ok' : '');
+  el.innerHTML = `<span class="pat-reminder-icon">${icon}</span><div><strong>${title}</strong><br><span>${sub}</span></div>`;
+}
+function selectPATChoice(btn, group) {
+  document.querySelectorAll(`[data-pat-group="${group}"] .pat-choice`).forEach(b => b.className='pat-choice');
+  btn.classList.add('selected-' + btn.dataset.level);
+  patState.choices[group] = btn.dataset.value;
+  patState.levels[group] = btn.dataset.level;
+  setPATBadge('pat-' + group + '-badge', btn.dataset.level, group);
+  updatePATAmpel();
+}
+function updatePATAmpel() {
+  const temp = parseFloat(document.getElementById('pat-temp')?.value);
+  const puls = parseFloat(document.getElementById('pat-puls')?.value);
+  const atm = parseFloat(document.getElementById('pat-atmung')?.value);
+  patState.levels.temp=patTempLevel(temp); patState.levels.puls=patPulsLevel(puls); patState.levels.atmung=patAtmungLevel(atm);
+  setPATBadge('pat-temp-badge', patState.levels.temp, 'temp'); setPATBadge('pat-puls-badge', patState.levels.puls, 'puls'); setPATBadge('pat-atmung-badge', patState.levels.atmung, 'atmung');
+  const darmIds=['pat-darm-lo','pat-darm-ro','pat-darm-lu','pat-darm-ru'];
+  const darmVals=darmIds.map(id=>document.getElementById(id)?.value||'');
+  const darmLevels=darmVals.map(patDarmLevel).filter(Boolean);
+  patState.levels.darm=darmLevels.includes('danger')?'danger':darmLevels.includes('warn')?'warn':darmLevels.length===4?'ok':null;
+  setPATBadge('pat-darm-badge', patState.levels.darm, 'darm');
+  const beinIds=['pat-bein-vl','pat-bein-vr','pat-bein-hl','pat-bein-hr'];
+  const beinVals=beinIds.map(id=>document.getElementById(id)?.value||'');
+  const beinLevels=beinVals.map(patBeinLevel).filter(Boolean);
+  patState.levels.beine=beinLevels.includes('danger')?'danger':beinLevels.includes('warn')?'warn':beinLevels.length===4?'ok':null;
+  setPATBadge('pat-beine-badge', patState.levels.beine, 'beine');
+  updatePATOverall(patAggregate());
+}
+function patReadRows(rows) {
+  const first = rows && rows[0] ? rows[0] : [];
+  const looksHeader = Array.isArray(first) && String(first[0]||'').toLowerCase().includes('timestamp');
+  patState.hasHeader = looksHeader;
+  const start = looksHeader ? 1 : 0;
+  return (rows || []).slice(start).filter(r => Array.isArray(r) && r.some(x => String(x??'').trim() !== '')).map((r,i) => ({
+    _rowIndex: i + start + 1, ts:r[0]||'', datum:r[1]||'', temp:r[2]||'', puls:r[3]||'', atmung:r[4]||'', schleimhaut:r[5]||'', krz:r[6]||'',
+    darmLo:r[7]||'', darmRo:r[8]||'', darmLu:r[9]||'', darmRu:r[10]||'', haut:r[11]||'', muskulatur:r[12]||'', verhalten:r[13]||'', augen:r[14]||'',
+    beinVl:r[15]||'', beinVr:r[16]||'', beinHl:r[17]||'', beinHr:r[18]||'', gewicht:r[19]||'', bcs:r[20]||'', status:r[21]||'', notiz:r[22]||''
+  })).sort((a,b)=>patDateKey(b.datum).localeCompare(patDateKey(a.datum)));
+}
+function patEntryLevel(e) {
+  if (e.status === 'danger' || e.status === 'warn' || e.status === 'ok') return e.status;
+  const vals=[];
+  const t=patTempLevel(parseFloat(e.temp)); const p=patPulsLevel(parseFloat(e.puls)); const a=patAtmungLevel(parseFloat(e.atmung));
+  if(t)vals.push(t); if(p)vals.push(p); if(a)vals.push(a);
+  ['schleimhaut','krz','haut','muskulatur','verhalten','augen'].forEach(k=>{ if(e[k] && ['ok','warn','danger'].includes(e[k])) vals.push(e[k]); });
+  return vals.includes('danger')?'danger':vals.includes('warn')?'warn':'ok';
+}
+function patDisplayField(v) { return v === '' || v == null ? '—' : patEsc(v); }
+function renderPATEntries(entries) {
+  const list=document.getElementById('pat-verlauf'); if(!list)return;
+  if(!entries.length){ list.innerHTML='<div class="empty-state"><div class="emoji">🩺</div><p>Noch keine PAT-Checks gespeichert.</p></div>'; return; }
+  list.innerHTML=entries.map((e,i)=>{
+    const level=patEntryLevel(e), detailId='pat-detail-'+i;
+    const meta=[e.temp?`T: ${patEsc(e.temp)} °C`:'',e.puls?`P: ${patEsc(e.puls)}/min`:'',e.atmung?`A: ${patEsc(e.atmung)}/min`:'' ].filter(Boolean).join(' · ') || 'Keine Zahlenwerte eingetragen';
+    const rows=[['Temperatur',e.temp?e.temp+' °C':'—'],['Puls',e.puls?e.puls+' /min':'—'],['Atmung',e.atmung?e.atmung+' /min':'—'],['Schleimhaut',e.schleimhaut],['KRZ',e.krz],['Darm links oben',e.darmLo],['Darm rechts oben',e.darmRo],['Darm links unten',e.darmLu],['Darm rechts unten',e.darmRu],['Hautfaltentest',e.haut],['Muskulatur',e.muskulatur],['Verhalten',e.verhalten],['Augen',e.augen],['Bein VL',e.beinVl],['Bein VR',e.beinVr],['Bein HL',e.beinHl],['Bein HR',e.beinHr],['Gewicht',e.gewicht?e.gewicht+' kg':'—'],['BCS',e.bcs]].map(([k,v])=>`<div class="pat-detail-row"><strong>${k}</strong><span>${patDisplayField(v)}</span></div>`).join('');
+    return `<div class="pat-entry"><div class="pat-entry-header" onclick="toggleDetail('${detailId}')"><div><div class="pat-entry-date">${patFormatDate(e.datum)}</div><div class="pat-entry-meta">${meta}</div></div><span class="pat-badge ${level}" style="margin-top:0">${patLevelLabel(level)}</span></div><div id="${detailId}" class="pat-entry-detail"><div class="pat-detail-grid">${rows}</div>${e.notiz?`<div style="margin-top:10px;padding:9px 11px;background:var(--sand);border-left:3px solid var(--accent);border-radius:8px;font-size:.82rem">💬 ${patEsc(e.notiz)}</div>`:''}<div class="pat-entry-actions"><button class="pat-delete" onclick="event.stopPropagation();deletePAT(${e._rowIndex})">🗑️ Check löschen</button><button class="btn-toggle" onclick="event.stopPropagation();toggleDetail('${detailId}')">▲ Schließen</button></div></div></div>`;
+  }).join('');
+}
+function updatePATReminder(entries) {
+  const rem=document.getElementById('pat-reminder'), nav=document.getElementById('pat-nav-badge');
+  const latest=entries[0]; const days=latest ? patDaysSince(latest.datum) : Infinity;
+  const overdue=!latest || days>7;
+  if(nav){ nav.style.display=overdue?'inline-flex':'none'; nav.textContent=latest?'!':'NEU'; nav.className='pat-nav-badge'+(overdue?'':' ok'); }
+  if(!rem)return;
+  rem.style.display='flex';
+  if(!latest){ rem.className='pat-reminder'; rem.innerHTML='<span class="pat-reminder-icon">🔔</span><div><strong>Noch kein PAT-Check gespeichert</strong><br><span>Ein erster Check legt Ludwigs aktuellen Status quo an.</span></div>'; }
+  else if(overdue){ rem.className='pat-reminder'; rem.innerHTML=`<span class="pat-reminder-icon">🔔</span><div><strong>Wöchentlicher PAT-Check fällig</strong><br><span>Letzter Check: ${patFormatDate(latest.datum)}${Number.isFinite(days)?` · vor ${days} Tagen`:''}</span></div>`; }
+  else { rem.className='pat-reminder ok'; rem.innerHTML=`<span class="pat-reminder-icon">✅</span><div><strong>PAT-Check aktuell</strong><br><span>Letzter Check: ${patFormatDate(latest.datum)} · nächster Check in ungefähr ${Math.max(0,7-days)} Tagen.</span></div>`; }
+}
+async function renderPAT() {
+  const list=document.getElementById('pat-verlauf'); if(!list)return;
+  list.innerHTML='<div class="loader">🩺 Lade PAT-Verlauf…</div>';
+  const d=document.getElementById('pat-datum'); if(d && !d.value)d.value=patTodayKey();
+  try { const rows=await loadSheet(HORSES[currentHorse].tabs.pat); const entries=patReadRows(rows); patState.latestRows=entries; renderPATEntries(entries); updatePATReminder(entries); }
+  catch(err){ list.innerHTML='<div class="empty-state"><div class="emoji">⚠️</div><p>PAT-Verlauf konnte nicht geladen werden.</p></div>'; updatePATReminder([]); }
+}
+async function savePAT() {
+  const btn=document.getElementById('pat-save-btn'), datum=document.getElementById('pat-datum')?.value;
+  if(!datum){ showToast('❌ Bitte Datum auswählen!'); return; }
+  if(btn){btn.disabled=true;btn.textContent='⏳ Wird gespeichert…';}
+  const darm=['pat-darm-lo','pat-darm-ro','pat-darm-lu','pat-darm-ru'].map(id=>document.getElementById(id)?.value||'');
+  const bein=['pat-bein-vl','pat-bein-vr','pat-bein-hl','pat-bein-hr'].map(id=>document.getElementById(id)?.value||'');
+  const level=patAggregate() || 'ok';
+  const row=[new Date().toISOString(),datum,document.getElementById('pat-temp')?.value||'',document.getElementById('pat-puls')?.value||'',document.getElementById('pat-atmung')?.value||'',patState.choices.schleimhaut||'',patState.choices.krz||'',darm[0],darm[1],darm[2],darm[3],patState.choices.haut||'',patState.choices.muskulatur||'',patState.choices.verhalten||'',patState.choices.augen||'',bein[0],bein[1],bein[2],bein[3],document.getElementById('pat-gewicht')?.value||'',document.getElementById('pat-bcs')?.value||'',level,document.getElementById('pat-notiz')?.value.trim()||''];
+  try {
+    const tab=HORSES[currentHorse].tabs.pat;
+    const existing=await loadSheet(tab);
+    const hasData=existing && existing.some(r=>Array.isArray(r)&&r.some(x=>String(x??'').trim()!==''));
+    const hasHeader=hasData && Array.isArray(existing[0]) && String(existing[0][0]||'').toLowerCase().includes('timestamp');
+    if(!hasData) await appendRow(tab,PAT_HEADERS);
+    await appendRow(tab,row);
+    showToast('✅ PAT-Check gespeichert!');
+    patResetForm();
+    await renderPAT();
+  } catch(err){ showToast('❌ PAT-Check konnte nicht gespeichert werden!'); }
+  finally { if(btn){btn.disabled=false;btn.textContent='💾 PAT-Check speichern';} }
+}
+function patResetForm() {
+  ['pat-temp','pat-puls','pat-atmung','pat-gewicht','pat-notiz'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['pat-bcs','pat-darm-lo','pat-darm-ro','pat-darm-lu','pat-darm-ru','pat-bein-vl','pat-bein-vr','pat-bein-hl','pat-bein-hr'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.querySelectorAll('#page-pat .pat-choice').forEach(b=>b.className='pat-choice');
+  patState.choices={};patState.levels={};
+  document.querySelectorAll('#page-pat .pat-badge').forEach(e=>{e.className='pat-badge none';e.textContent='— Bitte auswählen';});
+  updatePATOverall(null); const d=document.getElementById('pat-datum');if(d)d.value=patTodayKey();
+}
+async function deletePAT(rowIndex) {
+  if(!confirm('Diesen PAT-Check wirklich löschen?'))return;
+  try { await deleteRow(HORSES[currentHorse].tabs.pat,rowIndex); showToast('🗑️ PAT-Check gelöscht!'); await renderPAT(); }
+  catch(err){ showToast('❌ Löschen fehlgeschlagen!'); }
+}
+
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 initTrainingForm();
 setHorse('ludwig');
+// Reminder is refreshed when PAT is opened; keep the navigation quiet until then.
 </script>
 </body>
 </html>
