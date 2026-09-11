@@ -2999,6 +2999,60 @@ async function deletePAT(rowIndex) {
 
 
 // ═══ DASHBOARD ═══
+
+// ─── Dashboard-eigene Hilfsfunktionen ───────────────────────────────────────
+// Bewusst mit eigenem Präfix, damit keine bestehende App-Funktion überschrieben wird.
+function dashboardIsoDate(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dashboardDateFromKey(value) {
+  const match = String(value ?? '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return null;
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+}
+
+function dashboardDaysBetween(from, to) {
+  if (!(from instanceof Date) || Number.isNaN(from.getTime())) return null;
+  if (!(to instanceof Date) || Number.isNaN(to.getTime())) return null;
+  return Math.round((to - from) / 86400000);
+}
+
+function dashboardFormatDate(value) {
+  const date = dashboardDateFromKey(value);
+  if (!date) return '–';
+  return date.toLocaleDateString('de-DE', {
+    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+}
+
+function dashboardAvg(values) {
+  const numbers = values
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value));
+  return numbers.length
+    ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length
+    : null;
+}
+
+function dashboardPct(count, total) {
+  return total ? Math.round((count / total) * 100) : 0;
+}
+
+function dashboardTrendArrow(current, previous) {
+  if (current == null || previous == null) return '';
+  const difference = current - previous;
+  if (Math.abs(difference) < 0.3) return '<span class="dashboard-trend-flat">→</span>';
+  return difference > 0
+    ? '<span class="dashboard-trend-up">↗</span>'
+    : '<span class="dashboard-trend-down">↘</span>';
+}
+
 // ─── Protokoll-Daten parsen ──────────────────────────────────────────────────
 // Spalten (0-basiert):
 // 0 ts, 1 datum, 2 wer, 3 stimmung, 4 wetter, 5 temp, 6 art, 7 dauer,
@@ -3465,6 +3519,37 @@ function dashboardRenderObservations(entries, days) {
       ${obs.map(o => `<div class="dashboard-obs-item ${o.type}">${o.text}</div>`).join('')}
     </div>
   `;
+}
+
+// ─── Haupt-Render ─────────────────────────────────────────────────────────────
+async function renderDashboard() {
+  const h = HORSES[currentHorse];
+  $('header-sub').textContent = h.display;
+
+  // Daten laden
+  let protokollRows, wocheRows;
+  try {
+    [protokollRows, wocheRows] = await Promise.all([
+      loadSheet(h.tabs.protokolle),
+      loadSheet(h.tabs.woche),
+    ]);
+  } catch (e) {
+    showToast('❌ Fehler beim Laden der Daten');
+    return;
+  }
+
+  const entries = dashboardParseProtokolls(protokollRows).sort((a, b) => b.datum.localeCompare(a.datum));
+  const wocheEntries = parseWoche(wocheRows);
+
+  dashboardRenderLastTraining(entries);
+  dashboardRenderToday(wocheEntries);
+  dashboardRenderKPIs(entries, currentPeriod);
+  dashboardRenderHealth(entries, currentPeriod);
+  dashboardRenderSliders(entries, currentPeriod);
+  dashboardRenderMood(entries, currentPeriod);
+  dashboardRenderObservations(entries, currentPeriod);
+
+  showToast('✅ Dashboard geladen');
 }
 
 
