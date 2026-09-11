@@ -294,6 +294,94 @@
   padding: 5px; border: 1.5px solid var(--red); border-radius: 10px; background: rgba(160,48,48,.06);
 }
 
+
+/* Dashboard - scoped styles */
+.dashboard-page { padding: 0 16px 40px; max-width: 760px; margin: 0 auto; }
+.dashboard-page .dashboard-horse-switch-bar {
+  display:flex; gap:8px; padding:10px 0 14px; align-items:center; flex-wrap:wrap;
+}
+.dashboard-page .dashboard-horse-pill,
+.dashboard-page .dashboard-period-btn {
+  border:1.5px solid var(--border); background:var(--white); cursor:pointer;
+  font-family:'DM Sans',sans-serif; color:var(--brown); transition:all .15s;
+}
+.dashboard-page .dashboard-horse-pill { border-radius:999px; padding:6px 16px; font-weight:700; font-size:.82rem; }
+.dashboard-page .dashboard-period-btn { border-radius:20px; padding:5px 13px; font-size:.75rem; font-weight:600; }
+.dashboard-page .dashboard-horse-pill.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.dashboard-page .dashboard-period-btn.active { background:var(--dark); border-color:var(--dark); color:var(--sand); }
+.dashboard-page .dashboard-period-label { font-size:.75rem; color:var(--brown); font-weight:600; margin-right:4px; }
+.dashboard-page .dashboard-spacer { flex:1; }
+.dashboard-page .dashboard-card {
+  background:var(--white); border:1px solid var(--border); border-radius:14px;
+  padding:16px 18px; margin-bottom:14px; box-shadow:0 2px 8px var(--shadow);
+}
+.dashboard-page .dashboard-card-title {
+  font-family:'Playfair Display',serif; font-size:1rem; color:var(--brown);
+  margin-bottom:12px; display:flex; align-items:center; gap:8px;
+}
+.dashboard-page .dashboard-badge {
+  font-family:'DM Sans',sans-serif; font-size:.68rem; font-weight:700;
+  background:var(--warm); color:var(--brown); border-radius:20px; padding:2px 8px; margin-left:auto;
+}
+.dashboard-page .dashboard-kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+.dashboard-page .dashboard-kpi {
+  background:var(--sand); border:1px solid var(--border); border-radius:11px;
+  padding:10px 12px; display:flex; flex-direction:column; gap:3px;
+}
+.dashboard-page .dashboard-kpi-label { font-size:.68rem; font-weight:700; color:var(--brown); text-transform:uppercase; letter-spacing:.05em; }
+.dashboard-page .dashboard-kpi-value { font-size:1.25rem; font-weight:700; color:var(--dark); line-height:1.1; }
+.dashboard-page .dashboard-kpi-sub { font-size:.72rem; color:#888; }
+.dashboard-page .dashboard-slider-bar-wrap { display:flex; flex-direction:column; gap:9px; margin-top:4px; }
+.dashboard-page .dashboard-slider-row { display:flex; align-items:center; gap:10px; }
+.dashboard-page .dashboard-slider-label { font-size:.78rem; color:var(--brown); font-weight:600; min-width:130px; flex-shrink:0; }
+.dashboard-page .dashboard-slider-track {
+  flex:1; height:12px; border-radius:99px; position:relative;
+  background:linear-gradient(90deg,#A03030 0%,#B8864E 30%,#5A7A52 50%,#B8864E 70%,#A03030 100%);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.15);
+}
+.dashboard-page .dashboard-slider-marker {
+  position:absolute; top:50%; transform:translate(-50%,-50%); width:16px; height:16px;
+  border-radius:50%; background:#fff; border:2.5px solid var(--dark);
+  box-shadow:0 1px 4px rgba(0,0,0,.25); transition:left .5s ease;
+}
+.dashboard-page .dashboard-slider-val { font-size:.82rem; font-weight:700; color:var(--dark); min-width:45px; text-align:right; }
+.dashboard-page .dashboard-health-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.dashboard-page .dashboard-health-label { font-size:.78rem; color:var(--brown); font-weight:600; min-width:110px; flex-shrink:0; }
+.dashboard-page .dashboard-health-track { flex:1; height:10px; background:var(--warm); border-radius:99px; overflow:hidden; }
+.dashboard-page .dashboard-health-fill-green,
+.dashboard-page .dashboard-health-fill-amber,
+.dashboard-page .dashboard-health-fill-red { height:100%; border-radius:99px; transition:width .5s; }
+.dashboard-page .dashboard-health-fill-green { background:#5A7A52; }
+.dashboard-page .dashboard-health-fill-amber { background:#B8864E; }
+.dashboard-page .dashboard-health-fill-red { background:#A03030; }
+.dashboard-page .dashboard-health-pct { font-size:.78rem; font-weight:700; color:var(--dark); min-width:36px; text-align:right; }
+.dashboard-page .dashboard-last-entry { display:flex; flex-direction:column; gap:6px; }
+.dashboard-page .dashboard-last-row { display:flex; justify-content:space-between; font-size:.84rem; gap:10px; }
+.dashboard-page .dashboard-last-row span:first-child { color:var(--brown); font-weight:600; flex-shrink:0; }
+.dashboard-page .dashboard-last-row span:last-child { text-align:right; }
+.dashboard-page .dashboard-today-box { background:var(--sand); border:1.5px solid var(--accent); border-radius:11px; padding:10px 14px; }
+.dashboard-page .dashboard-today-name { font-family:'Playfair Display',serif; font-size:.95rem; color:var(--dark); }
+.dashboard-page .dashboard-today-meta { font-size:.78rem; color:var(--brown); margin-top:3px; }
+.dashboard-page .dashboard-mood-row { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.dashboard-page .dashboard-mood-chip { display:flex; align-items:center; gap:5px; background:var(--sand); border:1px solid var(--border); border-radius:8px; padding:4px 10px; font-size:.78rem; color:var(--dark); }
+.dashboard-page .dashboard-mood-chip .dashboard-emoji { font-size:1.1rem; }
+.dashboard-page .dashboard-mood-chip .dashboard-count { font-weight:700; }
+.dashboard-page .dashboard-obs-list { display:flex; flex-direction:column; gap:8px; margin-top:4px; }
+.dashboard-page .dashboard-obs-item { background:var(--sand); border-left:3px solid var(--accent); border-radius:0 9px 9px 0; padding:8px 12px; font-size:.82rem; line-height:1.5; }
+.dashboard-page .dashboard-obs-item.positive { border-left-color:var(--green); }
+.dashboard-page .dashboard-obs-item.neutral { border-left-color:var(--border); }
+.dashboard-page .dashboard-obs-item.caution { border-left-color:#B8864E; }
+.dashboard-page .dashboard-loader { text-align:center; padding:30px; color:var(--brown); font-size:.9rem; }
+.dashboard-page .dashboard-empty-state { text-align:center; padding:20px; color:#aaa; font-size:.85rem; }
+.dashboard-page .dashboard-trend-up { color:var(--green); }
+.dashboard-page .dashboard-trend-down { color:var(--red); }
+.dashboard-page .dashboard-trend-flat { color:#888; }
+@media (max-width:480px) {
+  .dashboard-page .dashboard-kpi-grid { grid-template-columns:1fr 1fr; }
+  .dashboard-page .dashboard-slider-label { min-width:100px; font-size:.72rem; }
+  .dashboard-page .dashboard-health-label { min-width:90px; font-size:.72rem; }
+}
+
 </style>
 </head>
 <body>
@@ -314,8 +402,8 @@
     <div class="drawer-title" id="drawerTitle">Profil</div>
     <div class="drawer-sub">Tippe ein Pferd an, um umzuschalten.</div>
     <div class="horse-switch">
-      <button class="horse-pill" id="pill-ludwig" onclick="setHorse('ludwig')">Ludwig</button>
-      <button class="horse-pill" id="pill-minstrel" onclick="setHorse('minstrel')">Minstrel</button>
+      <button class="horse-pill" id="dashboard-pill-ludwig" onclick="setHorse('ludwig')">Ludwig</button>
+      <button class="horse-pill" id="dashboard-pill-minstrel" onclick="setHorse('minstrel')">Minstrel</button>
     </div>
   </div>
   <div class="drawer-body">
@@ -332,6 +420,7 @@
 </aside>
 
 <nav>
+<button data-page="dashboard">&#128202; Dashboard</button>
 <button class="active" data-page="training">📋 Protokoll</button>
 <button data-page="woche">📅 Wochenplan</button>
 <button data-page="verlauf">📅 Verlauf</button>
@@ -342,6 +431,63 @@
 <button data-page="budget">💶 Budget</button>
 <button data-page="kommandos">🎛️ Kommandozentrale</button>
 </nav>
+<div class="page dashboard-page" id="page-dashboard">
+<div class="dashboard-horse-switch-bar">
+  <button class="dashboard-horse-pill active" id="dashboard-pill-ludwig" onclick="setHorse('ludwig')">Ludwig</button>
+  <button class="dashboard-horse-pill" id="dashboard-pill-minstrel" onclick="setHorse('minstrel')">Minstrel</button>
+  <div style="flex:1"></div>
+  <span class="dashboard-period-label">Zeitraum:</span>
+  <button class="dashboard-period-btn active" id="dashboard-period-7" onclick="setDashboardPeriod(7)">7 Tage</button>
+  <button class="dashboard-period-btn" id="dashboard-period-30" onclick="setDashboardPeriod(30)">30 Tage</button>
+  <button class="dashboard-period-btn" id="dashboard-period-90" onclick="setDashboardPeriod(90)">90 Tage</button>
+</div>
+
+<div class="dashboard-content">
+
+  <!-- Letztes Training -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">📋 Letztes Training <span class="dashboard-badge" id="dashboard-last-days-badge">–</span></div>
+    <div class="dashboard-last-entry" id="dashboard-last-training-box"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Heute im Wochenplan -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">📅 Heute im Wochenplan</div>
+    <div id="dashboard-today-box"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Kennzahlen -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">📊 Kennzahlen <span class="dashboard-badge" id="dashboard-period-label-kpi">–</span></div>
+    <div class="dashboard-kpi-grid" id="dashboard-kpi-grid"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Gesundheit -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">🌿 Gesundheit <span class="dashboard-badge" id="dashboard-period-label-health">–</span></div>
+    <div id="dashboard-health-section"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Tagesform Schieber -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">🎯 Tagesform (Trainingstage) <span class="dashboard-badge" id="dashboard-period-label-slider">–</span></div>
+    <div id="dashboard-slider-section"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Stimmung Verteilung -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">😊 Stimmung der Einheiten <span class="dashboard-badge" id="dashboard-period-label-mood">–</span></div>
+    <div id="dashboard-mood-section"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Beobachtungen -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">💡 Automatische Beobachtungen</div>
+    <div id="dashboard-obs-section"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+</div>
+</div>
 <!-- ═══ PAGE 1: PROTOKOLL ═══ -->
 <div class="page active" id="page-training">
 <div class="prev-entry-banner" id="prev-banner" style="display:none">
@@ -1002,6 +1148,7 @@ function setHorse(key) {
   // Alle aktiven Seiten neu laden
   const active = document.querySelector('.page.active');
   if (!active) return;
+  if (active.id === 'page-dashboard') dashboardRender();
   if (active.id === 'page-training') {
     loadSheet(h.tabs.protokolle).then(rows => {
       const data = rows.slice(1);
@@ -1097,6 +1244,7 @@ function showPage(name, btn) {
   if (name === 'futterplan') renderFutterplanView();
   if (name === 'woche') renderWoche();
   if (name === 'kommandos') renderKommandos();
+  if (name === 'dashboard') dashboardRender();
 }
 
 
@@ -2847,6 +2995,548 @@ async function deletePAT(rowIndex) {
   if(!confirm('Diesen PAT-Check wirklich löschen?'))return;
   try { await deleteRow(HORSES[currentHorse].tabs.pat,rowIndex); showToast('🗑️ PAT-Check gelöscht!'); await renderPAT(); }
   catch(err){ showToast('❌ Löschen fehlgeschlagen!'); }
+}
+
+
+// ═══ DASHBOARD ═══
+// ─── Protokoll-Daten parsen ──────────────────────────────────────────────────
+// Spalten (0-basiert):
+// 0 ts, 1 datum, 2 wer, 3 stimmung, 4 wetter, 5 temp, 6 art, 7 dauer,
+// 8 zaeum, 9 zaeum_s, 10 sattel, 11 sattel_s,
+// 12 futter_plan, 13 futter_abw, 14 verdauung, 15 atmung,
+// 16 inhaliert, 17 verletzung, 18 verletzung_w, 19 kommentar,
+// 20 therapie, 21 therapie_notiz,
+// 22 energie, 23 losgelassenheit, 24 durchlaessigkeit,
+// 25 verlauf_einheit, 26 verfassung, 27 kooperation,
+// 28 geschirr, 29 geschirr_s, 30 aufgegessen
+
+function dashboardParseProtokolls(rows) {
+  const a1 = rows?.[0]?.[0];
+  const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+  return rows.slice(hasHeader ? 1 : 0)
+    .filter(r => Array.isArray(r) && r.some(x => String(x ?? '').trim()))
+    .map(r => ({
+      datum: r[1] || '',
+      wer: r[2] || '',
+      stimmung: r[3] || '',
+      wetter: r[4] || '',
+      temp: parseFloat(r[5]) || null,
+      art: r[6] || '',
+      dauer: parseFloat(r[7]) || 0,
+      futter_plan: r[12] || '',
+      verdauung: r[14] || '',
+      atmung: r[15] || '',
+      inhaliert: r[16] || '',
+      verletzung: r[17] || '',
+      therapie: r[20] || '',
+      energie: parseFloat(r[22]) || null,
+      losgelassenheit: parseFloat(r[23]) || null,
+      durchlaessigkeit: parseFloat(r[24]) || null,
+      verlauf_einheit: parseFloat(r[25]) || null,
+      verfassung: parseFloat(r[26]) || null,
+      kooperation: parseFloat(r[27]) || null,
+      aufgegessen: r[30] || '',
+    }));
+}
+
+function dashboardFilterByPeriod(entries, days) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutKey = dashboardIsoDate(cutoff);
+  return entries.filter(e => e.datum >= cutKey);
+}
+
+function dashboardIsTrainingDay(e) {
+  return e.dauer > 0;
+}
+
+// ─── Wochenplan parsen ───────────────────────────────────────────────────────
+function parseWoche(rows) {
+  const a1 = rows?.[0]?.[0];
+  const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+  return rows.slice(hasHeader ? 1 : 0)
+    .filter(r => Array.isArray(r) && r.some(x => String(x ?? '').trim()))
+    .map(r => ({
+      datum: r[0] || r[1] || '',
+      person: r[2] || '',
+      art: r[3] || '',
+      notiz: r[4] || '',
+    }));
+}
+
+// ─── Stimmung → Zahl ─────────────────────────────────────────────────────────
+const DASHBOARD_MOOD_SCORE = {
+  '😡': 1, '😤': 2, '😰': 3, '😬': 4, '😐': 5,
+  '🙂': 6, '😌': 7, '😊': 8, '🥰': 9, '🤩': 10, '😍': 11
+};
+function dashboardMoodScore(s) {
+  if (!s) return null;
+  const emoji = s.split(' ')[0];
+  return DASHBOARD_MOOD_SCORE[emoji] ?? null;
+}
+
+// ─── Verdauung → Zahl ────────────────────────────────────────────────────────
+const DASHBOARD_VERD_SCORE = { '💚': 5, '🟢': 4, '🟡': 3, '🟠': 2, '🔴': 1 };
+function dashboardVerdScore(s) {
+  if (!s) return null;
+  const emoji = s.split(' ')[0];
+  return DASHBOARD_VERD_SCORE[emoji] ?? null;
+}
+
+// ─── Render: Letztes Training ────────────────────────────────────────────────
+function dashboardRenderLastTraining(entries) {
+  const trainings = entries.filter(dashboardIsTrainingDay).sort((a, b) => b.datum.localeCompare(a.datum));
+  const box = $('dashboard-last-training-box');
+  const badge = $('dashboard-last-days-badge');
+
+  if (!trainings.length) {
+    box.innerHTML = '<div class="dashboard-empty-state">Noch keine Trainingseinträge</div>';
+    badge.textContent = '–';
+    return;
+  }
+
+  const last = trainings[0];
+  const d = dashboardDateFromKey(last.datum);
+  const daysAgo = d ? dashboardDaysBetween(d, new Date()) : null;
+  badge.textContent = daysAgo != null ? `vor ${daysAgo} Tag${daysAgo === 1 ? '' : 'en'}` : '–';
+
+  const moodEmoji = last.stimmung ? last.stimmung.split(' ')[0] : '–';
+  const arts = last.art ? last.art.split(', ').slice(0, 3).join(', ') : '–';
+
+  box.innerHTML = `
+    <div class="dashboard-last-row"><span>Datum</span><span>${dashboardFormatDate(last.datum)}</span></div>
+    <div class="dashboard-last-row"><span>Wer</span><span>${last.wer || '–'}</span></div>
+    <div class="dashboard-last-row"><span>Trainingsart</span><span>${arts}</span></div>
+    <div class="dashboard-last-row"><span>Dauer</span><span>${last.dauer ? last.dauer + ' Min' : '–'}</span></div>
+    <div class="dashboard-last-row"><span>Stimmung</span><span style="font-size:1.3rem">${moodEmoji}</span></div>
+    ${last.wetter ? `<div class="dashboard-last-row"><span>Wetter</span><span>${last.wetter}${last.temp ? ' · ' + last.temp + ' °C' : ''}</span></div>` : ''}
+  `;
+}
+
+// ─── Render: Heute im Wochenplan ─────────────────────────────────────────────
+function dashboardRenderToday(wocheEntries) {
+  const todayKey = dashboardIsoDate(new Date());
+  const box = $('dashboard-today-box');
+  const today = wocheEntries.find(e => e.datum === todayKey);
+
+  if (!today || (!today.person && !today.art)) {
+    box.innerHTML = '<div class="dashboard-empty-state">Heute kein Eintrag im Wochenplan</div>';
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="dashboard-today-box">
+      <div class="dashboard-today-name">${today.person || '–'}</div>
+      <div class="dashboard-today-meta">${today.art || ''}${today.notiz ? ' · ' + today.notiz : ''}</div>
+    </div>
+  `;
+}
+
+// ─── Render: KPIs ────────────────────────────────────────────────────────────
+function dashboardRenderKPIs(entries, days) {
+  $('dashboard-period-label-kpi').textContent = `letzte ${days} Tage`;
+  const grid = $('dashboard-kpi-grid');
+  const period = dashboardFilterByPeriod(entries, days);
+  const trainings = period.filter(dashboardIsTrainingDay);
+  const allDays = period;
+
+  const avgDauer = dashboardAvg(trainings.map(e => e.dauer).filter(Boolean));
+  const avgMood = dashboardAvg(trainings.map(e => dashboardMoodScore(e.stimmung)).filter(Boolean));
+
+  // Futter letzte 7 Tage immer
+  const last7 = dashboardFilterByPeriod(entries, 7);
+  const futterTotal = last7.filter(e => e.futter_plan).length;
+  const futterJa = last7.filter(e => e.futter_plan === 'Ja').length;
+  const futterPct = futterTotal ? dashboardPct(futterJa, futterTotal) : null;
+
+  const aufgegessenTotal = last7.filter(e => e.aufgegessen).length;
+  const aufgegessenJa = last7.filter(e => e.aufgegessen === 'Ja').length;
+  const aufgegessenPct = aufgegessenTotal ? dashboardPct(aufgegessenJa, aufgegessenTotal) : null;
+
+  const verletzungen = period.filter(e => e.verletzung === 'Ja').length;
+
+  const moodEmoji = avgMood != null ? Object.entries(DASHBOARD_MOOD_SCORE).find(([, v]) => v === Math.round(avgMood))?.[0] ?? '–' : '–';
+
+  grid.innerHTML = `
+    <div class="dashboard-kpi">
+      <div class="dashboard-kpi-label">Trainingstage</div>
+      <div class="dashboard-kpi-value">${trainings.length}</div>
+      <div class="dashboard-kpi-sub">von ${allDays.length} Einträgen</div>
+    </div>
+    <div class="dashboard-kpi">
+      <div class="dashboard-kpi-label">Ø Dauer</div>
+      <div class="dashboard-kpi-value">${avgDauer != null ? Math.round(avgDauer) + ' Min' : '–'}</div>
+      <div class="dashboard-kpi-sub">Trainingstage</div>
+    </div>
+    <div class="dashboard-kpi">
+      <div class="dashboard-kpi-label">Ø Stimmung</div>
+      <div class="dashboard-kpi-value" style="font-size:1.6rem">${moodEmoji}</div>
+      <div class="dashboard-kpi-sub">${avgMood != null ? avgMood.toFixed(1) + ' / 11' : '–'}</div>
+    </div>
+    <div class="dashboard-kpi">
+      <div class="dashboard-kpi-label">Futterplan ∅ 7T</div>
+      <div class="dashboard-kpi-value" style="color:${futterPct != null && futterPct >= 80 ? 'var(--green)' : futterPct != null && futterPct >= 60 ? 'var(--accent)' : 'var(--red)'}">
+        ${futterPct != null ? futterPct + ' %' : '–'}
+      </div>
+      <div class="dashboard-kpi-sub">${futterJa} / ${futterTotal} Tage</div>
+    </div>
+    <div class="dashboard-kpi">
+      <div class="dashboard-kpi-label">Aufgegessen ∅ 7T</div>
+      <div class="dashboard-kpi-value" style="color:${aufgegessenPct != null && aufgegessenPct >= 80 ? 'var(--green)' : aufgegessenPct != null && aufgegessenPct >= 60 ? 'var(--accent)' : 'var(--red)'}">
+        ${aufgegessenPct != null ? aufgegessenPct + ' %' : '–'}
+      </div>
+      <div class="dashboard-kpi-sub">${aufgegessenJa} / ${aufgegessenTotal} Tage</div>
+    </div>
+    <div class="dashboard-kpi">
+      <div class="dashboard-kpi-label">Verletzungen</div>
+      <div class="dashboard-kpi-value" style="color:${verletzungen > 0 ? 'var(--red)' : 'var(--green)'}">
+        ${verletzungen}
+      </div>
+      <div class="dashboard-kpi-sub">im Zeitraum</div>
+    </div>
+  `;
+}
+
+// ─── Render: Gesundheit ───────────────────────────────────────────────────────
+function dashboardRenderHealth(entries, days) {
+  $('dashboard-period-label-health').textContent = `letzte ${days} Tage`;
+  const section = $('dashboard-health-section');
+  const period = dashboardFilterByPeriod(entries, days);
+
+  function healthBar(label, items, goodValues, okValues) {
+    const total = items.filter(Boolean).length;
+    if (!total) return `<div class="dashboard-health-row"><span class="dashboard-health-label">${label}</span><span style="font-size:.78rem;color:#aaa">Keine Daten</span></div>`;
+    const good = items.filter(v => goodValues.includes(v)).length;
+    const ok = items.filter(v => okValues.includes(v)).length;
+    const bad = total - good - ok;
+    const goodPct = dashboardPct(good, total);
+    const okPct = dashboardPct(ok, total);
+    const badPct = dashboardPct(bad, total);
+    const color = goodPct >= 70 ? 'var(--green)' : goodPct >= 50 ? 'var(--accent)' : 'var(--red)';
+    return `
+      <div class="dashboard-health-row">
+        <span class="dashboard-health-label">${label}</span>
+        <div class="dashboard-health-track">
+          <div style="height:100%;display:flex;border-radius:99px;overflow:hidden">
+            <div style="width:${goodPct}%;background:var(--green)"></div>
+            <div style="width:${okPct}%;background:#B8864E"></div>
+            <div style="width:${badPct}%;background:var(--red)"></div>
+          </div>
+        </div>
+        <span class="health-dashboardPct" style="color:${color}">${goodPct} %</span>
+      </div>
+      <div style="display:flex;gap:10px;font-size:.68rem;color:#888;margin:-4px 0 6px 110px;flex-wrap:wrap">
+        <span>🟢 ${good}×</span><span>🟡 ${ok}×</span><span>🔴 ${bad}×</span>
+      </div>
+    `;
+  }
+
+  // Verdauung
+  const verd = period.map(e => e.verdauung.split(' ')[0]).filter(Boolean);
+  const verdGood = ['💚', '🟢'];
+  const verdOk = ['🟡'];
+
+  // Atmung
+  const atm = period.map(e => e.atmung.split(' ')[0]).filter(Boolean);
+  const atmGood = ['🦄'];
+  const atmOk = ['😮‍💨', '😤'];
+
+  // Futter
+  const futter = period.map(e => e.futter_plan).filter(Boolean);
+  const futterGood = ['Ja'];
+  const futterOk = [];
+
+  // Aufgegessen
+  const aufgeg = period.map(e => e.aufgegessen).filter(Boolean);
+  const aufgegGood = ['Ja'];
+  const aufgegOk = [];
+
+  section.innerHTML =
+    healthBar('Verdauung', verd, verdGood, verdOk) +
+    healthBar('Atmung', atm, atmGood, atmOk) +
+    healthBar('Futterplan', futter, futterGood, futterOk) +
+    healthBar('Aufgegessen', aufgeg, aufgegGood, aufgegOk);
+}
+
+// ─── Render: Schieber ─────────────────────────────────────────────────────────
+function dashboardRenderSliders(entries, days) {
+  $('dashboard-period-label-slider').textContent = `letzte ${days} Tage`;
+  const section = $('dashboard-slider-section');
+  const trainings = dashboardFilterByPeriod(entries, days).filter(dashboardIsTrainingDay);
+
+  if (!trainings.length) {
+    section.innerHTML = '<div class="dashboard-empty-state">Keine Trainingstage im Zeitraum</div>';
+    return;
+  }
+
+  const sliders = [
+    { key: 'energie', label: '⚡ Energie Level' },
+    { key: 'losgelassenheit', label: '🌊 Losgelassenheit' },
+    { key: 'durchlaessigkeit', label: '🎯 Durchlässigkeit' },
+    { key: 'verlauf_einheit', label: '📈 Verlauf der Einheit' },
+    { key: 'verfassung', label: '🧘 Meine Verfassung' },
+    { key: 'kooperation', label: '🤝 Kooperation' },
+  ];
+
+  const rows = sliders.map(({ key, label }) => {
+    const vals = trainings.map(e => e[key]).filter(v => v != null && !isNaN(v));
+    const mean = dashboardAvg(vals);
+    if (mean == null) return '';
+    const pctVal = (mean / 10) * 100;
+    const deviation = Math.abs(mean - 5);
+    const color = deviation <= 0.75 ? '#5A7A52' : deviation <= 2 ? '#B8864E' : '#A03030';
+    return `
+      <div class="dashboard-slider-row">
+        <span class="dashboard-slider-label">${label}</span>
+        <div class="dashboard-slider-track">
+          <div class="dashboard-slider-marker" style="left:${pctVal.toFixed(1)}%"></div>
+        </div>
+        <span class="dashboard-slider-val" style="color:${color}">${mean.toFixed(1)}<span style="font-size:.65rem;font-weight:400;color:#aaa;margin-left:2px">/ 10</span></span>
+      </div>
+    `;
+  }).join('');
+
+  section.innerHTML = `
+    <div style="font-size:.72rem;color:#888;margin-bottom:10px">Ø aus ${trainings.length} Trainingstagen · Skala 1–10</div>
+    <div class="dashboard-slider-bar-wrap">${rows}</div>
+  `;
+}
+
+// ─── Render: Stimmung ─────────────────────────────────────────────────────────
+function dashboardRenderMood(entries, days) {
+  $('dashboard-period-label-mood').textContent = `letzte ${days} Tage`;
+  const section = $('dashboard-mood-section');
+  const trainings = dashboardFilterByPeriod(entries, days).filter(dashboardIsTrainingDay).filter(e => e.stimmung);
+
+  if (!trainings.length) {
+    section.innerHTML = '<div class="dashboard-empty-state">Keine Trainingstage mit Stimmungsangabe</div>';
+    return;
+  }
+
+  const counts = {};
+  trainings.forEach(e => {
+    const emoji = e.stimmung.split(' ')[0];
+    counts[emoji] = (counts[emoji] || 0) + 1;
+  });
+
+  const sorted = Object.entries(counts).sort((a, b) => {
+    const sa = DASHBOARD_MOOD_SCORE[a[0]] ?? 0;
+    const sb = DASHBOARD_MOOD_SCORE[b[0]] ?? 0;
+    return sb - sa;
+  });
+
+  const chips = sorted.map(([emoji, cnt]) => `
+    <div class="dashboard-mood-chip">
+      <span class="dashboard-emoji">${emoji}</span>
+      <span class="dashboard-count">${cnt}×</span>
+    </div>
+  `).join('');
+
+  const avgM = dashboardAvg(trainings.map(e => dashboardMoodScore(e.stimmung)).filter(Boolean));
+  const avgEmoji = avgM != null ? Object.entries(DASHBOARD_MOOD_SCORE).find(([, v]) => v === Math.round(avgM))?.[0] ?? '' : '';
+
+  section.innerHTML = `
+    <div style="font-size:.82rem;color:var(--brown);margin-bottom:8px">
+      Ø Stimmung: <strong style="font-size:1.2rem">${avgEmoji}</strong> ${avgM != null ? '(' + avgM.toFixed(1) + ' / 11)' : ''}
+      · ${trainings.length} Trainingstage
+    </div>
+    <div class="dashboard-mood-row">${chips}</div>
+  `;
+}
+
+// ─── Render: Beobachtungen ────────────────────────────────────────────────────
+function dashboardRenderObservations(entries, days) {
+  const section = $('dashboard-obs-section');
+  const period = dashboardFilterByPeriod(entries, days);
+  const trainings = period.filter(dashboardIsTrainingDay);
+  const obs = [];
+
+  // Mindestanzahl für Aussagen
+  const MIN = 4;
+
+  // 1. Futterplan-Trend
+  const last7 = dashboardFilterByPeriod(entries, 7);
+  const futterJa7 = last7.filter(e => e.futter_plan === 'Ja').length;
+  const futterTotal7 = last7.filter(e => e.futter_plan).length;
+  if (futterTotal7 >= 3) {
+    const p = dashboardPct(futterJa7, futterTotal7);
+    if (p >= 90) obs.push({ type: 'positive', text: `✅ Futterplan: In den letzten 7 Tagen wurde er zu ${p} % eingehalten (${futterJa7} von ${futterTotal7} Tagen).` });
+    else if (p < 60) obs.push({ type: 'caution', text: `⚠️ Futterplan: In den letzten 7 Tagen nur zu ${p} % eingehalten (${futterJa7} von ${futterTotal7} Tagen).` });
+  }
+
+  // 2. Aufgegessen-Trend
+  const aufgegJa7 = last7.filter(e => e.aufgegessen === 'Ja').length;
+  const aufgegTotal7 = last7.filter(e => e.aufgegessen).length;
+  if (aufgegTotal7 >= 3) {
+    const p = dashboardPct(aufgegJa7, aufgegTotal7);
+    if (p >= 90) obs.push({ type: 'positive', text: `✅ Aufgegessen: In den letzten 7 Tagen zu ${p} % vollständig gefressen (${aufgegJa7} von ${aufgegTotal7} Tagen).` });
+    else if (p < 60) obs.push({ type: 'caution', text: `⚠️ Aufgegessen: In den letzten 7 Tagen nur zu ${p} % vollständig gefressen – Appetit beobachten.` });
+  }
+
+  // 3. Verdauung vs. Wetter
+  const wetterGruppen = {};
+  period.filter(e => e.wetter && e.verdauung).forEach(e => {
+    const w = e.wetter;
+    if (!wetterGruppen[w]) wetterGruppen[w] = [];
+    wetterGruppen[w].push(dashboardVerdScore(e.verdauung));
+  });
+  let bestWetter = null, worstWetter = null;
+  Object.entries(wetterGruppen).forEach(([w, scores]) => {
+    if (scores.length < MIN) return;
+    const m = dashboardAvg(scores);
+    if (!bestWetter || m > bestWetter.score) bestWetter = { wetter: w, score: m, n: scores.length };
+    if (!worstWetter || m < worstWetter.score) worstWetter = { wetter: w, score: m, n: scores.length };
+  });
+  if (bestWetter && bestWetter.score >= 4) {
+    obs.push({ type: 'positive', text: `🌤️ Verdauung bei ${bestWetter.wetter}: Ø ${bestWetter.score.toFixed(1)} / 5 – tendenziell gut (${bestWetter.n} Tage).` });
+  }
+  if (worstWetter && worstWetter.score <= 3 && worstWetter.wetter !== bestWetter?.wetter) {
+    obs.push({ type: 'caution', text: `🌧️ Verdauung bei ${worstWetter.wetter}: Ø ${worstWetter.score.toFixed(1)} / 5 – tendenziell auffälliger (${worstWetter.n} Tage).` });
+  }
+
+  // 4. Therapie am Vortag → Losgelassenheit
+  const byDate = {};
+  entries.forEach(e => { byDate[e.datum] = e; });
+  const withTherapyPrev = [], withoutTherapyPrev = [];
+  trainings.forEach(e => {
+    const d = dashboardDateFromKey(e.datum);
+    if (!d) return;
+    const prev = new Date(d); prev.setDate(prev.getDate() - 1);
+    const prevKey = dashboardIsoDate(prev);
+    const prevEntry = byDate[prevKey];
+    if (prevEntry && prevEntry.therapie) {
+      withTherapyPrev.push(e.losgelassenheit);
+    } else {
+      withoutTherapyPrev.push(e.losgelassenheit);
+    }
+  });
+  const avgWith = dashboardAvg(withTherapyPrev.filter(Boolean));
+  const avgWithout = dashboardAvg(withoutTherapyPrev.filter(Boolean));
+  if (withTherapyPrev.length >= MIN && withoutTherapyPrev.length >= MIN && avgWith != null && avgWithout != null) {
+    const diff = avgWith - avgWithout;
+    if (Math.abs(diff) >= 0.5) {
+      obs.push({
+        type: diff > 0 ? 'positive' : 'neutral',
+        text: `🌀 Therapie am Vortag: Losgelassenheit Ø ${avgWith.toFixed(1)} (mit Therapie, ${withTherapyPrev.length}×) vs. ${avgWithout.toFixed(1)} (ohne, ${withoutTherapyPrev.length}×). Tendenz: ${diff > 0 ? 'besser nach Therapie' : 'kein klarer Vorteil'}.`
+      });
+    }
+  }
+
+  // 5. Trainingsfrequenz
+  if (trainings.length >= 2) {
+    const sorted = trainings.map(e => e.datum).sort();
+    const first = dashboardDateFromKey(sorted[0]);
+    const last = dashboardDateFromKey(sorted[sorted.length - 1]);
+    if (first && last) {
+      const span = dashboardDaysBetween(first, last) || 1;
+      const freq = (trainings.length / span * 7).toFixed(1);
+      obs.push({ type: 'neutral', text: `📅 Trainingsfrequenz: Ø ${freq} Einheiten pro Woche im gewählten Zeitraum (${trainings.length} Trainingstage).` });
+    }
+  }
+
+  // 6. Verletzungen
+  const verletzungen = period.filter(e => e.verletzung === 'Ja');
+  if (verletzungen.length > 0) {
+    obs.push({ type: 'caution', text: `⚠️ ${verletzungen.length} Verletzung${verletzungen.length > 1 ? 'en' : ''} im Zeitraum dokumentiert.` });
+  }
+
+  // 7. Bester Schieber
+  const sliderKeys = ['energie', 'losgelassenheit', 'durchlaessigkeit', 'verlauf_einheit', 'verfassung', 'kooperation'];
+  const sliderLabels = { energie: 'Energie', losgelassenheit: 'Losgelassenheit', durchlaessigkeit: 'Durchlässigkeit', verlauf_einheit: 'Verlauf', verfassung: 'Verfassung', kooperation: 'Kooperation' };
+  let bestSlider = null;
+  sliderKeys.forEach(k => {
+    const vals = trainings.map(e => e[k]).filter(v => v != null);
+    if (vals.length < MIN) return;
+    const m = dashboardAvg(vals);
+    if (!bestSlider || m > bestSlider.score) bestSlider = { key: k, score: m, n: vals.length };
+  });
+  if (bestSlider && bestSlider.score >= 7) {
+    obs.push({ type: 'positive', text: `🏆 Stärke: ${sliderLabels[bestSlider.key]} ist mit Ø ${bestSlider.score.toFixed(1)} / 10 der stärkste Wert (${bestSlider.n} Trainingstage).` });
+  }
+
+  if (!obs.length) {
+    section.innerHTML = '<div class="dashboard-empty-state">Noch zu wenig Daten für automatische Beobachtungen (mind. 4 Einträge pro Kategorie nötig).</div>';
+    return;
+  }
+
+  section.innerHTML = `
+    <div style="font-size:.72rem;color:#888;margin-bottom:10px">Automatisch berechnet · Tendenzen, keine Diagnosen · Mindestens 4 Einträge pro Aussage</div>
+    <div class="dashboard-obs-list">
+      ${obs.map(o => `<div class="dashboard-obs-item ${o.type}">${o.text}</div>`).join('')}
+    </div>
+  `;
+}
+
+
+
+function dashboardParseWoche(rows) {
+  const a1 = rows?.[0]?.[0];
+  const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
+  return (rows || []).slice(hasHeader ? 1 : 0)
+    .filter(r => Array.isArray(r) && r.some(x => String(x ?? '').trim()))
+    .map(r => ({
+      datum: r[0] || r[1] || '',
+      person: r[2] || '',
+      art: r[3] || '',
+      notiz: r[4] || '',
+    }));
+}
+
+// Dashboard state and controls. The horse state remains owned by the main app.
+let dashboardCurrentPeriod = 7;
+const dashboardEntriesCache = {};
+const dashboardWeekCache = {};
+
+function dashboardUpdateHorsePills() {
+  ['ludwig', 'minstrel'].forEach(key => {
+    document.getElementById('dashboard-pill-' + key)?.classList.toggle('active', currentHorse === key);
+  });
+}
+
+async function dashboardRender() {
+  const h = HORSES[currentHorse];
+  const sub = document.getElementById('header-sub');
+  if (sub) sub.textContent = h.display;
+  dashboardUpdateHorsePills();
+
+  try {
+    if (!dashboardEntriesCache[currentHorse]) {
+      const [protokollRows, wocheRows] = await Promise.all([
+        loadSheet(h.tabs.protokolle),
+        loadSheet(h.tabs.woche),
+      ]);
+      dashboardEntriesCache[currentHorse] = dashboardParseProtokolls(protokollRows)
+        .sort((a, b) => b.datum.localeCompare(a.datum));
+      dashboardWeekCache[currentHorse] = dashboardParseWoche(wocheRows);
+    }
+    const entries = dashboardEntriesCache[currentHorse];
+    const wocheEntries = dashboardWeekCache[currentHorse] || [];
+    dashboardRenderLastTraining(entries);
+    dashboardRenderToday(wocheEntries);
+    dashboardRenderKPIs(entries, dashboardCurrentPeriod);
+    dashboardRenderHealth(entries, dashboardCurrentPeriod);
+    dashboardRenderSliders(entries, dashboardCurrentPeriod);
+    dashboardRenderMood(entries, dashboardCurrentPeriod);
+    dashboardRenderObservations(entries, dashboardCurrentPeriod);
+  } catch (e) {
+    showToast('Fehler beim Laden des Dashboards');
+    const targets = ['dashboard-last-training-box','dashboard-today-box','dashboard-kpi-grid','dashboard-health-section','dashboard-slider-section','dashboard-mood-section','dashboard-obs-section'];
+    targets.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<div class="dashboard-empty-state">Daten konnten nicht geladen werden.</div>'; });
+  }
+}
+
+function setDashboardPeriod(days) {
+  if (![7, 30, 90].includes(days)) return;
+  dashboardCurrentPeriod = days;
+  [7, 30, 90].forEach(d => document.getElementById('dashboard-period-' + d)?.classList.remove('active'));
+  document.getElementById('dashboard-period-' + days)?.classList.add('active');
+  const entries = dashboardEntriesCache[currentHorse];
+  if (!entries) { dashboardRender(); return; }
+  dashboardRenderKPIs(entries, days);
+  dashboardRenderHealth(entries, days);
+  dashboardRenderSliders(entries, days);
+  dashboardRenderMood(entries, days);
+  dashboardRenderObservations(entries, days);
 }
 
 // ═══════════════════════════════════════════════════════
