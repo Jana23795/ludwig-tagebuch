@@ -282,6 +282,18 @@
   .pat-nav-badge.ok { background:var(--green); }
   @media (max-width:520px) { .pat-detail-grid { grid-template-columns:1fr; } .pat-darm-grid, .pat-leg-grid { gap:8px; } .pat-choice { min-width:110px; } }
 
+/* Mobile: eine stabile, einzige Sticky-Leiste verhindert das iOS-Wackeln beim Scrollen. */
+@media (max-width:520px) {
+  header { position: relative; top: auto; }
+  nav { position: sticky; top: 0; z-index: 190; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+}
+
+.required-missing { border-color: var(--red) !important; box-shadow: 0 0 0 2px rgba(160,48,48,.16); }
+.check-group.required-missing, .mood-group.required-missing, .weather-group.required-missing,
+.verdauung-group.required-missing, .atmung-group.required-missing, .yn-group.required-missing {
+  padding: 5px; border: 1.5px solid var(--red); border-radius: 10px; background: rgba(160,48,48,.06);
+}
+
 </style>
 </head>
 <body>
@@ -446,6 +458,7 @@
 <label><input type="checkbox" value="Massage-Gamaschen"/><span>🦵 Massage-Gamaschen</span></label>
 <label><input type="checkbox" value="Physiotherapie"/><span>🏥 Physiotherapie</span></label>
 <label><input type="checkbox" value="Osteopathie"/><span>🦴 Osteopathie</span></label>
+<label><input type="checkbox" value="LED-Therapie"/><span>💡 LED-Therapie</span></label>
 </div>
 <textarea id="t-therapie-notiz" placeholder="Therapie-Notizen (z.B. welche Akupunkturpunkte, wo Tape…)" style="margin-top:8px;width:100%;min-height:60px;padding:10px;border:1.5px solid var(--border);border-radius:9px;background:var(--sand);font-family:'DM Sans',sans-serif;font-size:0.88rem;resize:vertical;color:var(--dark);outline:none"></textarea>
 
@@ -530,6 +543,13 @@
 <label><input type="checkbox" value="Ohne Sattel"/><span>Ohne Sattel</span></label>
 </div>
 <input id="t-sattel-sonstige" placeholder="Sonstiger Sattel…" style="margin-top:8px" type="text"/>
+<label class="field-label">Geschirr / Kutsche</label>
+<div class="check-group" id="t-geschirr">
+<label><input type="checkbox" value="Fahrgeschirr"/><span>🛞 Fahrgeschirr</span></label>
+<label><input type="checkbox" value="Jagdwagen"/><span>🛻 Jagdwagen</span></label>
+<label><input type="checkbox" value="Reitplatzplaner"/><span>🧹 Reitplatzplaner</span></label>
+</div>
+<input id="t-geschirr-sonstige" placeholder="Sonstiges bei Geschirr / Kutsche…" style="margin-top:8px" type="text"/>
 </div>
 <div class="card">
 <div class="card-title">🌿 Gesundheit &amp; Futter</div>
@@ -539,6 +559,11 @@
 <label onclick="ynSelect('t-futter-plan','no')"><input name="futterplan" type="radio" value="Nein"/> ❌ Nein</label>
 </div>
 <input id="t-futter-abweich" placeholder="Abweichung beschreiben…" style="margin-top:8px" type="text"/>
+<label class="field-label">Aufgegessen?</label>
+<div class="yn-group" id="t-aufgegessen">
+<label onclick="ynSelect('t-aufgegessen','yes')"><input name="aufgegessen" type="radio" value="Ja"/> ✅ Ja</label>
+<label onclick="ynSelect('t-aufgegessen','no')"><input name="aufgegessen" type="radio" value="Nein"/> ❌ Nein</label>
+</div>
 <label class="field-label">Verdauung</label>
 <div class="verdauung-group" id="t-verdauung">
 <label title="Sehr gut"><input name="verdauung" type="radio" value="💚 Sehr gut"/><span>💚</span></label>
@@ -916,7 +941,9 @@ const AVATARS = {
 
 
 function setHorse(key) {
+  if (!HORSES[key]) return;
   currentHorse = key;
+  try { localStorage.setItem('ludwig_lastHorse', key); } catch (e) {}
   const h = HORSES[key];
 
   // Drawer pills
@@ -1039,6 +1066,7 @@ function showPage(name, btn) {
   const pageEl = document.getElementById('page-' + name);
   if (pageEl) { pageEl.classList.add('active'); pageEl.style.display = 'block'; }
   if (btn) btn.classList.add('active');
+  try { localStorage.setItem('ludwig_lastPage', name); } catch (e) {}
   if (name === 'verlauf') renderVerlauf();
   if (name === 'pat') renderPAT();
   if (name === 'gesundheit') renderGesundheit();
@@ -1304,6 +1332,44 @@ function getRadio(name) {
   return el ? el.value : '';
 }
 
+function markRequiredMissing(el) {
+  if (!el) return;
+  el.classList.add('required-missing');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearRequiredMarks() {
+  document.querySelectorAll('.required-missing').forEach(el => el.classList.remove('required-missing'));
+}
+
+function validateTrainingRequiredFields() {
+  clearRequiredMarks();
+  const required = [
+    ['t-stimmung', getRadio('stimmung')],
+    ['t-datum', $('t-datum')?.value],
+    ['t-wer', $('t-wer')?.value.trim()],
+    ['t-wetter', getRadio('wetter')],
+    ['t-temp', $('t-temp')?.value],
+    ['t-art', getChecked('t-art')],
+    ['t-dauer', $('t-dauer')?.value],
+    ['t-zaeum', getChecked('t-zaeum')],
+    ['t-sattel', getChecked('t-sattel')],
+    ['t-futter-plan', getRadio('futterplan')],
+    ['t-aufgegessen', getRadio('aufgegessen')],
+    ['t-verdauung', getRadio('verdauung')],
+    ['t-atmung', getRadio('atmung')],
+    ['t-inhaliert', getRadio('inhaliert')],
+    ['t-verletzung', getRadio('verletzung')]
+  ];
+  const missing = required.filter(([id, value]) => !String(value || '').trim());
+  missing.forEach(([id]) => markRequiredMissing($(id)));
+  if (missing.length) {
+    showToast('⚠️ Bitte alle Pflichtfelder ausfüllen.');
+    return false;
+  }
+  return true;
+}
+
 function clearForm() {
   ['t-energie','t-losgelassenheit','t-durchlaessigkeit','t-verlauf-einheit','t-verfassung','t-kooperation'].forEach(id => {
     const el = document.getElementById(id);
@@ -1320,7 +1386,7 @@ function clearForm() {
     l.classList.remove('checked', 'checked-yes', 'checked-no');
   });
   document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
-  ['t-wer','t-temp','t-dauer','t-zaeum-sonstige','t-sattel-sonstige','t-futter-abweich','t-verletzung-welche','t-kommentar'].forEach(id => {
+  ['t-wer','t-temp','t-dauer','t-zaeum-sonstige','t-sattel-sonstige','t-geschirr-sonstige','t-futter-abweich','t-verletzung-welche','t-kommentar'].forEach(id => {
     const el = $(id); if (el) el.value = '';
   });
 }
@@ -1329,6 +1395,7 @@ function clearForm() {
 // TRAINING SPEICHERN
 // ═══════════════════════════════════════════════════════
 async function saveTraining() {
+  if (!validateTrainingRequiredFields()) return;
   const datum = $('t-datum').value;
   if (!datum) { alert('Bitte Datum eingeben!'); return; }
 
@@ -1376,6 +1443,9 @@ async function saveTraining() {
     $('t-verlauf-einheit').value,     // Schieber: Verlauf
     $('t-verfassung').value,          // Schieber: Verfassung
     $('t-kooperation').value,         // Schieber: Kooperation
+    getChecked('t-geschirr'),          // Geschirr/Kutsche – neue Spalte
+    $('t-geschirr-sonstige').value,    // Geschirr/Kutsche sonstige – neue Spalte
+    getRadio('aufgegessen')            // Aufgegessen – neue Spalte
   ];
 
   try {
@@ -1421,6 +1491,7 @@ async function renderVerlauf() {
       therapie: r[20], therapie_notiz: r[21],
       energie: r[22], losgelassenheit: r[23], durchlaessigkeit: r[24],
       verlauf_einheit: r[25], verfassung: r[26], kooperation: r[27],
+      geschirr: r[28], geschirr_s: r[29], aufgegessen: r[30],
     }));
 
     cachedEntries = data.slice().reverse();
@@ -1480,7 +1551,9 @@ function renderVerlaufList() {
 
         ${detailRow('Zäumung', (e.zaeum || '') + (e.zaeum_s ? ' / ' + e.zaeum_s : ''))}
         ${detailRow('Sattel', (e.sattel || '') + (e.sattel_s ? ' / ' + e.sattel_s : ''))}
+        ${detailRow('Geschirr / Kutsche', (e.geschirr || '') + (e.geschirr_s ? ' / ' + e.geschirr_s : ''))}
         ${detailRow('Futter gemäß Plan', e.futter_plan + (e.futter_abw ? ' – Abw.: ' + e.futter_abw : ''))}
+        ${detailRow('Aufgegessen', e.aufgegessen || '')}
         ${e.inhaliert ? detailRow('Inhaliert', e.inhaliert) : ''}
         ${e.therapie ? detailRow('Therapie', e.therapie + (e.therapie_notiz ? ' · ' + e.therapie_notiz : '')) : ''}
 
@@ -2757,8 +2830,18 @@ async function deletePAT(rowIndex) {
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
+let initialHorse = 'ludwig';
+let initialPage = 'training';
+try {
+  if (HORSES[localStorage.getItem('ludwig_lastHorse')]) initialHorse = localStorage.getItem('ludwig_lastHorse');
+  if (document.getElementById('page-' + localStorage.getItem('ludwig_lastPage'))) initialPage = localStorage.getItem('ludwig_lastPage');
+} catch (e) {}
 initTrainingForm();
-setHorse('ludwig');
+setHorse(initialHorse);
+if (initialPage !== 'training') {
+  const initialBtn = document.querySelector(`nav button[data-page="${initialPage}"]`);
+  showPage(initialPage, initialBtn);
+}
 // Reminder is refreshed when PAT is opened; keep the navigation quiet until then.
 </script>
 </body>
