@@ -300,14 +300,11 @@
 .dashboard-page .dashboard-horse-switch-bar {
   display:flex; gap:8px; padding:10px 0 14px; align-items:center; flex-wrap:wrap;
 }
-.dashboard-page .dashboard-horse-pill,
 .dashboard-page .dashboard-period-btn {
   border:1.5px solid var(--border); background:var(--white); cursor:pointer;
   font-family:'DM Sans',sans-serif; color:var(--brown); transition:all .15s;
 }
-.dashboard-page .dashboard-horse-pill { border-radius:999px; padding:6px 16px; font-weight:700; font-size:.82rem; }
 .dashboard-page .dashboard-period-btn { border-radius:20px; padding:5px 13px; font-size:.75rem; font-weight:600; }
-.dashboard-page .dashboard-horse-pill.active { background:var(--accent); border-color:var(--accent); color:#fff; }
 .dashboard-page .dashboard-period-btn.active { background:var(--dark); border-color:var(--dark); color:var(--sand); }
 .dashboard-page .dashboard-period-label { font-size:.75rem; color:var(--brown); font-weight:600; margin-right:4px; }
 .dashboard-page .dashboard-spacer { flex:1; }
@@ -402,8 +399,8 @@
     <div class="drawer-title" id="drawerTitle">Profil</div>
     <div class="drawer-sub">Tippe ein Pferd an, um umzuschalten.</div>
     <div class="horse-switch">
-      <button class="horse-pill" id="dashboard-pill-ludwig" onclick="setHorse('ludwig')">Ludwig</button>
-      <button class="horse-pill" id="dashboard-pill-minstrel" onclick="setHorse('minstrel')">Minstrel</button>
+      <button class="horse-pill" id="pill-ludwig" onclick="setHorse('ludwig')">Ludwig</button>
+      <button class="horse-pill" id="pill-minstrel" onclick="setHorse('minstrel')">Minstrel</button>
     </div>
   </div>
   <div class="drawer-body">
@@ -433,9 +430,6 @@
 </nav>
 <div class="page dashboard-page" id="page-dashboard">
 <div class="dashboard-horse-switch-bar">
-  <button class="dashboard-horse-pill active" id="dashboard-pill-ludwig" onclick="setHorse('ludwig')">Ludwig</button>
-  <button class="dashboard-horse-pill" id="dashboard-pill-minstrel" onclick="setHorse('minstrel')">Minstrel</button>
-  <div style="flex:1"></div>
   <span class="dashboard-period-label">Zeitraum:</span>
   <button class="dashboard-period-btn active" id="dashboard-period-7" onclick="setDashboardPeriod(7)">7 Tage</button>
   <button class="dashboard-period-btn" id="dashboard-period-30" onclick="setDashboardPeriod(30)">30 Tage</button>
@@ -3573,9 +3567,7 @@ const dashboardEntriesCache = {};
 const dashboardWeekCache = {};
 
 function dashboardUpdateHorsePills() {
-  ['ludwig', 'minstrel'].forEach(key => {
-    document.getElementById('dashboard-pill-' + key)?.classList.toggle('active', currentHorse === key);
-  });
+  // Pferd wird ausschließlich über den bestehenden Profil-Slide-in gewählt.
 }
 
 async function dashboardRender() {
