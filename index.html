@@ -3633,76 +3633,73 @@ if (initialPage !== 'training') {
 }
 // Reminder is refreshed when PAT is opened; keep the navigation quiet until then.
 </script>
-  <!-- ============================================ -->
+ <!-- ============================================ -->
 <!-- PUSH BENACHRICHTIGUNG – Täglich um 22 Uhr -->
 <!-- ============================================ -->
 <script>
-// Prüfen ob Browser Notifications unterstützt
+// iOS-optimierte Push-Benachrichtigung
 function initDailyReminder() {
   if (!('Notification' in window)) {
     console.log('🔔 Browser unterstützt keine Benachrichtigungen');
     return;
   }
   
-  // Berechtigung anfordern
-  Notification.requestPermission().then(permission => {
-    console.log('🔔 Notification Permission:', permission);
-    
-    if (permission === 'granted') {
-      scheduleDailyReminder();
-    }
-  });
+  if (Notification.permission === 'granted') {
+    scheduleDailyReminder();
+    return;
+  }
+  
+  // iOS Hinweis
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
+    showIOSHint();
+  } else {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') scheduleDailyReminder();
+    });
+  }
 }
 
-// Tägliche Erinnerung planen
+function showIOSHint() {
+  const shown = localStorage.getItem('ludwig_iosHintShown');
+  if (shown) return;
+  
+  const hint = document.createElement('div');
+  hint.style.cssText = 'position:fixed;bottom:20px;left:16px;right:16px;background:#3B2A1A;color:#F5EFE0;padding:16px;border-radius:12px;font-size:0.85rem;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+  hint.innerHTML = '<strong>🐴 Push aktivieren</strong><br>1. Tippe auf <strong>Teilen</strong> (Safari)<br>2. Wähle <strong>"Zum Home-Bildschirm"</strong><br>3. Öffne die App vom Home-Bildschirm<br><button onclick="this.parentElement.remove();localStorage.setItem(\'ludwig_iosHintShown\',\'1\')" style="margin-top:10px;padding:8px 16px;background:#B8864E;color:white;border:none;border-radius:6px;cursor:pointer">Verstanden</button>';
+  document.body.appendChild(hint);
+}
+
 function scheduleDailyReminder() {
   const now = new Date();
   const today = now.toDateString();
   const currentHour = now.getHours();
-  
-  // Prüfen ob heute schon erinnert wurde
   const lastReminder = localStorage.getItem('ludwig_lastReminder');
   
-  // Wenn schon nach 22 Uhr UND heute noch nicht erinnert
   if (currentHour >= 22 && lastReminder !== today) {
-    // Prüfen ob heute schon Training eingetragen wurde
     const lastEntry = localStorage.getItem('ludwig_lastEntry');
     const lastEntryDate = lastEntry ? new Date(lastEntry).toDateString() : null;
     
     if (lastEntryDate !== today) {
-      // Keine Eintragung heute → Erinnerung senden
       new Notification('🐴 Ludwig – Trainingstagebuch', {
         body: 'Du hast heute noch kein Training eingetragen!',
         icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐴</text></svg>',
-        tag: 'training-reminder',
-        requireInteraction: false
+        tag: 'training-reminder'
       });
-      
       localStorage.setItem('ludwig_lastReminder', today);
     }
   }
   
-  // Alle 60 Sekunden prüfen (für offene Tabs)
   setInterval(() => {
-    const checkTime = new Date();
-    const checkToday = checkTime.toDateString();
-    const checkHour = checkTime.getHours();
-    const checkMinute = checkTime.getMinutes();
-    
-    // Um 22:00 Uhr prüfen
-    if (checkHour === 22 && checkMinute === 0) {
-      const lastReminderCheck = localStorage.getItem('ludwig_lastReminder');
-      if (lastReminderCheck !== checkToday) {
+    const t = new Date();
+    if (t.getHours() === 22 && t.getMinutes() === 0) {
+      if (localStorage.getItem('ludwig_lastReminder') !== t.toDateString()) {
         scheduleDailyReminder();
       }
     }
   }, 60000);
 }
 
-// Beim Laden der Seite starten
 document.addEventListener('DOMContentLoaded', initDailyReminder);
-
-// Fallback: Auch beim direkten Laden nach 22 Uhr prüfen
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   initDailyReminder();
 }
