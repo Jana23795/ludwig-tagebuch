@@ -3633,5 +3633,82 @@ if (initialPage !== 'training') {
 }
 // Reminder is refreshed when PAT is opened; keep the navigation quiet until then.
 </script>
+  <!-- ============================================ -->
+<!-- PUSH BENACHRICHTIGUNG – Täglich um 22 Uhr -->
+<!-- ============================================ -->
+<script>
+// Prüfen ob Browser Notifications unterstützt
+function initDailyReminder() {
+  if (!('Notification' in window)) {
+    console.log('🔔 Browser unterstützt keine Benachrichtigungen');
+    return;
+  }
+  
+  // Berechtigung anfordern
+  Notification.requestPermission().then(permission => {
+    console.log('🔔 Notification Permission:', permission);
+    
+    if (permission === 'granted') {
+      scheduleDailyReminder();
+    }
+  });
+}
+
+// Tägliche Erinnerung planen
+function scheduleDailyReminder() {
+  const now = new Date();
+  const today = now.toDateString();
+  const currentHour = now.getHours();
+  
+  // Prüfen ob heute schon erinnert wurde
+  const lastReminder = localStorage.getItem('ludwig_lastReminder');
+  
+  // Wenn schon nach 22 Uhr UND heute noch nicht erinnert
+  if (currentHour >= 22 && lastReminder !== today) {
+    // Prüfen ob heute schon Training eingetragen wurde
+    const lastEntry = localStorage.getItem('ludwig_lastEntry');
+    const lastEntryDate = lastEntry ? new Date(lastEntry).toDateString() : null;
+    
+    if (lastEntryDate !== today) {
+      // Keine Eintragung heute → Erinnerung senden
+      new Notification('🐴 Ludwig – Trainingstagebuch', {
+        body: 'Du hast heute noch kein Training eingetragen!',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐴</text></svg>',
+        tag: 'training-reminder',
+        requireInteraction: false
+      });
+      
+      localStorage.setItem('ludwig_lastReminder', today);
+    }
+  }
+  
+  // Alle 60 Sekunden prüfen (für offene Tabs)
+  setInterval(() => {
+    const checkTime = new Date();
+    const checkToday = checkTime.toDateString();
+    const checkHour = checkTime.getHours();
+    const checkMinute = checkTime.getMinutes();
+    
+    // Um 22:00 Uhr prüfen
+    if (checkHour === 22 && checkMinute === 0) {
+      const lastReminderCheck = localStorage.getItem('ludwig_lastReminder');
+      if (lastReminderCheck !== checkToday) {
+        scheduleDailyReminder();
+      }
+    }
+  }, 60000);
+}
+
+// Beim Laden der Seite starten
+document.addEventListener('DOMContentLoaded', initDailyReminder);
+
+// Fallback: Auch beim direkten Laden nach 22 Uhr prüfen
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initDailyReminder();
+}
+</script>
+<!-- ============================================ -->
+<!-- ENDE PUSH BENACHRICHTIGUNG -->
+<!-- ============================================ -->
 </body>
 </html>
