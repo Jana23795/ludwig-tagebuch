@@ -3198,14 +3198,13 @@ function dashboardRenderKPIs(entries, days) {
   const avgDauer = dashboardAvg(trainings.map(e => e.dauer).filter(Boolean));
   const avgMood = dashboardAvg(trainings.map(e => dashboardMoodScore(e.stimmung)).filter(Boolean));
 
-  // Futter letzte 7 Tage immer
-  const last7 = dashboardFilterByPeriod(entries, 7);
-  const futterTotal = last7.filter(e => e.futter_plan).length;
-  const futterJa = last7.filter(e => e.futter_plan === 'Ja').length;
+  // Futter & Aufgegessen: gleicher Zeitraum wie alle anderen KPIs
+  const futterTotal = period.filter(e => e.futter_plan).length;
+  const futterJa = period.filter(e => e.futter_plan === 'Ja').length;
   const futterPct = futterTotal ? dashboardPct(futterJa, futterTotal) : null;
 
-  const aufgegessenTotal = last7.filter(e => e.aufgegessen).length;
-  const aufgegessenJa = last7.filter(e => e.aufgegessen === 'Ja').length;
+  const aufgegessenTotal = period.filter(e => e.aufgegessen).length;
+  const aufgegessenJa = period.filter(e => e.aufgegessen === 'Ja').length;
   const aufgegessenPct = aufgegessenTotal ? dashboardPct(aufgegessenJa, aufgegessenTotal) : null;
 
   const verletzungen = period.filter(e => e.verletzung === 'Ja').length;
@@ -3229,14 +3228,14 @@ function dashboardRenderKPIs(entries, days) {
       <div class="dashboard-kpi-sub">${avgMood != null ? avgMood.toFixed(1) + ' / 11' : '–'}</div>
     </div>
     <div class="dashboard-kpi">
-      <div class="dashboard-kpi-label">Futterplan ∅ 7T</div>
+      <div class="dashboard-kpi-label">Futterplan ∅ ${days}T</div>
       <div class="dashboard-kpi-value" style="color:${futterPct != null && futterPct >= 80 ? 'var(--green)' : futterPct != null && futterPct >= 60 ? 'var(--accent)' : 'var(--red)'}">
         ${futterPct != null ? futterPct + ' %' : '–'}
       </div>
       <div class="dashboard-kpi-sub">${futterJa} / ${futterTotal} Tage</div>
     </div>
     <div class="dashboard-kpi">
-      <div class="dashboard-kpi-label">Aufgegessen ∅ 7T</div>
+      <div class="dashboard-kpi-label">Aufgegessen ∅ ${days}T</div>
       <div class="dashboard-kpi-value" style="color:${aufgegessenPct != null && aufgegessenPct >= 80 ? 'var(--green)' : aufgegessenPct != null && aufgegessenPct >= 60 ? 'var(--accent)' : 'var(--red)'}">
         ${aufgegessenPct != null ? aufgegessenPct + ' %' : '–'}
       </div>
