@@ -3640,78 +3640,120 @@ if (initialPage !== 'training') {
 // Reminder is refreshed when PAT is opened; keep the navigation quiet until then.
 </script>
  <!-- ============================================ -->
+<!-- ============================================ -->
 <!-- PUSH BENACHRICHTIGUNG – Täglich um 22 Uhr -->
 <!-- ============================================ -->
 <script>
-// iOS-optimierte Push-Benachrichtigung
-function initDailyReminder() {
-  if (!('Notification' in window)) {
-    console.log('🔔 Browser unterstützt keine Benachrichtigungen');
-    return;
-  }
-  
-  if (Notification.permission === 'granted') {
-    scheduleDailyReminder();
-    return;
-  }
-  
-  // iOS Hinweis
-  if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
-    showIOSHint();
-  } else {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') scheduleDailyReminder();
-    });
+// ── Service Worker registrieren ──────────────────────────────
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+    console.log('SW registriert:', reg.scope);
+    return reg;
+  } catch (e) {
+    console.warn('SW-Registrierung fehlgeschlagen:', e);
+    return null;
   }
 }
 
-function showIOSHint() {
-  const shown = localStorage.getItem('ludwig_iosHintShown');
-  if (shown) return;
-  
-  const hint = document.createElement('div');
-  hint.style.cssText = 'position:fixed;bottom:20px;left:16px;right:16px;background:#3B2A1A;color:#F5EFE0;padding:16px;border-radius:12px;font-size:0.85rem;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
-  hint.innerHTML = '<strong>🐴 Push aktivieren</strong><br>1. Tippe auf <strong>Teilen</strong> (Safari)<br>2. Wähle <strong>"Zum Home-Bildschirm"</strong><br>3. Öffne die App vom Home-Bildschirm<br><button onclick="this.parentElement.remove();localStorage.setItem(\'ludwig_iosHintShown\',\'1\')" style="margin-top:10px;padding:8px 16px;background:#B8864E;color:white;border:none;border-radius:6px;cursor:pointer">Verstanden</button>';
-  document.body.appendChild(hint);
-}
+// ── Tägliche 22-Uhr-Erinnerung planen ───────────────────────
+function scheduleDailyReminder(swReg) {
+  setInterval(async () => {
+    const now = new Date();
+    if (now.getHours() !== 22 || now.getMinutes() !== 0) return;
 
-function scheduleDailyReminder() {
-  const now = new Date();
-  const today = now.toDateString();
-  const currentHour = now.getHours();
-  const lastReminder = localStorage.getItem('ludwig_lastReminder');
-  
-  if (currentHour >= 22 && lastReminder !== today) {
+    const todayStr = now.toDateString();
+    if (localStorage.getItem('ludwig_lastReminder') === todayStr) return;
+
+    // Prüfen ob heute schon ein Eintrag gemacht wurde
     const lastEntry = localStorage.getItem('ludwig_lastEntry');
-    const lastEntryDate = lastEntry ? new Date(lastEntry).toDateString() : null;
-    
-    if (lastEntryDate !== today) {
+    const lastEntryDate = lastEntry ? new Date(parseInt(lastEntry)).toDateString() : null;
+    if (lastEntryDate === todayStr) return;
+
+    localStorage.setItem('ludwig_lastReminder', todayStr);
+
+    // Via Service Worker showNotification (funktioniert auf iOS als PWA)
+    if (swReg && Notification.permission === 'granted') {
+      try {
+        await swReg.showNotification('🐴 Ludwig – Trainingstagebuch', {
+          body: 'Hast du das heutige Training schon eingetragen? 🐴',
+          tag: 'training-reminder',
+          renotify: false
+        });
+        return;
+      } catch(e) {
+        console.warn('SW-Notification fehlgeschlagen, Fallback:', e);
+      }
+    }
+    // Fallback: direkte Notification API
+    if (Notification.permission === 'granted') {
       new Notification('🐴 Ludwig – Trainingstagebuch', {
-        body: 'Du hast heute noch kein Training eingetragen!',
-        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🐴</text></svg>',
+        body: 'Hast du das heutige Training schon eingetragen? 🐴',
         tag: 'training-reminder'
       });
-      localStorage.setItem('ludwig_lastReminder', today);
-    }
-  }
-  
-  setInterval(() => {
-    const t = new Date();
-    if (t.getHours() === 22 && t.getMinutes() === 0) {
-      if (localStorage.getItem('ludwig_lastReminder') !== t.toDateString()) {
-        scheduleDailyReminder();
-      }
     }
   }, 60000);
 }
 
-document.addEventListener('DOMContentLoaded', initDailyReminder);
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  initDailyReminder();
+// ── Einmaligen Hinweis-Banner anzeigen ───────────────────────
+function showPermissionBanner() {
+  if (localStorage.getItem('ludwig_notifBannerDone')) return;
+  if (Notification.permission === 'granted') return;
+
+  const banner = document.createElement('div');
+  banner.id = 'notif-banner';
+  banner.style.cssText = [
+    'position:fixed','bottom:20px','left:16px','right:16px',
+    'background:#3B2A1A','color:#F5EFE0','padding:16px 18px',
+    'border-radius:14px','font-size:0.85rem','z-index:9999',
+    'box-shadow:0 4px 24px rgba(0,0,0,0.35)','line-height:1.5'
+  ].join(';');
+  banner.innerHTML =
+    '<strong>🔔 Tägliche Erinnerung um 22 Uhr</strong><br>' +
+    'Damit du nie vergisst, Ludwigs Training einzutragen!' +
+    '<div style="display:flex;gap:8px;margin-top:12px">' +
+    '<button id="notif-allow" style="flex:1;padding:9px;background:#B8864E;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.85rem">🔔 Aktivieren</button>' +
+    '<button id="notif-deny" style="padding:9px 14px;background:none;border:1.5px solid #7A5C38;color:#EDE0C8;border-radius:8px;cursor:pointer;font-size:0.85rem">Später</button>' +
+    '</div>';
+  document.body.appendChild(banner);
+
+  document.getElementById('notif-allow').onclick = async () => {
+    banner.remove();
+    localStorage.setItem('ludwig_notifBannerDone', '1');
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      showToast('🔔 Erinnerung um 22 Uhr aktiviert!');
+      scheduleDailyReminder(window._swReg || null);
+    } else {
+      showToast('Erlaubnis verweigert – bitte in den Einstellungen aktivieren');
+    }
+  };
+  document.getElementById('notif-deny').onclick = () => {
+    banner.remove();
+    localStorage.setItem('ludwig_notifBannerDone', '1');
+    // Nach 3 Tagen nochmal fragen
+    setTimeout(() => localStorage.removeItem('ludwig_notifBannerDone'), 3 * 24 * 60 * 60 * 1000);
+  };
 }
+
+// ── Initialisierung ──────────────────────────────────────────
+async function initDailyReminder() {
+  const swReg = await registerSW();
+  window._swReg = swReg;
+
+  if (Notification.permission === 'granted') {
+    scheduleDailyReminder(swReg);
+  } else if (Notification.permission !== 'denied') {
+    setTimeout(() => showPermissionBanner(), 2500);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initDailyReminder);
 </script>
 <!-- ============================================ -->
 <!-- ENDE PUSH BENACHRICHTIGUNG -->
+<!-- ============================================ -->
 <!-- ============================================ -->
 </body>
 </html>
