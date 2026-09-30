@@ -807,6 +807,12 @@
 <label class="field-label">Kommentar (Decke)</label>
 <input id="t-decke-kommentar" type="text" placeholder="Weitere Anmerkungen zur Decke…"/>
 </div>
+<label class="field-label" style="margin-top:16px">🚿 ABGEDUSCHT / GEWASCHEN</label>
+<div class="check-group" id="t-abgeduscht" style="gap:8px">
+<label onclick="singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Abgeduscht"/><span>🚿 Abgeduscht</span></label>
+<label onclick="singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Gewaschen"/><span>🧴 Gewaschen</span></label>
+<label onclick="singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Warm abgeschwammt"/><span>🧽 Warm abgeschwammt</span></label>
+</div>
 </div>
 <div class="card">
 <div class="card-title">💬 Kommentar</div>
@@ -1609,6 +1615,23 @@ function getRadio(name) {
   return el ? el.value : '';
 }
 
+// Einzel-Auswahl innerhalb einer check-group (wie Radio, aber als Chip)
+function singleCheckSelect(groupId, clickedLabel) {
+  const group = document.getElementById(groupId);
+  if (!group) return;
+  const wasChecked = clickedLabel.classList.contains('checked');
+  group.querySelectorAll('label').forEach(l => {
+    l.classList.remove('checked');
+    const cb = l.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = false;
+  });
+  if (!wasChecked) {
+    clickedLabel.classList.add('checked');
+    const cb = clickedLabel.querySelector('input[type="checkbox"]');
+    if (cb) cb.checked = true;
+  }
+}
+
 function markRequiredMissing(el) {
   if (!el) return;
   el.classList.add('required-missing');
@@ -1733,7 +1756,8 @@ async function saveTraining() {
     $('t-decke-gramm').value,          // Decke Gramm-Zahl
     $('t-decke-kommentar').value,       // Decke Kommentar
     $('t-rueckenempfindlichkeit').value, // Rückenempfindlichkeit
-    $('t-rueckenbeweglichkeit').value    // Rückenbeweglichkeit / -spannung
+    $('t-rueckenbeweglichkeit').value,   // Rückenbeweglichkeit / -spannung
+    getChecked('t-abgeduscht')           // Abgeduscht / Gewaschen
   ];
 
   try {
@@ -1782,7 +1806,7 @@ async function renderVerlauf() {
       geschirr: r[28], geschirr_s: r[29], aufgegessen: r[30],
       schutz: r[31], schutz_kommentar: r[32], eingedeckt: r[33],
       deckentyp: r[34], decke_gramm: r[35], decke_kommentar: r[36],
-      rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38],
+      rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38], abgeduscht: r[39],
     }));
 
     cachedEntries = data.slice().reverse();
@@ -1850,6 +1874,7 @@ function renderVerlaufList() {
         ${detailRow('Aufgegessen', e.aufgegessen || '')}
         ${e.inhaliert ? detailRow('Inhaliert', e.inhaliert) : ''}
         ${e.therapie ? detailRow('Therapie', e.therapie + (e.therapie_notiz ? ' · ' + e.therapie_notiz : '')) : ''}
+        ${e.abgeduscht ? detailRow('Abgeduscht / Gewaschen', e.abgeduscht) : ''}
 
         ${(e.energie || e.losgelassenheit || e.durchlaessigkeit || e.verlauf_einheit || e.verfassung || e.kooperation) ? `
         <div style="margin-top:12px;margin-bottom:4px;font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em">Tagesform</div>
@@ -3803,42 +3828,55 @@ async function registerSW() {
 }
 
 // ── Tägliche 22-Uhr-Erinnerung planen ───────────────────────
+// HINWEIS: Web-Notifications können nur ausgelöst werden, wenn die App
+// im Browser geöffnet ist. Für zuverlässige Hintergrund-Benachrichtigungen
+// (auch wenn die App geschlossen ist) wird ein Push-Server (VAPID) benötigt.
+// Diese Implementierung nutzt einen präzisen setTimeout-Ansatz statt setInterval,
+// der sich jede Minute neu kalibriert und damit deutlich zuverlässiger ist.
 function scheduleDailyReminder(swReg) {
-  setInterval(async () => {
+  function checkAndReschedule() {
     const now = new Date();
-    if (now.getHours() !== 22 || now.getMinutes() !== 0) return;
+    const h = now.getHours();
+    const m = now.getMinutes();
 
-    const todayStr = now.toDateString();
-    if (localStorage.getItem('ludwig_lastReminder') === todayStr) return;
-
-    // Prüfen ob heute schon ein Eintrag gemacht wurde
-    const lastEntry = localStorage.getItem('ludwig_lastEntry');
-    const lastEntryDate = lastEntry ? new Date(parseInt(lastEntry)).toDateString() : null;
-    if (lastEntryDate === todayStr) return;
-
-    localStorage.setItem('ludwig_lastReminder', todayStr);
-
-    // Via Service Worker showNotification (funktioniert auf iOS als PWA)
-    if (swReg && Notification.permission === 'granted') {
-      try {
-        await swReg.showNotification('🐴 Ludwig – Trainingstagebuch', {
-          body: 'Hast du das heutige Training schon eingetragen? 🐴',
-          tag: 'training-reminder',
-          renotify: false
-        });
-        return;
-      } catch(e) {
-        console.warn('SW-Notification fehlgeschlagen, Fallback:', e);
+    if (h === 22 && m === 0) {
+      const todayStr = now.toDateString();
+      if (localStorage.getItem('ludwig_lastReminder') !== todayStr) {
+        const lastEntry = localStorage.getItem('ludwig_lastEntry');
+        const lastEntryDate = lastEntry ? new Date(parseInt(lastEntry)).toDateString() : null;
+        if (lastEntryDate !== todayStr) {
+          localStorage.setItem('ludwig_lastReminder', todayStr);
+          fireReminder(swReg);
+        }
       }
     }
-    // Fallback: direkte Notification API
-    if (Notification.permission === 'granted') {
-      new Notification('🐴 Ludwig – Trainingstagebuch', {
-        body: 'Hast du das heutige Training schon eingetragen? 🐴',
-        tag: 'training-reminder'
+
+    // Nächste volle Minute abwarten (präzise)
+    const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 50;
+    setTimeout(checkAndReschedule, msToNextMinute);
+  }
+
+  // Sofort starten
+  const now = new Date();
+  const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 50;
+  setTimeout(checkAndReschedule, msToNextMinute);
+}
+
+async function fireReminder(swReg) {
+  const body = 'Hast du das heutige Training schon eingetragen? 🐴';
+  if (swReg && Notification.permission === 'granted') {
+    try {
+      await swReg.showNotification('🐴 Ludwig – Trainingstagebuch', {
+        body, tag: 'training-reminder', renotify: false
       });
+      return;
+    } catch(e) {
+      console.warn('SW-Notification fehlgeschlagen, Fallback:', e);
     }
-  }, 60000);
+  }
+  if (Notification.permission === 'granted') {
+    new Notification('🐴 Ludwig – Trainingstagebuch', { body, tag: 'training-reminder' });
+  }
 }
 
 // ── Einmaligen Hinweis-Banner anzeigen ───────────────────────
