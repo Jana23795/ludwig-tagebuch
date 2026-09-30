@@ -1627,8 +1627,6 @@ function validateTrainingRequiredFields() {
     ['t-wer', $('t-wer')?.value.trim()],
     ['t-wetter', getRadio('wetter')],
     ['t-temp', $('t-temp')?.value],
-    ['t-art', getChecked('t-art')],
-    ['t-dauer', $('t-dauer')?.value],
     ['t-futter-plan', getRadio('futterplan')],
     ['t-aufgegessen', getRadio('aufgegessen')],
     ['t-verdauung', getRadio('verdauung')],
@@ -1636,6 +1634,11 @@ function validateTrainingRequiredFields() {
     ['t-inhaliert', getRadio('inhaliert')],
     ['t-verletzung', getRadio('verletzung')]
   ];
+  // Trainingsart ist optional – aber wenn eine gewählt wurde, muss Dauer angegeben werden
+  const trainingArt = getChecked('t-art');
+  if (trainingArt) {
+    required.push(['t-dauer', $('t-dauer')?.value]);
+  }
   const missing = required.filter(([id, value]) => !String(value || '').trim());
   missing.forEach(([id]) => markRequiredMissing($(id)));
   if (missing.length) {
