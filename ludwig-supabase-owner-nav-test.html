@@ -404,6 +404,17 @@
 body.supabase-read-only #supabase-read-banner { display:block; }
 
 nav button.supabase-hidden { display:none !important; }
+
+/* Desktop: Monatsleisten per Mausrad und sichtbarer Scrollleiste bedienbar */
+@media (min-width: 700px) {
+  .month-bar { scrollbar-width: thin; padding-bottom: 8px; cursor: grab; }
+  .month-bar:active { cursor: grabbing; }
+  .month-bar::-webkit-scrollbar { display:block; height:8px; }
+  .month-bar::-webkit-scrollbar-track { background:var(--warm); border-radius:99px; }
+  .month-bar::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
+  .month-bar::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+}
+
 </style>
 </head>
 <body>
@@ -4051,6 +4062,17 @@ async function loginSupabaseReadTest() {
     btn.textContent = 'Anmelden';
   }
 }
+
+
+// Desktop: vertikales Mausrad innerhalb einer Monatsleiste horizontal bewegen.
+document.addEventListener('wheel', event => {
+  const bar = event.target.closest('.month-bar');
+  if (!bar || bar.scrollWidth <= bar.clientWidth) return;
+  const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+  if (!delta) return;
+  event.preventDefault();
+  bar.scrollLeft += delta;
+}, { passive:false });
 
 document.getElementById('supabase-login-btn').addEventListener('click', loginSupabaseReadTest);
 document.getElementById('supabase-password').addEventListener('keydown', event => {
