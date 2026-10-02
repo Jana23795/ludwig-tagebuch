@@ -1226,6 +1226,8 @@ const HORSES = {
 
 let currentHorse = 'ludwig';
 let LUDWIG_AVATAR_ORIG = null;
+const initialLudwigAvatar = document.querySelector('header .avatar-btn img');
+if (initialLudwigAvatar) LUDWIG_AVATAR_ORIG = initialLudwigAvatar.src;
 
 
 const PDFS = {
@@ -1271,8 +1273,9 @@ function setHorse(key) {
   const avatarBtn = document.querySelector('header .avatar-btn');
   const avatarImg = avatarBtn ? avatarBtn.querySelector('img') : null;
   if (avatarImg) {
-    const nextAvatar = (typeof AVATARS !== 'undefined' && AVATARS[key])
-      || (key === 'ludwig' ? LUDWIG_AVATAR_ORIG : null);
+    const nextAvatar = key === 'ludwig'
+      ? LUDWIG_AVATAR_ORIG
+      : (typeof AVATARS !== 'undefined' && AVATARS[key]);
     if (nextAvatar) {
       avatarImg.src = nextAvatar;
       avatarImg.alt = h.display;
