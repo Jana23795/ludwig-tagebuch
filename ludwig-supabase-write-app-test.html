@@ -879,9 +879,9 @@ nav button.supabase-hidden { display:none !important; }
 <!-- ═══ PAGE 3: PAT ═══ -->
 <div class="page" id="page-pat">
   <div id="pat-reminder" class="pat-reminder" style="display:none"></div>
-  <div class="pat-ref">
-    📌 <strong>Ludwigs aktueller Referenzwert:</strong> Temperatur meist <strong>36,8–36,9 °C</strong> · persönliche Basiswerte für Puls, Atmung und die übrigen Checks werden aus den wöchentlichen Einträgen sichtbar.
-  </div>
+  <div class="pat-ref" id="pat-ref">
+     📌 <strong>Referenzwert wird geladen …</strong>
+   </div>
 
   <div class="card">
     <div class="card-title">🩺 Wöchentlicher PAT-Check</div>
@@ -1682,17 +1682,20 @@ function getRadio(name) {
 function singleCheckSelect(groupId, clickedLabel) {
   const group = document.getElementById(groupId);
   if (!group) return;
-  const wasChecked = clickedLabel.classList.contains('checked');
-  group.querySelectorAll('label').forEach(l => {
-    l.classList.remove('checked');
-    const cb = l.querySelector('input[type="checkbox"]');
-    if (cb) cb.checked = false;
-  });
-  if (!wasChecked) {
-    clickedLabel.classList.add('checked');
-    const cb = clickedLabel.querySelector('input[type="checkbox"]');
-    if (cb) cb.checked = true;
-  }
+  const clickedCheckbox = clickedLabel.querySelector('input[type="checkbox"]');
+  const wasSelected = clickedLabel.classList.contains('checked') || Boolean(clickedCheckbox?.checked);
+  setTimeout(() => {
+    group.querySelectorAll('label').forEach(label => {
+      label.classList.remove('checked');
+      const checkbox = label.querySelector('input[type="checkbox"]');
+      if (checkbox) checkbox.checked = false;
+    });
+    if (!wasSelected) {
+      clickedLabel.classList.add('checked');
+      const checkbox = clickedLabel.querySelector('input[type="checkbox"]');
+      if (checkbox) checkbox.checked = true;
+    }
+  }, 0);
 }
 
 function markRequiredMissing(el) {
@@ -3176,6 +3179,27 @@ function renderPATEntries(entries) {
     return `<div class="pat-entry"><div class="pat-entry-header" onclick="toggleDetail('${detailId}')"><div><div class="pat-entry-date">${patFormatDate(e.datum)}</div><div class="pat-entry-meta">${meta}</div></div><span class="pat-badge ${level}" style="margin-top:0">${patLevelLabel(level)}</span></div><div id="${detailId}" class="pat-entry-detail"><div class="pat-detail-grid">${rows}</div>${e.notiz?`<div style="margin-top:10px;padding:9px 11px;background:var(--sand);border-left:3px solid var(--accent);border-radius:8px;font-size:.82rem">💬 ${patEsc(e.notiz)}</div>`:''}<div class="pat-entry-actions"><button class="pat-delete" onclick="event.stopPropagation();deletePAT(${e._rowIndex})">🗑️ Check löschen</button><button class="btn-toggle" onclick="event.stopPropagation();toggleDetail('${detailId}')">▲ Schließen</button></div></div></div>`;
   }).join('');
 }
+function updatePATReference(entries) {
+  const el = document.getElementById('pat-ref');
+  if (!el) return;
+  const horseName = HORSES[currentHorse]?.display || 'Dieses Pferd';
+  const temps = (entries || [])
+    .map(entry => parseFloat(String(entry.temp ?? '').replace(',', '.')))
+    .filter(Number.isFinite);
+  if (!temps.length) {
+    el.innerHTML = `📌 <strong>${horseName}s Referenzwert:</strong> Noch kein Referenzwert hinterlegt. Er wird aus den eigenen PAT-Einträgen ermittelt.`;
+    return;
+  }
+  const sorted = temps.slice().sort((a,b) => a-b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const typical = sorted.filter(value => Math.abs(value - median) <= 0.4);
+  const values = typical.length ? typical : sorted;
+  const min = Math.min(...values), max = Math.max(...values);
+  const format = value => value.toFixed(1).replace('.', ',');
+  const range = Math.abs(max - min) < 0.05 ? format(min) : `${format(min)}–${format(max)}`;
+  el.innerHTML = `📌 <strong>${horseName}s aktueller Referenzwert:</strong> Temperatur meist <strong>${range} °C</strong> · basiert auf ${temps.length} eigenen PAT-Einträgen.`;
+}
+
 function updatePATReminder(entries) {
   const rem=document.getElementById('pat-reminder'), nav=document.getElementById('pat-nav-badge');
   const latest=entries[0]; const days=latest ? patDaysSince(latest.datum) : Infinity;
@@ -3191,7 +3215,7 @@ async function renderPAT() {
   const list=document.getElementById('pat-verlauf'); if(!list)return;
   list.innerHTML='<div class="loader">🩺 Lade PAT-Verlauf…</div>';
   const d=document.getElementById('pat-datum'); if(d && !d.value)d.value=patTodayKey();
-  try { const rows=await loadSheet(HORSES[currentHorse].tabs.pat); const entries=patReadRows(rows); patState.latestRows=entries; renderPATEntries(entries); updatePATReminder(entries); }
+  try { const rows=await loadSheet(HORSES[currentHorse].tabs.pat); const entries=patReadRows(rows); patState.latestRows=entries; updatePATReference(entries); renderPATEntries(entries); updatePATReminder(entries); }
   catch(err){ list.innerHTML='<div class="empty-state"><div class="emoji">⚠️</div><p>PAT-Verlauf konnte nicht geladen werden.</p></div>'; updatePATReminder([]); }
 }
 async function savePAT() {
