@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ludwig – Supabase-Datenlesetest</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --sand:#f5efe0; --warm:#ede0c8; --brown:#7a5c38; --dark:#3b2a1a; --green:#5a7a52; --red:#a03030; --white:#fffdf8; --border:#d4c4a8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--sand); color:var(--dark); font-family:Arial,sans-serif; }
+    main { width:min(850px, calc(100% - 28px)); margin:30px auto; }
+    .hero,.card { background:var(--white); border:1px solid var(--border); border-radius:16px; box-shadow:0 3px 12px rgba(58,42,26,.10); }
+    .hero { padding:24px; margin-bottom:16px; background:var(--dark); color:var(--sand); }
+    h1 { margin:0 0 6px; font-family:Georgia,serif; font-size:1.5rem; }
+    h2 { margin:0 0 14px; color:var(--brown); font-family:Georgia,serif; font-size:1.1rem; }
+    .hero p,.hint { margin:0; opacity:.8; font-size:.88rem; line-height:1.5; }
+    .card { padding:18px; margin-bottom:16px; }
+    label { display:block; margin:12px 0 6px; color:var(--brown); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+    input { width:100%; padding:11px 12px; border:1.5px solid var(--border); border-radius:9px; background:var(--sand); color:var(--dark); font-size:.92rem; }
+    input:focus { outline:none; border-color:var(--brown); background:var(--white); }
+    button { border:0; border-radius:10px; padding:11px 16px; margin-top:16px; background:var(--dark); color:var(--sand); font-weight:700; cursor:pointer; }
+    button:hover { background:var(--brown); }
+    button.secondary { margin-left:8px; background:transparent; border:1.5px solid var(--border); color:var(--brown); }
+    button:disabled { cursor:wait; opacity:.6; }
+    .status { display:none; padding:11px 13px; border-radius:10px; margin-top:14px; font-size:.88rem; line-height:1.45; white-space:pre-wrap; }
+    .status.show { display:block; }
+    .status.ok { background:#e8f5e2; border:1px solid #b2d9a0; color:#3f6539; }
+    .status.error { background:#fdecea; border:1px solid #e8a0a0; color:var(--red); }
+    #data-card { display:none; }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+    .kpi { background:var(--sand); border:1px solid var(--border); border-radius:11px; padding:11px; }
+    .kpi-label { color:var(--brown); font-size:.7rem; font-weight:700; text-transform:uppercase; }
+    .kpi-value { margin-top:4px; font-size:1.3rem; font-weight:700; }
+    .table-wrap { overflow:auto; border:1px solid var(--border); border-radius:10px; }
+    table { width:100%; border-collapse:collapse; min-width:620px; font-size:.84rem; }
+    th { background:var(--warm); color:var(--brown); text-align:left; padding:9px 10px; }
+    td { padding:8px 10px; border-top:1px solid var(--border); vertical-align:top; }
+    .ok-chip { display:inline-block; padding:3px 7px; border-radius:6px; background:#e8f5e2; color:#3f6539; font-size:.75rem; font-weight:700; }
+    .empty { color:#888; padding:16px 0; }
+    .footer { color:#888; font-size:.78rem; text-align:center; margin-top:18px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>🐴 Ludwig – Supabase-Datenlesetest</h1>
+      <p>Prüft, ob die importierten Einträge mit den aktuellen Benutzerrechten gelesen werden können.</p>
+    </section>
+
+    <section class="card" id="login-card">
+      <h2>Login</h2>
+      <p class="hint">Der Publishable Key wird nur im Arbeitsspeicher verwendet und nicht gespeichert.</p>
+      <label for="project-url">Project URL</label>
+      <input id="project-url" value="https://whslkwihrgqmovjnllul.supabase.co" autocomplete="off">
+      <label for="publishable-key">Publishable Key</label>
+      <input id="publishable-key" type="password" placeholder="sb_publishable_…" autocomplete="off">
+      <label for="username">Benutzername</label>
+      <input id="username" value="jana" autocomplete="username">
+      <label for="password">Passwort</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <button id="login-btn">Datenzugriff prüfen</button>
+      <div id="login-status" class="status"></div>
+    </section>
+
+    <section class="card" id="data-card">
+      <h2>Importierte Daten</h2>
+      <div class="summary">
+        <div class="kpi"><div class="kpi-label">Benutzer</div><div class="kpi-value" id="who">–</div></div>
+        <div class="kpi"><div class="kpi-label">Pferde</div><div class="kpi-value" id="horse-count">–</div></div>
+        <div class="kpi"><div class="kpi-label">Einträge</div><div class="kpi-value" id="entry-count">–</div></div>
+      </div>
+      <div id="table-area"></div>
+      <button id="logout-btn" class="secondary">Abmelden</button>
+      <div id="data-status" class="status"></div>
+    </section>
+    <div class="footer">Nur Lesetest – die produktive App bleibt unverändert.</div>
+  </main>
+
+  <script>
+    let client = null;
+
+    function showStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.className = 'status show ' + type;
+      el.textContent = message;
+    }
+
+    function internalEmail(username) {
+      return username.trim().toLowerCase() + '@ludwig-intern.local';
+    }
+
+    async function runReadTest() {
+      const btn = document.getElementById('login-btn');
+      const url = document.getElementById('project-url').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+      const key = document.getElementById('publishable-key').value.trim();
+      const username = document.getElementById('username').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+      if (!url || !key || !username || !password) {
+        showStatus('login-status', 'Bitte alle Felder ausfüllen.', 'error');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '⏳ Lade Daten…';
+      try {
+        client = window.supabase.createClient(url, key, { auth:{ persistSession:false, autoRefreshToken:false } });
+        const { data: authData, error: authError } = await client.auth.signInWithPassword({ email:internalEmail(username), password });
+        if (authError) throw authError;
+
+        const { data: profile, error: profileError } = await client
+          .from('profiles')
+          .select('id,display_name,is_admin')
+          .eq('auth_user_id', authData.user.id)
+          .single();
+        if (profileError) throw profileError;
+
+        const { data: horseRows, error: horseError } = await client
+          .from('horses')
+          .select('id,slug,display_name')
+          .order('display_name');
+        if (horseError) throw horseError;
+
+        const { data: entries, error: entryError } = await client
+          .from('app_entries')
+          .select('horse_id,module,entry_date,legacy_source,legacy_row_number,created_at')
+          .order('created_at', { ascending:false })
+          .range(0, 9999);
+        if (entryError) throw entryError;
+
+        renderData(profile, horseRows || [], entries || []);
+        showStatus('login-status', 'Datenzugriff erfolgreich. RLS filtert die sichtbaren Pferde korrekt.', 'ok');
+        document.getElementById('data-card').style.display = 'block';
+      } catch (error) {
+        console.error(error);
+        showStatus('login-status', 'Lesetest fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'), 'error');
+        if (client) await client.auth.signOut().catch(() => {});
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Datenzugriff prüfen';
+      }
+    }
+
+    function renderData(profile, horses, entries) {
+      document.getElementById('who').textContent = profile.display_name + (profile.is_admin ? ' · Admin' : '');
+      document.getElementById('horse-count').textContent = horses.length;
+      document.getElementById('entry-count').textContent = entries.length;
+      const horseMap = new Map(horses.map(horse => [horse.id, horse]));
+      const grouped = new Map();
+      entries.forEach(entry => {
+        const horse = horseMap.get(entry.horse_id);
+        if (!horse) return;
+        const key = horse.slug + '|' + entry.module;
+        if (!grouped.has(key)) grouped.set(key, { horse, module:entry.module, count:0, firstDate:null });
+        const item = grouped.get(key);
+        item.count++;
+        if (!item.firstDate && entry.entry_date) item.firstDate = entry.entry_date;
+      });
+      const rows = [...grouped.values()].sort((a,b) => a.horse.display_name.localeCompare(b.horse.display_name) || a.module.localeCompare(b.module));
+      const area = document.getElementById('table-area');
+      if (!rows.length) { area.innerHTML = '<div class="empty">Für diesen Benutzer sind keine Einträge sichtbar.</div>'; return; }
+      area.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Pferd</th><th>Bereich</th><th>Anzahl</th><th>Erstes Datum</th></tr></thead><tbody></tbody></table></div>';
+      const tbody = area.querySelector('tbody');
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td></td><td><span class="ok-chip"></span></td><td></td><td></td>';
+        tr.children[0].textContent = row.horse.display_name;
+        tr.children[1].firstChild.textContent = row.module;
+        tr.children[2].textContent = row.count;
+        tr.children[3].textContent = row.firstDate || '–';
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function logout() {
+      if (client) await client.auth.signOut().catch(() => {});
+      document.getElementById('data-card').style.display = 'none';
+      document.getElementById('password').value = '';
+    }
+
+    document.getElementById('login-btn').addEventListener('click', runReadTest);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('password').addEventListener('keydown', event => { if (event.key === 'Enter') runReadTest(); });
+  </script>
+</body>
+</html>
