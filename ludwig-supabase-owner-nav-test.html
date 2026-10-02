@@ -403,6 +403,7 @@
 #supabase-read-banner { display:none; position:fixed; right:12px; bottom:12px; z-index:150; background:var(--dark); color:var(--sand); border-radius:9px; padding:7px 10px; font-size:.72rem; opacity:.9; }
 body.supabase-read-only #supabase-read-banner { display:block; }
 
+nav button.supabase-hidden { display:none !important; }
 </style>
 </head>
 <body>
@@ -1255,22 +1256,20 @@ function setHorse(key) {
   if (hName) hName.textContent = h.display;
   if (hSub)  hSub.textContent  = (h.meta?.rasse || '') + (h.meta?.alter ? ' · ' + h.meta.alter : '') + (h.meta?.groesse ? ' · ' + h.meta.groesse : '') + (h.meta?.gewicht ? ' · ' + h.meta.gewicht : '');
 
-  // Avatar im Header (Bild für Minstrel, sonst Ludwig-Foto bleibt wie es ist)
+  // Avatar im Header: bei jedem Pferdewechsel explizit setzen
   const avatarBtn = document.querySelector('header .avatar-btn');
   const avatarImg = avatarBtn ? avatarBtn.querySelector('img') : null;
   if (avatarImg) {
-    if (typeof AVATARS !== 'undefined' && AVATARS[key]) {
-      avatarImg.src = AVATARS[key];
+    const nextAvatar = (typeof AVATARS !== 'undefined' && AVATARS[key])
+      || (key === 'ludwig' ? LUDWIG_AVATAR_ORIG : null);
+    if (nextAvatar) {
+      avatarImg.src = nextAvatar;
       avatarImg.alt = h.display;
-    }
-    if (key === 'ludwig') {
-      if (!LUDWIG_AVATAR_ORIG) LUDWIG_AVATAR_ORIG = avatarImg.src;
-      avatarImg.src = LUDWIG_AVATAR_ORIG;
-      avatarImg.alt = 'Ludwig';
     }
   }
 
   renderProfile();
+  if (typeof applySupabaseModuleVisibility === 'function') applySupabaseModuleVisibility();
 
   // Alle aktiven Seiten neu laden
   const active = document.querySelector('.page.active');
@@ -3972,8 +3971,14 @@ function applySupabaseModuleVisibility() {
   const canManageOwner = supabaseCanManageOwnerArea();
   const budgetButton = document.querySelector('nav button[data-page="budget"]');
   const futterButton = document.querySelector('nav button[data-page="futter"]');
-  if (budgetButton) budgetButton.style.display = canManageOwner ? '' : 'none';
-  if (futterButton) futterButton.style.display = canManageOwner ? '' : 'none';
+  if (budgetButton) {
+    budgetButton.classList.toggle('supabase-hidden', !canManageOwner);
+    budgetButton.setAttribute('aria-hidden', String(!canManageOwner));
+  }
+  if (futterButton) {
+    futterButton.classList.toggle('supabase-hidden', !canManageOwner);
+    futterButton.setAttribute('aria-hidden', String(!canManageOwner));
+  }
   const active = document.querySelector('.page.active');
   if (!canManageOwner && active?.id === 'page-budget') {
     const fallback = document.querySelector('nav button[data-page="dashboard"]') || document.querySelector('nav button[data-page="training"]');
