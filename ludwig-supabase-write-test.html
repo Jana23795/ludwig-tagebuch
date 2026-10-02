@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ludwig – Supabase-Schreibtest</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --sand:#f5efe0; --warm:#ede0c8; --brown:#7a5c38; --dark:#3b2a1a; --green:#5a7a52; --red:#a03030; --white:#fffdf8; --border:#d4c4a8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--sand); color:var(--dark); font-family:Arial,sans-serif; }
+    main { width:min(680px, calc(100% - 28px)); margin:30px auto; }
+    .hero,.card { background:var(--white); border:1px solid var(--border); border-radius:16px; box-shadow:0 3px 12px rgba(58,42,26,.10); }
+    .hero { padding:24px; margin-bottom:16px; background:var(--dark); color:var(--sand); }
+    h1 { margin:0 0 6px; font-family:Georgia,serif; font-size:1.5rem; }
+    h2 { margin:0 0 14px; color:var(--brown); font-family:Georgia,serif; font-size:1.1rem; }
+    p { line-height:1.5; }
+    .hero p,.hint { margin:0; opacity:.8; font-size:.88rem; line-height:1.5; }
+    .card { padding:18px; margin-bottom:16px; }
+    label { display:block; margin:12px 0 6px; color:var(--brown); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+    input,select,textarea { width:100%; padding:11px 12px; border:1.5px solid var(--border); border-radius:9px; background:var(--sand); color:var(--dark); font-size:.92rem; }
+    textarea { min-height:86px; resize:vertical; }
+    input:focus,select:focus,textarea:focus { outline:none; border-color:var(--brown); background:var(--white); }
+    button { border:0; border-radius:10px; padding:11px 16px; margin-top:16px; background:var(--dark); color:var(--sand); font-weight:700; cursor:pointer; }
+    button:hover { background:var(--brown); }
+    button.secondary { margin-left:8px; background:transparent; border:1.5px solid var(--border); color:var(--brown); }
+    button.danger { background:transparent; border:1.5px solid var(--red); color:var(--red); margin-top:10px; }
+    button:disabled { cursor:wait; opacity:.6; }
+    .status { display:none; padding:11px 13px; border-radius:10px; margin-top:14px; font-size:.88rem; line-height:1.45; white-space:pre-wrap; }
+    .status.show { display:block; }
+    .status.ok { background:#e8f5e2; border:1px solid #b2d9a0; color:#3f6539; }
+    .status.error { background:#fdecea; border:1px solid #e8a0a0; color:var(--red); }
+    .status.info { background:var(--warm); border:1px solid var(--border); color:var(--brown); }
+    #write-card { display:none; }
+    .test-entry { margin-top:16px; padding:13px; border:1px solid #b2d9a0; border-radius:11px; background:#e8f5e2; color:#3f6539; }
+    .test-entry strong { display:block; margin-bottom:4px; }
+    .footer { color:#888; font-size:.78rem; text-align:center; margin-top:18px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>🐴 Ludwig – Supabase-Schreibtest</h1>
+      <p>Legt einen eindeutig markierten Protokoll-Testeintrag an und löscht ihn anschließend wieder.</p>
+    </section>
+
+    <section class="card" id="login-card">
+      <h2>Login</h2>
+      <p class="hint">Der Publishable Key und die Sitzung werden nicht gespeichert.</p>
+      <label for="project-url">Project URL</label>
+      <input id="project-url" value="https://whslkwihrgqmovjnllul.supabase.co" autocomplete="off">
+      <label for="publishable-key">Publishable Key</label>
+      <input id="publishable-key" type="password" placeholder="sb_publishable_…" autocomplete="off">
+      <label for="username">Benutzername</label>
+      <input id="username" value="jana" autocomplete="username">
+      <label for="password">Passwort</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <button id="login-btn">Anmelden</button>
+      <div id="login-status" class="status"></div>
+    </section>
+
+    <section class="card" id="write-card">
+      <h2>Testeintrag speichern</h2>
+      <p class="hint">Der Eintrag wird als Protokoll gespeichert und bekommt einen eindeutigen Testtext. Danach kann er direkt wieder gelöscht werden.</p>
+      <label for="horse-select">Pferd</label>
+      <select id="horse-select"></select>
+      <label for="entry-date">Datum</label>
+      <input id="entry-date" type="date">
+      <label for="entry-note">Testnotiz</label>
+      <textarea id="entry-note">SUPABASE-TEST – bitte nach dem Test löschen</textarea>
+      <button id="save-btn">Testeintrag speichern</button>
+      <button id="logout-btn" class="secondary">Abmelden</button>
+      <div id="write-status" class="status"></div>
+      <div id="test-entry" class="test-entry" style="display:none"></div>
+    </section>
+
+    <div class="footer">Nur Testdaten – Google Sheets und die produktive App bleiben unverändert.</div>
+  </main>
+
+  <script>
+    let client = null;
+    let profile = null;
+    let horseRows = [];
+    let currentTestEntryId = null;
+
+    function showStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.className = 'status show ' + type;
+      el.textContent = message;
+    }
+
+    function internalEmail(username) {
+      return username.trim().toLowerCase() + '@ludwig-intern.local';
+    }
+
+    function todayLocal() {
+      const d = new Date();
+      const offset = d.getTimezoneOffset();
+      return new Date(d.getTime() - offset * 60000).toISOString().slice(0,10);
+    }
+
+    async function login() {
+      const btn = document.getElementById('login-btn');
+      const url = document.getElementById('project-url').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+      const key = document.getElementById('publishable-key').value.trim();
+      const username = document.getElementById('username').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+      if (!url || !key || !username || !password) {
+        showStatus('login-status', 'Bitte alle Loginfelder ausfüllen.', 'error');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '⏳ Anmelden…';
+      try {
+        client = window.supabase.createClient(url, key, { auth:{ persistSession:false, autoRefreshToken:false } });
+        const { data: authData, error: authError } = await client.auth.signInWithPassword({ email:internalEmail(username), password });
+        if (authError) throw authError;
+        const { data: p, error: profileError } = await client
+          .from('profiles')
+          .select('id,display_name,is_admin,active')
+          .eq('auth_user_id', authData.user.id)
+          .single();
+        if (profileError) throw profileError;
+        profile = p;
+        const { data: memberships, error: memberError } = await client
+          .from('horse_members')
+          .select('horse_id')
+          .eq('profile_id', profile.id);
+        if (memberError) throw memberError;
+        const ids = (memberships || []).map(row => row.horse_id);
+        const { data: horses, error: horseError } = await client
+          .from('horses')
+          .select('id,slug,display_name')
+          .in('id', ids)
+          .order('display_name');
+        if (horseError) throw horseError;
+        horseRows = horses || [];
+        const select = document.getElementById('horse-select');
+        select.innerHTML = '';
+        horseRows.forEach(horse => {
+          const option = document.createElement('option');
+          option.value = horse.id;
+          option.textContent = horse.display_name;
+          select.appendChild(option);
+        });
+        document.getElementById('entry-date').value = todayLocal();
+        document.getElementById('write-card').style.display = 'block';
+        showStatus('login-status', 'Login erfolgreich. Schreibtest ist bereit.', 'ok');
+      } catch (error) {
+        showStatus('login-status', 'Login fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'), 'error');
+        if (client) await client.auth.signOut().catch(() => {});
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Anmelden';
+      }
+    }
+
+    async function getProtocolTemplate(horseId) {
+      const { data, error } = await client
+        .from('app_entries')
+        .select('data')
+        .eq('horse_id', horseId)
+        .eq('module', 'protokoll')
+        .order('legacy_row_number', { ascending:true, nullsFirst:false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      const headers = Array.isArray(data?.data?.headers) ? data.data.headers : [];
+      const existingRow = Array.isArray(data?.data?.row) ? data.data.row : [];
+      return { headers, length: Math.max(headers.length, existingRow.length, 40) };
+    }
+
+    async function saveTestEntry() {
+      const btn = document.getElementById('save-btn');
+      const horseId = document.getElementById('horse-select').value;
+      const entryDate = document.getElementById('entry-date').value;
+      const note = document.getElementById('entry-note').value.trim();
+      if (!horseId || !entryDate || !note) {
+        showStatus('write-status', 'Bitte Pferd, Datum und Testnotiz ausfüllen.', 'error');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '⏳ Speichere…';
+      try {
+        const template = await getProtocolTemplate(horseId);
+        const row = new Array(template.length).fill('');
+        row[0] = new Date().toISOString();
+        row[1] = entryDate;
+        row[19] = note;
+        const { data, error } = await client.from('app_entries').insert({
+          horse_id: horseId,
+          module: 'protokoll',
+          entry_date: entryDate,
+          data: { headers: template.headers, row },
+          legacy_source: 'supabase-write-test',
+          created_by: profile.id,
+          updated_by: profile.id
+        }).select('id,entry_date,created_at').single();
+        if (error) throw error;
+        currentTestEntryId = data.id;
+        const horse = horseRows.find(item => item.id === horseId);
+        const box = document.getElementById('test-entry');
+        box.style.display = 'block';
+        box.innerHTML = '<strong>✅ Testeintrag gespeichert</strong>' +
+          '<div>' + (horse?.display_name || 'Pferd') + ' · ' + data.entry_date + '</div>' +
+          '<div>' + note.replace(/[<>&"']/g, '') + '</div>' +
+          '<button id="delete-test-btn" class="danger">Testeintrag wieder löschen</button>';
+        document.getElementById('delete-test-btn').addEventListener('click', deleteTestEntry);
+        showStatus('write-status', 'Insert erfolgreich. Bitte jetzt den Testeintrag wieder löschen.', 'ok');
+      } catch (error) {
+        showStatus('write-status', 'Speichern fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'), 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Testeintrag speichern';
+      }
+    }
+
+    async function deleteTestEntry() {
+      if (!currentTestEntryId) return;
+      const btn = document.getElementById('delete-test-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Lösche…';
+      try {
+        const { error } = await client.from('app_entries').delete().eq('id', currentTestEntryId);
+        if (error) throw error;
+        currentTestEntryId = null;
+        document.getElementById('test-entry').style.display = 'none';
+        showStatus('write-status', 'Insert und Delete funktionieren erfolgreich.', 'ok');
+      } catch (error) {
+        showStatus('write-status', 'Löschen fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'), 'error');
+        btn.disabled = false;
+        btn.textContent = 'Testeintrag wieder löschen';
+      }
+    }
+
+    async function logout() {
+      if (client) await client.auth.signOut().catch(() => {});
+      document.getElementById('write-card').style.display = 'none';
+      document.getElementById('password').value = '';
+      document.getElementById('test-entry').style.display = 'none';
+      currentTestEntryId = null;
+    }
+
+    document.getElementById('login-btn').addEventListener('click', login);
+    document.getElementById('save-btn').addEventListener('click', saveTestEntry);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('password').addEventListener('keydown', event => { if (event.key === 'Enter') login(); });
+  </script>
+</body>
+</html>
