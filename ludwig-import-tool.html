@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ludwig – Datenimport</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --sand:#f5efe0; --warm:#ede0c8; --brown:#7a5c38; --dark:#3b2a1a; --green:#5a7a52; --red:#a03030; --accent:#b8864e; --white:#fffdf8; --border:#d4c4a8; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--sand); color:var(--dark); font-family:Arial,sans-serif; }
+    main { width:min(760px, calc(100% - 28px)); margin:30px auto; }
+    .hero,.card { background:var(--white); border:1px solid var(--border); border-radius:16px; box-shadow:0 3px 12px rgba(58,42,26,.10); }
+    .hero { padding:24px; margin-bottom:16px; background:var(--dark); color:var(--sand); }
+    h1 { margin:0 0 6px; font-family:Georgia,serif; font-size:1.5rem; }
+    h2 { margin:0 0 14px; color:var(--brown); font-family:Georgia,serif; font-size:1.1rem; }
+    p { line-height:1.5; }
+    .hero p { margin:0; opacity:.8; font-size:.9rem; }
+    .card { padding:18px; margin-bottom:16px; }
+    label { display:block; margin:12px 0 6px; color:var(--brown); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+    input { width:100%; padding:11px 12px; border:1.5px solid var(--border); border-radius:9px; background:var(--sand); color:var(--dark); font-size:.92rem; }
+    input:focus { outline:none; border-color:var(--accent); background:var(--white); }
+    button { border:0; border-radius:10px; padding:11px 16px; margin-top:16px; background:var(--dark); color:var(--sand); font-weight:700; cursor:pointer; }
+    button:hover { background:var(--brown); }
+    button.secondary { margin-left:8px; background:transparent; border:1.5px solid var(--border); color:var(--brown); }
+    button:disabled { cursor:wait; opacity:.6; }
+    .hint { color:#777; font-size:.82rem; }
+    .warning { background:#fff3e0; border:1px solid #f0c080; color:#7a5c38; border-radius:10px; padding:11px 13px; font-size:.84rem; line-height:1.45; }
+    .status { display:none; padding:11px 13px; border-radius:10px; margin-top:14px; font-size:.88rem; line-height:1.45; white-space:pre-wrap; }
+    .status.show { display:block; }
+    .status.ok { background:#e8f5e2; border:1px solid #b2d9a0; color:#3f6539; }
+    .status.error { background:#fdecea; border:1px solid #e8a0a0; color:var(--red); }
+    .status.info { background:var(--warm); border:1px solid var(--border); color:var(--brown); }
+    #import-card { display:none; }
+    .progress-wrap { height:13px; margin-top:16px; border-radius:99px; background:var(--warm); overflow:hidden; }
+    .progress { height:100%; width:0; background:var(--green); transition:width .2s ease; }
+    #log { margin-top:14px; max-height:280px; overflow:auto; background:#2b2118; color:#f5efe0; border-radius:10px; padding:12px; font:12px/1.5 monospace; white-space:pre-wrap; }
+    .footer { color:#888; font-size:.78rem; text-align:center; margin-top:18px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>🐴 Ludwig – Datenimport</h1>
+      <p>Einmaliger, idempotenter Import aus Google Sheets nach Supabase.</p>
+    </section>
+
+    <section class="card" id="login-card">
+      <h2>Admin-Login</h2>
+      <p class="hint">Der Import muss als Jana ausgeführt werden. Zugangsdaten und Schlüssel werden nicht gespeichert.</p>
+      <label for="project-url">Supabase Project URL</label>
+      <input id="project-url" value="https://whslkwihrgqmovjnllul.supabase.co" autocomplete="off">
+      <label for="publishable-key">Supabase Publishable Key</label>
+      <input id="publishable-key" type="password" placeholder="sb_publishable_…" autocomplete="off">
+      <label for="username">Benutzername</label>
+      <input id="username" value="jana" autocomplete="username">
+      <label for="password">Passwort</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <button id="login-btn">Als Jana anmelden</button>
+      <div id="login-status" class="status"></div>
+    </section>
+
+    <section class="card" id="import-card">
+      <h2>Google-Sheet-Import</h2>
+      <div class="warning"><strong>Wichtig:</strong> Bitte nur einmal starten. Der Import kann fortgesetzt werden, falls er unterbrochen wird. Bereits importierte Zeilen werden anhand ihrer Quelle und Zeilennummer übersprungen.</div>
+      <label for="script-url">Google Apps Script URL</label>
+      <input id="script-url" value="https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec" autocomplete="off">
+      <label for="sheet-id">Google Sheet ID</label>
+      <input id="sheet-id" value="1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE" autocomplete="off">
+      <button id="import-btn">Alle Daten importieren</button>
+      <button id="logout-btn" class="secondary">Abmelden</button>
+      <div class="progress-wrap"><div id="progress" class="progress"></div></div>
+      <div id="import-status" class="status"></div>
+      <div id="log">Bereit. Noch kein Import gestartet.</div>
+    </section>
+
+    <div class="footer">Google Sheets bleibt unverändert. Der Import legt neue Supabase-Einträge an.</div>
+  </main>
+
+  <script>
+    let client = null;
+    let profile = null;
+
+    const horses = [
+      { slug:'ludwig', dbName:'König Ludwig IV', tabs:{ protokoll:'Ludwig_Protokolle', gesundheit:'Ludwig_Gesundheit', wochenplan:'Ludwig_Wochenplan', futter:'Ludwig_Futter', budget:'Ludwig_Budget', kommandozentrale:'Ludwig_Kommandos', pat:'Ludwig_PAT' } },
+      { slug:'minstel', dbName:'Minstel', tabs:{ protokoll:'Minstrel_Protokolle', gesundheit:'Minstrel_Gesundheit', wochenplan:'Minstrel_Wochenplan', futter:'Minstrel_Futter', budget:'Minstrel_Budget', kommandozentrale:'Minstrel_Kommandos', pat:'Minstrel_PAT' } },
+      { slug:'loki', dbName:'Loki', tabs:{ protokoll:'Loki_Protokolle', gesundheit:'Loki_Gesundheit', wochenplan:'Loki_Wochenplan', futter:'Loki_Futter', budget:'Loki_Budget', kommandozentrale:'Loki_Kommandos', pat:'Loki_PAT' } }
+    ];
+
+    function showStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.className = 'status show ' + type;
+      el.textContent = message;
+    }
+
+    function log(message) {
+      const el = document.getElementById('log');
+      const time = new Date().toLocaleTimeString('de-DE');
+      el.textContent += '\n[' + time + '] ' + message;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function internalEmail(username) {
+      return username.trim().toLowerCase() + '@ludwig-intern.local';
+    }
+
+    function normalizeDate(value) {
+      const text = String(value ?? '').trim();
+      let match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) return match[0];
+      match = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+      if (match) return match[3] + '-' + match[2].padStart(2,'0') + '-' + match[1].padStart(2,'0');
+      return null;
+    }
+
+    function entryDate(row, module) {
+      const preferred = module === 'wochenplan' ? [0,1,2] : module === 'protokoll' || module === 'gesundheit' || module === 'pat' ? [1,0,2] : [0,1,2];
+      for (const index of preferred) {
+        const value = normalizeDate(row[index]);
+        if (value) return value;
+      }
+      return null;
+    }
+
+    function loadLegacyTab(scriptUrl, sheetId, tab) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'ludwigImport_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+        const script = document.createElement('script');
+        const params = new URLSearchParams({ action:'read', sheetId, tab, callback:callbackName });
+        let done = false;
+        const cleanup = () => {
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        window[callbackName] = payload => {
+          if (done) return;
+          done = true;
+          cleanup();
+          resolve(Array.isArray(payload?.data) ? payload.data : []);
+        };
+        script.onerror = () => { if (!done) { done = true; cleanup(); reject(new Error('Google-Sheet-Tab konnte nicht geladen werden: ' + tab)); } };
+        setTimeout(() => { if (!done) { done = true; cleanup(); reject(new Error('Timeout beim Laden von: ' + tab)); } }, 20000);
+        script.src = scriptUrl.replace(/\/+$/, '') + '?' + params.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    async function login() {
+      const btn = document.getElementById('login-btn');
+      const url = document.getElementById('project-url').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+      const key = document.getElementById('publishable-key').value.trim();
+      const username = document.getElementById('username').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+      if (!url || !key || !username || !password) {
+        showStatus('login-status', 'Bitte alle Loginfelder ausfüllen.', 'error');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '⏳ Prüfe…';
+      try {
+        client = window.supabase.createClient(url, key, { auth:{ persistSession:false, autoRefreshToken:false } });
+        const { data: authData, error: authError } = await client.auth.signInWithPassword({ email:internalEmail(username), password });
+        if (authError) throw authError;
+        const { data, error } = await client.from('profiles').select('id,username,display_name,is_admin').eq('auth_user_id', authData.user.id).single();
+        if (error) throw error;
+        if (!data.is_admin) throw new Error('Der Import darf nur als Admin ausgeführt werden.');
+        profile = data;
+        document.getElementById('import-card').style.display = 'block';
+        showStatus('login-status', 'Admin-Login erfolgreich. Import ist bereit.', 'ok');
+      } catch (error) {
+        showStatus('login-status', 'Login fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'), 'error');
+        if (client) await client.auth.signOut().catch(() => {});
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Als Jana anmelden';
+      }
+    }
+
+    async function importAll() {
+      const btn = document.getElementById('import-btn');
+      const scriptUrl = document.getElementById('script-url').value.trim();
+      const sheetId = document.getElementById('sheet-id').value.trim();
+      if (!scriptUrl || !sheetId || !client || !profile) return;
+      btn.disabled = true;
+      btn.textContent = '⏳ Import läuft…';
+      document.getElementById('log').textContent = 'Import gestartet.';
+      showStatus('import-status', 'Import läuft. Bitte dieses Fenster geöffnet lassen.', 'info');
+      document.getElementById('progress').style.width = '0%';
+
+      let totalInserted = 0;
+      let totalSkipped = 0;
+      const tasks = horses.flatMap(horse => Object.entries(horse.tabs).map(([module, tab]) => ({ horse, module, tab })));
+
+      try {
+        for (let taskIndex = 0; taskIndex < tasks.length; taskIndex++) {
+          const { horse, module, tab } = tasks[taskIndex];
+          const source = horse.slug + ':' + tab;
+          log('Lade ' + source + ' …');
+          const rows = await loadLegacyTab(scriptUrl, sheetId, tab);
+          if (!rows.length) {
+            log('Keine Daten in ' + source + '.');
+            document.getElementById('progress').style.width = Math.round(((taskIndex + 1) / tasks.length) * 100) + '%';
+            continue;
+          }
+
+          const { data: horseRow, error: horseError } = await client.from('horses').select('id').eq('slug', horse.slug).single();
+          if (horseError) throw horseError;
+          const headers = Array.isArray(rows[0]) ? rows[0] : [];
+          const dataRows = rows.slice(1).filter(row => Array.isArray(row) && row.some(cell => String(cell ?? '').trim() !== ''));
+
+          const { data: existingRows, error: existingError } = await client
+            .from('app_entries')
+            .select('legacy_row_number')
+            .eq('legacy_source', source)
+            .range(0, 9999);
+          if (existingError) throw existingError;
+          const existing = new Set((existingRows || []).map(row => Number(row.legacy_row_number)));
+          const pending = dataRows.map((row, index) => ({ row, rowNumber:index + 2 })).filter(item => !existing.has(item.rowNumber));
+          totalSkipped += dataRows.length - pending.length;
+
+          const payloads = pending.map(item => ({
+            horse_id: horseRow.id,
+            module,
+            entry_date: entryDate(item.row, module),
+            data: { headers, row: item.row },
+            legacy_source: source,
+            legacy_row_number: item.rowNumber,
+            created_by: profile.id,
+            updated_by: profile.id
+          }));
+
+          for (let start = 0; start < payloads.length; start += 100) {
+            const batch = payloads.slice(start, start + 100);
+            const { error: insertError } = await client.from('app_entries').insert(batch);
+            if (insertError) throw insertError;
+            totalInserted += batch.length;
+            log(source + ': ' + Math.min(start + batch.length, payloads.length) + '/' + payloads.length + ' neue Zeilen importiert.');
+          }
+
+          log(source + ' fertig (' + payloads.length + ' neu, ' + (dataRows.length - payloads.length) + ' übersprungen).');
+          document.getElementById('progress').style.width = Math.round(((taskIndex + 1) / tasks.length) * 100) + '%';
+        }
+        showStatus('import-status', 'Import erfolgreich abgeschlossen: ' + totalInserted + ' neue Zeilen, ' + totalSkipped + ' bereits vorhandene Zeilen übersprungen.', 'ok');
+        log('GESAMT: ' + totalInserted + ' neu, ' + totalSkipped + ' übersprungen.');
+      } catch (error) {
+        showStatus('import-status', 'Import unterbrochen: ' + (error.message || 'Unbekannter Fehler') + '\nDu kannst später erneut starten; bereits importierte Zeilen werden übersprungen.', 'error');
+        log('FEHLER: ' + (error.message || 'Unbekannter Fehler'));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Alle Daten importieren';
+      }
+    }
+
+    async function logout() {
+      if (client) await client.auth.signOut().catch(() => {});
+      document.getElementById('import-card').style.display = 'none';
+      document.getElementById('password').value = '';
+      profile = null;
+    }
+
+    document.getElementById('login-btn').addEventListener('click', login);
+    document.getElementById('import-btn').addEventListener('click', importAll);
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('password').addEventListener('keydown', event => { if (event.key === 'Enter') login(); });
+  </script>
+</body>
+</html>
