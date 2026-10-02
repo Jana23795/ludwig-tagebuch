@@ -1023,12 +1023,6 @@ nav button.supabase-hidden { display:none !important; }
 <input id="g-kosten" placeholder="0.00" step="0.01" style="width:150px" type="number"/>
 <label class="field-label">Notizen</label>
 <textarea id="g-notizen" placeholder="Weitere Anmerkungen…"></textarea>
-<label class="field-label" style="margin-top:16px">Abgeduscht / abgeschwammt?</label>
-<div class="yn-group" id="g-abgeduscht">
-<label onclick="ynSelect('g-abgeduscht','yes')"><input name="g_abgeduscht" type="radio" value="Ja"/> ✅ Ja</label>
-<label onclick="ynSelect('g-abgeduscht','no')"><input name="g_abgeduscht" type="radio" value="Nein"/> ❌ Nein</label>
-</div>
-<input id="g-abgeduscht-kommentar" placeholder="Kommentar dazu…" style="margin-top:8px" type="text"/>
 <button class="btn btn-accent" onclick="saveGesundheit()">✅ Eintrag speichern</button>
 </div>
 <div class="card">
@@ -1463,6 +1457,8 @@ async function renderKommandos() {
       return true;
     });
 
+    const canDeleteCommands = !window.__LUDWIG_SUPABASE_CLIENT__ || supabaseCanManageOwnerArea();
+
     const cats = Array.from(new Set(data.map(d => d.category).filter(Boolean))).sort();
     const catBar = document.getElementById('cmd-categories');
     if (catBar) {
@@ -1483,7 +1479,7 @@ async function renderKommandos() {
             <div style="font-size:0.85rem;color:#777;margin-top:2px"><strong>Signal:</strong> ${c.signal || '—'}</div>
             <div style="font-size:0.78rem;color:var(--brown);margin-top:6px">${[c.contexts,c.category].filter(Boolean).join(' · ')}</div>
           </div>
-          <button class="btn-delete" onclick="deleteCommand(${c._rowIndex})">🗑️</button>
+          ${canDeleteCommands ? `<button class="btn-delete" onclick="deleteCommand(${c._rowIndex})">🗑️</button>` : ''}
         </div>
         ${c.fehler ? `<div style="margin-top:10px;font-size:0.82rem"><strong>Fehlerbild:</strong> ${c.fehler}</div>` : ''}
         ${c.audioLink ? `<div style="margin-top:10px"><a class="btn-toggle" href="${c.audioLink}" target="_blank" rel="noopener" style="display:inline-block">🔊 Audio öffnen</a></div>` : ''}
@@ -2110,13 +2106,6 @@ function editGesundheitEntry(sheetRowIndex) {
   $('g-naechster').value = extractDateKey_(r[6]) || r[6] || '';
   $('g-kosten').value = r[7] || '';
   $('g-notizen').value = r[8] || '';
-  const abgeduscht = r[9] || '';
-  const abgeduschtRadio = document.querySelector(`input[name="g_abgeduscht"][value="${abgeduscht}"]`);
-  if (abgeduschtRadio) {
-    abgeduschtRadio.checked = true;
-    ynSelect('g-abgeduscht', abgeduscht === 'Ja' ? 'yes' : 'no');
-  }
-  $('g-abgeduscht-kommentar').value = r[10] || '';
   editingGesundheitRowIndex = sheetRowIndex;
   showToast('✏️ Bearbeiten aktiv');
 }
@@ -2192,8 +2181,10 @@ async function saveGesundheit() {
   const naechster = String($('g-naechster').value || '').trim();
   const kostenRaw = String($('g-kosten').value || '').trim();
   const notizen = String($('g-notizen').value || '').trim();
-  const abgeduscht = getRadio('g_abgeduscht');
-  const abgeduschtKommentar = String($('g-abgeduscht-kommentar').value || '').trim();
+  // Die Dusch-/Abschwamm-Angabe gehört ausschließlich ins Training.
+  // Leere Platzhalter erhalten die bisherige Gesundheitsspaltenstruktur.
+  const abgeduscht = '';
+  const abgeduschtKommentar = '';
 
   const row = [
     new Date().toISOString(),
@@ -2250,9 +2241,7 @@ await appendRow(HORSES[currentHorse].tabs.gesundheit, row);
       notizen: noteParts.join(' | ')
     });
 
-    ['g-datum','g-person','g-befund','g-behandlung','g-naechster','g-kosten','g-notizen','g-abgeduscht-kommentar'].forEach(id => $(id).value = '');
-    document.querySelectorAll('#g-abgeduscht label').forEach(l => l.classList.remove('checked-yes', 'checked-no'));
-    document.querySelectorAll('input[name="g_abgeduscht"]').forEach(r => r.checked = false);
+    ['g-datum','g-person','g-befund','g-behandlung','g-naechster','g-kosten','g-notizen'].forEach(id => $(id).value = '');
     $('g-art').value = '';
     showToast('✅ Gesundheitseintrag gespeichert!');
     renderGesundheit();
@@ -2302,8 +2291,6 @@ async function renderGesundheit() {
       const behandlung = r[5 + off];
       const naechster = r[6 + off];
       const kosten = r[7 + off];
-      const abgeduscht = r[9 + off];
-      const abgeduschtKommentar = r[10 + off];
 
       const costNum = parseFloat(String(kosten ?? '').replace(',', '.'));
       const costLine = (kosten !== undefined && kosten !== null && String(kosten).trim() !== '' && !isNaN(costNum))
@@ -2318,7 +2305,6 @@ async function renderGesundheit() {
           ${befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${befund}</div>` : ''}
           ${behandlung ? `<div style="font-size:0.82rem">💊 ${behandlung}</div>` : ''}
           ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(extractDateKey_(naechster) || naechster)}</div>` : ''}
-          ${abgeduscht ? `<div style="font-size:0.82rem;margin-top:4px">🚿 Abgeduscht / abgeschwammt: ${abgeduscht}${abgeduschtKommentar ? ' · ' + abgeduschtKommentar : ''}</div>` : ''}
           ${costLine}
               <div style="display:flex;gap:8px;margin-top:8px">
                 <button class="day-edit-btn" style="padding:6px 10px;font-size:0.75rem" onclick="editGesundheitEntry(${sheetRowIndex})">✏️ Bearbeiten</button>
@@ -3155,8 +3141,13 @@ function updatePATAmpel() {
 function patReadRows(rows) {
   const first = rows && rows[0] ? rows[0] : [];
   const looksHeader = Array.isArray(first) && String(first[0]||'').toLowerCase().includes('timestamp');
-  patState.hasHeader = looksHeader;
-  const start = looksHeader ? 1 : 0;
+  // Supabase liefert auch ohne gespeicherte Header eine virtuelle erste Zeile.
+  // Sie muss für die Lösch-ID wie ein Header behandelt werden.
+  const looksVirtualSupabaseHeader = Boolean(window.__LUDWIG_SUPABASE_CLIENT__)
+    && Array.isArray(first)
+    && first.length === 0;
+  patState.hasHeader = looksHeader || looksVirtualSupabaseHeader;
+  const start = patState.hasHeader ? 1 : 0;
   return (rows || []).slice(start).filter(r => Array.isArray(r) && r.some(x => String(x??'').trim() !== '')).map((r,i) => ({
     _rowIndex: i + start + 1, ts:r[0]||'', datum:r[1]||'', temp:r[2]||'', puls:r[3]||'', atmung:r[4]||'', schleimhaut:r[5]||'', krz:r[6]||'',
     darmLo:r[7]||'', darmRo:r[8]||'', darmLu:r[9]||'', darmRu:r[10]||'', haut:r[11]||'', muskulatur:r[12]||'', verhalten:r[13]||'', augen:r[14]||'',
@@ -3235,7 +3226,7 @@ async function savePAT() {
     const existing=await loadSheet(tab);
     const hasData=existing && existing.some(r=>Array.isArray(r)&&r.some(x=>String(x??'').trim()!==''));
     const hasHeader=hasData && Array.isArray(existing[0]) && String(existing[0][0]||'').toLowerCase().includes('timestamp');
-    if(!hasData) await appendRow(tab,PAT_HEADERS);
+    if(!hasData && !window.__LUDWIG_SUPABASE_CLIENT__) await appendRow(tab,PAT_HEADERS);
     await appendRow(tab,row);
     showToast('✅ PAT-Check gespeichert!');
     patResetForm();
@@ -3965,7 +3956,7 @@ async function loadSheetFromSupabase(tab) {
   if (!window.__LUDWIG_HORSE_IDS.includes(horse.id)) return [];
   const { data: entries, error } = await client
     .from('app_entries')
-    .select('id,data,legacy_row_number,entry_date,created_at')
+    .select('id,data,legacy_row_number,legacy_source,entry_date,created_at')
     .eq('horse_id', horse.id)
     .eq('module', info.module)
     .order('legacy_row_number', { ascending:true, nullsFirst:false })
@@ -3978,10 +3969,39 @@ async function loadSheetFromSupabase(tab) {
     return [];
   }
   const headers = Array.isArray(entries[0]?.data?.headers) ? entries[0].data.headers : [];
-  const rows = entries.map(entry => Array.isArray(entry?.data?.row) ? entry.data.row : []);
+  const visibleEntries = entries.filter(entry => {
+    // Ältere Supabase-App-Versionen haben beim ersten PAT-Speichern
+    // die Tabellenüberschrift als echten Datensatz angelegt.
+    const row = entry?.data?.row;
+    const isStoredPatHeader = info.module === 'pat'
+      && String(entry?.legacy_source || '') === 'supabase-app'
+      && Array.isArray(row)
+      && row[0] === 'Timestamp'
+      && row[1] === 'Datum';
+    return !isStoredPatHeader;
+  });
+  const rows = visibleEntries.map(entry => {
+    const row = Array.isArray(entry?.data?.row) ? entry.data.row.slice() : [];
+
+    // Historische Google-Sheet-Futterzeilen verwenden 1 = Januar ... 12 = Dezember.
+    // Neue Supabase-Einträge werden dagegen mit 0 = Januar ... 11 = Dezember gespeichert.
+    // Nur echte Legacy-Importe umrechnen, damit neue Einträge nicht verschoben werden.
+    const isLegacyFutterImport = info.module === 'futter'
+      && !String(entry?.legacy_source || '').startsWith('supabase-app')
+      && entry?.data?.month_index_normalized !== true;
+
+    if (isLegacyFutterImport) {
+      const legacyMonth = Number.parseInt(String(row[0] ?? '').trim(), 10);
+      if (Number.isInteger(legacyMonth) && legacyMonth >= 1 && legacyMonth <= 12) {
+        row[0] = legacyMonth - 1;
+      }
+    }
+
+    return row;
+  });
   window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
   const rowMap = [];
-  entries.forEach((entry, index) => { rowMap[index + 2] = entry.id; });
+  visibleEntries.forEach((entry, index) => { rowMap[index + 2] = entry.id; });
   window.__LUDWIG_ROW_MAP_BY_TAB[tab] = rowMap;
   return normalizeImportedRows([headers, ...rows], info.module);
 }
