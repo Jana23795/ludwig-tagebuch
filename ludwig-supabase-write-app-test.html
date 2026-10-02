@@ -856,9 +856,9 @@ nav button.supabase-hidden { display:none !important; }
 </div>
 <label class="field-label" style="margin-top:16px">🚿 ABGEDUSCHT / GEWASCHEN</label>
 <div class="check-group" id="t-abgeduscht" style="gap:8px">
-<label onclick="singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Abgeduscht"/><span>🚿 Abgeduscht</span></label>
-<label onclick="singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Gewaschen"/><span>🧴 Gewaschen</span></label>
-<label onclick="singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Warm abgeschwammt"/><span>🧽 Warm abgeschwammt</span></label>
+<label onclick="event.preventDefault(); singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Abgeduscht"/><span>🚿 Abgeduscht</span></label>
+<label onclick="event.preventDefault(); singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Gewaschen"/><span>🧴 Gewaschen</span></label>
+<label onclick="event.preventDefault(); singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Warm abgeschwammt"/><span>🧽 Warm abgeschwammt</span></label>
 </div>
 </div>
 <div class="card">
@@ -3207,7 +3207,8 @@ function updatePATReminder(entries) {
   if(nav){ nav.style.display=overdue?'inline-flex':'none'; nav.textContent=latest?'!':'NEU'; nav.className='pat-nav-badge'+(overdue?'':' ok'); }
   if(!rem)return;
   rem.style.display='flex';
-  if(!latest){ rem.className='pat-reminder'; rem.innerHTML='<span class="pat-reminder-icon">🔔</span><div><strong>Noch kein PAT-Check gespeichert</strong><br><span>Ein erster Check legt Ludwigs aktuellen Status quo an.</span></div>'; }
+  const horseName = HORSES[currentHorse]?.display || 'Dieses Pferd';
+  if(!latest){ rem.className='pat-reminder'; rem.innerHTML=`<span class="pat-reminder-icon">🔔</span><div><strong>Noch kein PAT-Check für ${horseName} gespeichert</strong><br><span>Ein erster Check legt ${horseName}s aktuellen Status quo an.</span></div>`; }
   else if(overdue){ rem.className='pat-reminder'; rem.innerHTML=`<span class="pat-reminder-icon">🔔</span><div><strong>Wöchentlicher PAT-Check fällig</strong><br><span>Letzter Check: ${patFormatDate(latest.datum)}${Number.isFinite(days)?` · vor ${days} Tagen`:''}</span></div>`; }
   else { rem.className='pat-reminder ok'; rem.innerHTML=`<span class="pat-reminder-icon">✅</span><div><strong>PAT-Check aktuell</strong><br><span>Letzter Check: ${patFormatDate(latest.datum)} · nächster Check in ungefähr ${Math.max(0,7-days)} Tagen.</span></div>`; }
 }
