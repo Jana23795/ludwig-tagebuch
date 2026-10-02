@@ -1271,6 +1271,7 @@ function setHorse(key) {
   }
 
   renderProfile();
+  if (typeof applySupabaseModuleVisibility === 'function') applySupabaseModuleVisibility();
 
   // Alle aktiven Seiten neu laden
   const active = document.querySelector('.page.active');
