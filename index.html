@@ -3916,6 +3916,8 @@ function dashboardParseProtokolls(rows) {
       rueckenempfindlichkeit: parseFloat(r[37]) || null,
       rueckenbeweglichkeit: parseFloat(r[38]) || null,
       aufgegessen: r[30] || '',
+      eingedeckt: r[33] || '',
+      decke_gramm: parseFloat(r[35]) || null,
     }));
 }
 
@@ -3981,6 +3983,14 @@ function dashboardVerdScore(s) {
   if (!s) return null;
   const emoji = s.split(' ')[0];
   return DASHBOARD_VERD_SCORE[emoji] ?? null;
+}
+
+// ─── Atmung → Score ─────────────────────────────────────────────────────────
+const DASHBOARD_ATMUNG_SCORE = { '🦄': 5, '🌬️': 4, '😮‍💨': 3, '🫁': 2, '🚨': 1 };
+function dashboardAtmungScore(s) {
+  if (!s) return null;
+  const emoji = s.split(' ')[0];
+  return DASHBOARD_ATMUNG_SCORE[emoji] ?? null;
 }
 
 // ─── Render: Letztes Training ────────────────────────────────────────────────
@@ -4324,70 +4334,171 @@ function dashboardRenderMood(entries, days) {
 // ─── Render: Beobachtungen ────────────────────────────────────────────────────
 function dashboardRenderObservations(entries, days) {
   const section = $('dashboard-obs-section');
-  const period = dashboardFilterByPeriod(entries, days);
+  const period  = dashboardFilterByPeriod(entries, days);
   const trainings = dashboardUniqueTrainingDays(period);
   const obs = [];
-
-  // Mindestanzahl für Aussagen
   const MIN = 4;
+  const periodLabel = `den letzten ${days} Tagen`;
 
-  // 1. Futterplan-Trend
-  const last7 = dashboardFilterByPeriod(entries, 7);
-  const futterJa7 = last7.filter(e => e.futter_plan === 'Ja').length;
-  const futterTotal7 = last7.filter(e => e.futter_plan).length;
-  if (futterTotal7 >= 3) {
-    const p = dashboardPct(futterJa7, futterTotal7);
-    if (p >= 90) obs.push({ type: 'positive', text: `✅ Futterplan: In den letzten 7 Tagen wurde er zu ${p} % eingehalten (${futterJa7} von ${futterTotal7} Tagen).` });
-    else if (p < 60) obs.push({ type: 'caution', text: `⚠️ Futterplan: In den letzten 7 Tagen nur zu ${p} % eingehalten (${futterJa7} von ${futterTotal7} Tagen).` });
+  // ── 1. Futterplan-Trend (gewählter Zeitraum) ────────────────────────────────
+  const futterJa    = period.filter(e => e.futter_plan === 'Ja').length;
+  const futterTotal = period.filter(e => e.futter_plan).length;
+  if (futterTotal >= 3) {
+    const p = dashboardPct(futterJa, futterTotal);
+    if (p >= 90) obs.push({ type: 'positive', text: `✅ Futterplan: In ${periodLabel} zu ${p} % eingehalten (${futterJa} von ${futterTotal} Tagen).` });
+    else if (p < 60) obs.push({ type: 'caution', text: `⚠️ Futterplan: In ${periodLabel} nur zu ${p} % eingehalten (${futterJa} von ${futterTotal} Tagen).` });
   }
 
-  // 2. Aufgegessen-Trend
-  const aufgegJa7 = last7.filter(e => e.aufgegessen === 'Ja').length;
-  const aufgegTotal7 = last7.filter(e => e.aufgegessen).length;
-  if (aufgegTotal7 >= 3) {
-    const p = dashboardPct(aufgegJa7, aufgegTotal7);
-    if (p >= 90) obs.push({ type: 'positive', text: `✅ Aufgegessen: In den letzten 7 Tagen zu ${p} % vollständig gefressen (${aufgegJa7} von ${aufgegTotal7} Tagen).` });
-    else if (p < 60) obs.push({ type: 'caution', text: `⚠️ Aufgegessen: In den letzten 7 Tagen nur zu ${p} % vollständig gefressen – Appetit beobachten.` });
+  // ── 2. Aufgegessen-Trend (gewählter Zeitraum) ───────────────────────────────
+  const aufgegJa    = period.filter(e => e.aufgegessen === 'Ja').length;
+  const aufgegTotal = period.filter(e => e.aufgegessen).length;
+  if (aufgegTotal >= 3) {
+    const p = dashboardPct(aufgegJa, aufgegTotal);
+    if (p >= 90) obs.push({ type: 'positive', text: `✅ Aufgegessen: In ${periodLabel} zu ${p} % vollständig gefressen (${aufgegJa} von ${aufgegTotal} Tagen).` });
+    else if (p < 60) obs.push({ type: 'caution', text: `⚠️ Aufgegessen: In ${periodLabel} nur zu ${p} % vollständig gefressen – Appetit beobachten.` });
   }
 
-  // 3. Verdauung vs. Wetter
-  const wetterGruppen = {};
+  // ── 3. Verdauung vs. Wetter ─────────────────────────────────────────────────
+  const verdWetterGruppen = {};
   period.filter(e => e.wetter && e.verdauung).forEach(e => {
-    const w = e.wetter;
-    if (!wetterGruppen[w]) wetterGruppen[w] = [];
-    wetterGruppen[w].push(dashboardVerdScore(e.verdauung));
+    if (!verdWetterGruppen[e.wetter]) verdWetterGruppen[e.wetter] = [];
+    verdWetterGruppen[e.wetter].push(dashboardVerdScore(e.verdauung));
   });
-  let bestWetter = null, worstWetter = null;
-  Object.entries(wetterGruppen).forEach(([w, scores]) => {
+  let bestVerdWetter = null, worstVerdWetter = null;
+  Object.entries(verdWetterGruppen).forEach(([w, scores]) => {
     if (scores.length < MIN) return;
     const m = dashboardAvg(scores);
-    if (!bestWetter || m > bestWetter.score) bestWetter = { wetter: w, score: m, n: scores.length };
-    if (!worstWetter || m < worstWetter.score) worstWetter = { wetter: w, score: m, n: scores.length };
+    if (!bestVerdWetter  || m > bestVerdWetter.score)  bestVerdWetter  = { wetter: w, score: m, n: scores.length };
+    if (!worstVerdWetter || m < worstVerdWetter.score) worstVerdWetter = { wetter: w, score: m, n: scores.length };
   });
-  if (bestWetter && bestWetter.score >= 4) {
-    obs.push({ type: 'positive', text: `🌤️ Verdauung bei ${bestWetter.wetter}: Ø ${bestWetter.score.toFixed(1)} / 5 – tendenziell gut (${bestWetter.n} Tage).` });
+  if (bestVerdWetter && bestVerdWetter.score >= 4) {
+    obs.push({ type: 'positive', text: `💚 Verdauung bei ${bestVerdWetter.wetter}: Ø ${bestVerdWetter.score.toFixed(1)} / 5 – tendenziell gut (${bestVerdWetter.n} Tage).` });
   }
-  if (worstWetter && worstWetter.score <= 3 && worstWetter.wetter !== bestWetter?.wetter) {
-    obs.push({ type: 'caution', text: `🌧️ Verdauung bei ${worstWetter.wetter}: Ø ${worstWetter.score.toFixed(1)} / 5 – tendenziell auffälliger (${worstWetter.n} Tage).` });
+  if (worstVerdWetter && worstVerdWetter.score <= 3 && worstVerdWetter.wetter !== bestVerdWetter?.wetter) {
+    obs.push({ type: 'caution', text: `🟠 Verdauung bei ${worstVerdWetter.wetter}: Ø ${worstVerdWetter.score.toFixed(1)} / 5 – tendenziell auffälliger (${worstVerdWetter.n} Tage).` });
   }
 
-  // 4. Therapie am Vortag → Losgelassenheit
+  // ── 4. Atmung vs. Wetter ────────────────────────────────────────────────────
+  const atmWetterGruppen = {};
+  period.filter(e => e.wetter && e.atmung).forEach(e => {
+    if (!atmWetterGruppen[e.wetter]) atmWetterGruppen[e.wetter] = [];
+    const sc = dashboardAtmungScore(e.atmung);
+    if (sc !== null) atmWetterGruppen[e.wetter].push(sc);
+  });
+  let bestAtmWetter = null, worstAtmWetter = null;
+  Object.entries(atmWetterGruppen).forEach(([w, scores]) => {
+    if (scores.length < MIN) return;
+    const m = dashboardAvg(scores);
+    if (!bestAtmWetter  || m > bestAtmWetter.score)  bestAtmWetter  = { wetter: w, score: m, n: scores.length };
+    if (!worstAtmWetter || m < worstAtmWetter.score) worstAtmWetter = { wetter: w, score: m, n: scores.length };
+  });
+  if (bestAtmWetter && bestAtmWetter.score >= 4) {
+    obs.push({ type: 'positive', text: `🫁 Atmung bei ${bestAtmWetter.wetter}: Ø ${bestAtmWetter.score.toFixed(1)} / 5 – tendenziell ruhig (${bestAtmWetter.n} Tage).` });
+  }
+  if (worstAtmWetter && worstAtmWetter.score <= 3 && worstAtmWetter.wetter !== bestAtmWetter?.wetter) {
+    obs.push({ type: 'caution', text: `🫁 Atmung bei ${worstAtmWetter.wetter}: Ø ${worstAtmWetter.score.toFixed(1)} / 5 – tendenziell auffälliger (${worstAtmWetter.n} Tage).` });
+  }
+
+  // ── 5. Atmung vs. Temperatur (kalt / mild / warm) ──────────────────────────
+  const atmTempGruppen = { kalt: [], mild: [], warm: [] };
+  period.filter(e => e.temp !== null && e.atmung).forEach(e => {
+    const sc = dashboardAtmungScore(e.atmung);
+    if (sc === null) return;
+    if (e.temp < 5)       atmTempGruppen.kalt.push(sc);
+    else if (e.temp < 18) atmTempGruppen.mild.push(sc);
+    else                  atmTempGruppen.warm.push(sc);
+  });
+  const atmTempAvg = {};
+  Object.entries(atmTempGruppen).forEach(([k, v]) => { if (v.length >= MIN) atmTempAvg[k] = { avg: dashboardAvg(v), n: v.length }; });
+  if (Object.keys(atmTempAvg).length >= 2) {
+    const sorted = Object.entries(atmTempAvg).sort((a,b) => b[1].avg - a[1].avg);
+    const best  = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const label = { kalt: 'Kälte (<5 °C)', mild: 'milden Temperaturen (5–18 °C)', warm: 'Wärme (>18 °C)' };
+    if (best[1].avg - worst[1].avg >= 0.5) {
+      obs.push({ type: 'neutral', text: `🌡️ Atmung & Temperatur: Besser bei ${label[best[0]]} (Ø ${best[1].avg.toFixed(1)}, ${best[1].n} Tage), auffälliger bei ${label[worst[0]]} (Ø ${worst[1].avg.toFixed(1)}, ${worst[1].n} Tage).` });
+    }
+  }
+
+  // ── 6. Rückenempfindlichkeit vs. Wetter ────────────────────────────────────
+  const rueckWetterGruppen = {};
+  period.filter(e => e.wetter && e.rueckenempfindlichkeit !== null).forEach(e => {
+    if (!rueckWetterGruppen[e.wetter]) rueckWetterGruppen[e.wetter] = [];
+    rueckWetterGruppen[e.wetter].push(e.rueckenempfindlichkeit);
+  });
+  // Hoher Wert = weniger empfindlich (Skala 1–10, 10 = unempfindlich)
+  let bestRueckWetter = null, worstRueckWetter = null;
+  Object.entries(rueckWetterGruppen).forEach(([w, scores]) => {
+    if (scores.length < MIN) return;
+    const m = dashboardAvg(scores);
+    if (!bestRueckWetter  || m > bestRueckWetter.score)  bestRueckWetter  = { wetter: w, score: m, n: scores.length };
+    if (!worstRueckWetter || m < worstRueckWetter.score) worstRueckWetter = { wetter: w, score: m, n: scores.length };
+  });
+  if (bestRueckWetter && worstRueckWetter && bestRueckWetter.wetter !== worstRueckWetter.wetter) {
+    const diff = bestRueckWetter.score - worstRueckWetter.score;
+    if (diff >= 1) {
+      obs.push({ type: 'neutral', text: `🐴 Rücken & Wetter: Weniger empfindlich bei ${bestRueckWetter.wetter} (Ø ${bestRueckWetter.score.toFixed(1)}/10, ${bestRueckWetter.n} Tage), empfindlicher bei ${worstRueckWetter.wetter} (Ø ${worstRueckWetter.score.toFixed(1)}/10, ${worstRueckWetter.n} Tage).` });
+    }
+  }
+
+  // ── 7. Rückenempfindlichkeit vs. Temperatur ─────────────────────────────────
+  const rueckTempGruppen = { kalt: [], mild: [], warm: [] };
+  period.filter(e => e.temp !== null && e.rueckenempfindlichkeit !== null).forEach(e => {
+    if (e.temp < 5)       rueckTempGruppen.kalt.push(e.rueckenempfindlichkeit);
+    else if (e.temp < 18) rueckTempGruppen.mild.push(e.rueckenempfindlichkeit);
+    else                  rueckTempGruppen.warm.push(e.rueckenempfindlichkeit);
+  });
+  const rueckTempAvg = {};
+  Object.entries(rueckTempGruppen).forEach(([k, v]) => { if (v.length >= MIN) rueckTempAvg[k] = { avg: dashboardAvg(v), n: v.length }; });
+  if (Object.keys(rueckTempAvg).length >= 2) {
+    const sorted = Object.entries(rueckTempAvg).sort((a,b) => b[1].avg - a[1].avg);
+    const best  = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const label = { kalt: 'Kälte (<5 °C)', mild: 'milden Temperaturen (5–18 °C)', warm: 'Wärme (>18 °C)' };
+    if (best[1].avg - worst[1].avg >= 1) {
+      obs.push({ type: 'neutral', text: `🌡️ Rücken & Temperatur: Weniger empfindlich bei ${label[best[0]]} (Ø ${best[1].avg.toFixed(1)}/10, ${best[1].n} Tage), empfindlicher bei ${label[worst[0]]} (Ø ${worst[1].avg.toFixed(1)}/10, ${worst[1].n} Tage).` });
+    }
+  }
+
+  // ── 8. Deckengramm vs. Rückenempfindlichkeit am Folgetag ───────────────────
   const byDate = {};
-  entries.forEach(e => { byDate[e.datum] = e; });
+  entries.forEach(e => { byDate[String(e.datum || '').slice(0,10)] = e; });
+  const deckeLeicht = [], deckeMittel = [], deckeSchwer = [];
+  period.filter(e => e.decke_gramm !== null && e.eingedeckt === 'Ja').forEach(e => {
+    const d = dashboardDateFromKey(e.datum);
+    if (!d) return;
+    const next = new Date(d); next.setDate(next.getDate() + 1);
+    const nextEntry = byDate[dashboardIsoDate(next)];
+    if (!nextEntry || nextEntry.rueckenempfindlichkeit === null) return;
+    const val = nextEntry.rueckenempfindlichkeit;
+    if (e.decke_gramm < 100)       deckeLeicht.push(val);
+    else if (e.decke_gramm < 300)  deckeMittel.push(val);
+    else                           deckeSchwer.push(val);
+  });
+  const deckeAvg = {};
+  if (deckeLeicht.length >= MIN) deckeAvg.leicht = { avg: dashboardAvg(deckeLeicht), n: deckeLeicht.length, label: 'leichte Decke (<100 g)' };
+  if (deckeMittel.length >= MIN) deckeAvg.mittel = { avg: dashboardAvg(deckeMittel), n: deckeMittel.length, label: 'mittlere Decke (100–300 g)' };
+  if (deckeSchwer.length >= MIN) deckeAvg.schwer = { avg: dashboardAvg(deckeSchwer), n: deckeSchwer.length, label: 'schwere Decke (>300 g)' };
+  if (Object.keys(deckeAvg).length >= 2) {
+    const sorted = Object.values(deckeAvg).sort((a,b) => b.avg - a.avg);
+    const best  = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    if (best.avg - worst.avg >= 1) {
+      obs.push({ type: 'neutral', text: `🧥 Decke & Rücken: Nach ${best.label} am Folgetag weniger empfindlich (Ø ${best.avg.toFixed(1)}/10, ${best.n}×), nach ${worst.label} empfindlicher (Ø ${worst.avg.toFixed(1)}/10, ${worst.n}×).` });
+    }
+  }
+
+  // ── 9. Therapie am Vortag → Losgelassenheit ────────────────────────────────
   const withTherapyPrev = [], withoutTherapyPrev = [];
   trainings.forEach(e => {
     const d = dashboardDateFromKey(e.datum);
     if (!d) return;
     const prev = new Date(d); prev.setDate(prev.getDate() - 1);
-    const prevKey = dashboardIsoDate(prev);
-    const prevEntry = byDate[prevKey];
-    if (prevEntry && prevEntry.therapie) {
-      withTherapyPrev.push(e.losgelassenheit);
-    } else {
-      withoutTherapyPrev.push(e.losgelassenheit);
-    }
+    const prevEntry = byDate[dashboardIsoDate(prev)];
+    if (prevEntry && prevEntry.therapie) withTherapyPrev.push(e.losgelassenheit);
+    else withoutTherapyPrev.push(e.losgelassenheit);
   });
-  const avgWith = dashboardAvg(withTherapyPrev.filter(Boolean));
+  const avgWith    = dashboardAvg(withTherapyPrev.filter(Boolean));
   const avgWithout = dashboardAvg(withoutTherapyPrev.filter(Boolean));
   if (withTherapyPrev.length >= MIN && withoutTherapyPrev.length >= MIN && avgWith != null && avgWithout != null) {
     const diff = avgWith - avgWithout;
@@ -4399,19 +4510,19 @@ function dashboardRenderObservations(entries, days) {
     }
   }
 
-  // 5. Trainingsfrequenz: distinct training dates / exact selected calendar window.
+  // ── 10. Trainingsfrequenz ───────────────────────────────────────────────────
   const uniqueTrainingDays = new Set(trainings.map(e => String(e.datum || '').slice(0,10)).filter(Boolean)).size;
   const freq = Math.min(7, uniqueTrainingDays / days * 7).toFixed(1);
-  obs.push({ type: 'neutral', text: `📅 Trainingsfrequenz: Ø ${freq} Trainingstage pro Woche (${uniqueTrainingDays} unterschiedliche Trainingstage in den letzten ${days} Kalendertagen).` });
+  obs.push({ type: 'neutral', text: `📅 Trainingsfrequenz: Ø ${freq} Trainingstage pro Woche (${uniqueTrainingDays} Trainingstage in ${periodLabel}).` });
 
-  // 6. Verletzungen
+  // ── 11. Verletzungen ────────────────────────────────────────────────────────
   const verletzungen = period.filter(e => e.verletzung === 'Ja');
   if (verletzungen.length > 0) {
-    obs.push({ type: 'caution', text: `⚠️ ${verletzungen.length} Verletzung${verletzungen.length > 1 ? 'en' : ''} im Zeitraum dokumentiert.` });
+    obs.push({ type: 'caution', text: `⚠️ ${verletzungen.length} Verletzung${verletzungen.length > 1 ? 'en' : ''} in ${periodLabel} dokumentiert.` });
   }
 
-  // 7. Bester Schieber
-  const sliderKeys = ['energie', 'losgelassenheit', 'durchlaessigkeit', 'verlauf_einheit', 'verfassung', 'kooperation'];
+  // ── 12. Bester Schieber ─────────────────────────────────────────────────────
+  const sliderKeys   = ['energie', 'losgelassenheit', 'durchlaessigkeit', 'verlauf_einheit', 'verfassung', 'kooperation'];
   const sliderLabels = { energie: 'Energie', losgelassenheit: 'Losgelassenheit', durchlaessigkeit: 'Durchlässigkeit', verlauf_einheit: 'Verlauf', verfassung: 'Verfassung', kooperation: 'Kooperation' };
   let bestSlider = null;
   sliderKeys.forEach(k => {
@@ -4436,6 +4547,7 @@ function dashboardRenderObservations(entries, days) {
     </div>
   `;
 }
+
 
 // ─── Haupt-Render ─────────────────────────────────────────────────────────────
 async function renderDashboard() {
