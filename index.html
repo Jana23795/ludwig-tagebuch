@@ -513,6 +513,27 @@ nav button.supabase-hidden { display:none !important; }
 @media(max-width:520px) { .dashboard-page .dashboard-trend-grid { grid-template-columns:1fr; } }
 </style>
 
+
+<style>
+.dashboard-page .dashboard-reminder-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.dashboard-page .dashboard-reminder-group { border:1px solid var(--border); border-radius:11px; background:var(--sand); padding:11px; min-width:0; }
+.dashboard-page .dashboard-reminder-group h4 { color:var(--brown); font-family:'Playfair Display',serif; font-size:.88rem; margin-bottom:8px; }
+.dashboard-page .dashboard-reminder-list { display:grid; gap:8px; }
+.dashboard-page .dashboard-reminder-item { background:var(--white); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:0 9px 9px 0; padding:9px 10px; }
+.dashboard-page .dashboard-reminder-item.overdue { border-left-color:var(--red); }
+.dashboard-page .dashboard-reminder-item.booked { border-left-color:var(--green); }
+.dashboard-page .dashboard-reminder-title { color:var(--dark); font-weight:700; font-size:.8rem; }
+.dashboard-page .dashboard-reminder-meta { color:var(--brown); font-size:.72rem; margin-top:3px; line-height:1.4; }
+.dashboard-page .dashboard-reminder-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.dashboard-page .dashboard-reminder-actions button { border:1px solid var(--border); border-radius:7px; background:var(--sand); color:var(--dark); padding:5px 8px; font:600 .7rem 'DM Sans',sans-serif; cursor:pointer; }
+.dashboard-page .dashboard-reminder-actions button:hover { border-color:var(--accent); }
+.dashboard-page .dashboard-reminder-actions button.primary { background:var(--dark); border-color:var(--dark); color:white; }
+.dashboard-page .dashboard-reminder-archive { margin-top:10px; color:var(--brown); font-size:.75rem; }
+.dashboard-page .dashboard-reminder-archive summary { cursor:pointer; font-weight:700; padding:6px 0; }
+.dashboard-page .dashboard-reminder-archive .dashboard-reminder-item { margin-top:6px; border-left-color:var(--green); }
+@media(max-width:560px) { .dashboard-page .dashboard-reminder-groups { grid-template-columns:1fr; } }
+</style>
+
 </head>
 <body>
 
@@ -687,6 +708,12 @@ nav button.supabase-hidden { display:none !important; }
   <div class="dashboard-card">
     <div class="dashboard-card-title">📅 Heute im Wochenplan</div>
     <div id="dashboard-today-box"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Fälligkeiten und bestätigte Termine -->
+  <div class="dashboard-card dashboard-reminders-card">
+    <div class="dashboard-card-title">⏰ Termine &amp; Erinnerungen <span class="dashboard-badge" id="dashboard-reminders-horse">–</span></div>
+    <div id="dashboard-reminders-section"><div class="dashboard-loader">⏳ Lade Erinnerungen …</div></div>
   </div>
 
   <!-- Kennzahlen -->
@@ -958,6 +985,7 @@ nav button.supabase-hidden { display:none !important; }
 <label><input type="checkbox" value="Kappzaum"/><span>🎯 Kappzaum</span></label>
 <label><input type="checkbox" value="Halsring"/><span>⭕ Halsring</span></label>
 <label><input type="checkbox" value="Glücksrad"/><span>🎡 Glücksrad</span></label>
+<label><input type="checkbox" value="Mobility Bridle"/><span>🐴 Mobility Bridle</span></label>
 <label><input type="checkbox" value="Ohne Zäumung"/><span>🕊️ Ohne Zäumung</span></label>
 </div>
 <input id="t-zaeum-sonstige" placeholder="Sonstige Zäumung…" style="margin-top:8px" type="text"/>
@@ -1219,8 +1247,19 @@ nav button.supabase-hidden { display:none !important; }
 <textarea id="g-befund" placeholder="Was wurde festgestellt?"></textarea>
 <label class="field-label">Behandlung / Maßnahmen</label>
 <textarea id="g-behandlung" placeholder="Was wurde gemacht?"></textarea>
-<label class="field-label">Nächster Termin</label>
+<label class="field-label">Folgetermin fällig am</label>
 <input id="g-naechster" type="date"/>
+<label class="field-label">Ist der Folgetermin schon vereinbart?</label>
+<select id="g-termin-vereinbart" onchange="toggleGesundheitAppointmentFields()">
+  <option value="Nein">Nein – Terminabstimmung offen</option>
+  <option value="Ja">Ja – Termin ist vereinbart</option>
+</select>
+<div id="g-appointment-fields" style="display:none">
+  <label class="field-label">Vereinbarter Termin</label>
+  <input id="g-appointment-date" type="date"/>
+  <label class="field-label">Uhrzeit (optional)</label>
+  <input id="g-appointment-time" type="time"/>
+</div>
 <label class="field-label">Kosten (€)</label>
 <input id="g-kosten" placeholder="0.00" step="0.01" style="width:150px" type="number"/>
 <label class="field-label">Notizen</label>
@@ -2313,6 +2352,14 @@ async function saveGesundheitEdits() {
 
 
 // ===== Edit state =====
+function gesundheitRowOffset(row) {
+  const first = String(row?.[0] ?? '').trim();
+  const isIsoTimestamp = /^\d{4}-\d{2}-\d{2}(?:T|$)/.test(first);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(first);
+  const isNumericId = /^\d{6,}$/.test(first);
+  return row?.length >= 10 && !isIsoTimestamp && (isUuid || isNumericId) ? 1 : 0;
+}
+
 window.editingGesundheitRowIndex = window.editingGesundheitRowIndex ?? null;
 window.editingVerlaufRowIndex = window.editingVerlaufRowIndex ?? null;
 
@@ -2320,15 +2367,20 @@ function editGesundheitEntry(sheetRowIndex) {
   const rows = window.__lastGesundRows || [];
   const r = rows[sheetRowIndex - 1];
   if (!r) { showToast('Eintrag nicht gefunden'); return; }
-  // [ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
-  $('g-datum').value = extractDateKey_(r[1]) || r[1] || '';
-  $('g-art').value = r[2] || '';
-  $('g-person').value = r[3] || '';
-  $('g-befund').value = r[4] || '';
-  $('g-behandlung').value = r[5] || '';
-  $('g-naechster').value = extractDateKey_(r[6]) || r[6] || '';
-  $('g-kosten').value = r[7] || '';
-  $('g-notizen').value = r[8] || '';
+  const off = gesundheitRowOffset(r);
+  $('g-datum').value = extractDateKey_(r[1+off]) || r[1+off] || '';
+  $('g-art').value = r[2+off] || '';
+  $('g-person').value = r[3+off] || '';
+  $('g-befund').value = r[4+off] || '';
+  $('g-behandlung').value = r[5+off] || '';
+  $('g-naechster').value = extractDateKey_(r[6+off]) || r[6+off] || '';
+  $('g-kosten').value = r[7+off] || '';
+  $('g-notizen').value = r[8+off] || '';
+  $('g-termin-vereinbart').value = String(r[11+off] || 'Nein');
+  $('g-appointment-date').value = extractDateKey_(r[12+off]) || r[12+off] || '';
+  $('g-appointment-time').value = String(r[13+off] || '');
+  editingGesundheitDoneState = String(r[14+off] || '');
+  toggleGesundheitAppointmentFields();
   editingGesundheitRowIndex = sheetRowIndex;
   showToast('✏️ Bearbeiten aktiv');
 }
@@ -2393,6 +2445,16 @@ async function upsertBudgetFromGesundheit(entry) {
   } catch(e) {}
 }
 
+function toggleGesundheitAppointmentFields() {
+  const booked = $('g-termin-vereinbart')?.value === 'Ja';
+  const fields = $('g-appointment-fields');
+  if (fields) fields.style.display = booked ? 'block' : 'none';
+  if (!booked) {
+    if ($('g-appointment-date')) $('g-appointment-date').value = '';
+    if ($('g-appointment-time')) $('g-appointment-time').value = '';
+  }
+}
+
 async function saveGesundheit() {
   const datum = $('g-datum').value;
   if (!datum) { alert('Bitte Datum eingeben!'); return; }
@@ -2402,6 +2464,10 @@ async function saveGesundheit() {
   const befund = String($('g-befund').value || '').trim();
   const behandlung = String($('g-behandlung').value || '').trim();
   const naechster = String($('g-naechster').value || '').trim();
+  const terminVereinbart = String($('g-termin-vereinbart')?.value || 'Nein');
+  const vereinbarterTermin = String($('g-appointment-date')?.value || '').trim();
+  const terminUhrzeit = String($('g-appointment-time')?.value || '').trim();
+  if (terminVereinbart === 'Ja' && !vereinbarterTermin) { alert('Bitte das Datum des vereinbarten Termins eintragen.'); return; }
   const kostenRaw = String($('g-kosten').value || '').trim();
   const notizen = String($('g-notizen').value || '').trim();
   // Die Dusch-/Abschwamm-Angabe gehört ausschließlich ins Training.
@@ -2420,7 +2486,11 @@ async function saveGesundheit() {
     kostenRaw,
     notizen,
     abgeduscht,
-    abgeduschtKommentar
+    abgeduschtKommentar,
+    terminVereinbart,
+    vereinbarterTermin,
+    terminUhrzeit,
+    editingGesundheitRowIndex ? editingGesundheitDoneState : ''
   ];
 
   try {
@@ -2434,7 +2504,12 @@ async function saveGesundheit() {
         kosten: kostenRaw,
         notizen,
         abgeduscht,
-        abgeduschtKommentar
+        abgeduschtKommentar,
+        naechsterTermin: naechster,
+        terminVereinbart,
+        vereinbarterTermin,
+        terminUhrzeit,
+        terminErledigt: editingGesundheitDoneState
       });
       editingGesundheitRowIndex = null;
       showToast('✅ Eintrag aktualisiert!');
@@ -2464,8 +2539,11 @@ await appendRow(HORSES[currentHorse].tabs.gesundheit, row);
       notizen: noteParts.join(' | ')
     });
 
-    ['g-datum','g-person','g-befund','g-behandlung','g-naechster','g-kosten','g-notizen'].forEach(id => $(id).value = '');
+    ['g-datum','g-person','g-befund','g-behandlung','g-naechster','g-appointment-date','g-appointment-time','g-kosten','g-notizen'].forEach(id => $(id).value = '');
     $('g-art').value = '';
+    $('g-termin-vereinbart').value = 'Nein';
+    editingGesundheitDoneState = '';
+    toggleGesundheitAppointmentFields();
     showToast('✅ Gesundheitseintrag gespeichert!');
     renderGesundheit();
   } catch(e) {
@@ -2501,8 +2579,7 @@ async function renderGesundheit() {
       // Unterstützt beide Schemas:
       // ALT: [ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
       // NEU (wenn wir später EntryId hinzufügen): [EntryId, ts, datum, art, person, befund, behandlung, naechster, kosten, notizen]
-      const hasEntryId = (r.length >= 10 && (typeof r[0] === 'string' || typeof r[0] === 'number') && String(r[0]).length >= 6);
-      const off = hasEntryId ? 1 : 0;
+      const off = gesundheitRowOffset(r);
 
           const originalIdx = startIdx + (data.length - 1 - idx);
           const sheetRowIndex = originalIdx + 1;
@@ -2514,6 +2591,10 @@ async function renderGesundheit() {
       const behandlung = r[5 + off];
       const naechster = r[6 + off];
       const kosten = r[7 + off];
+      const terminVereinbart = String(r[11 + off] || 'Nein');
+      const vereinbarterTermin = extractDateKey_(r[12 + off]) || r[12 + off] || '';
+      const terminUhrzeit = String(r[13 + off] || '');
+      const terminErledigt = String(r[14 + off] || '') === 'Ja';
 
       const costNum = parseFloat(String(kosten ?? '').replace(',', '.'));
       const costLine = (kosten !== undefined && kosten !== null && String(kosten).trim() !== '' && !isNaN(costNum))
@@ -2527,7 +2608,8 @@ async function renderGesundheit() {
           <div style="font-size:0.8rem;color:#777;margin-top:2px">${person || ''}</div>
           ${befund ? `<div style="font-size:0.82rem;margin-top:4px">🔍 ${befund}</div>` : ''}
           ${behandlung ? `<div style="font-size:0.82rem">💊 ${behandlung}</div>` : ''}
-          ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Nächster Termin: ${formatDate(extractDateKey_(naechster) || naechster)}</div>` : ''}
+          ${naechster ? `<div style="font-size:0.78rem;color:var(--accent);margin-top:3px">📅 Folgetermin fällig: ${formatDate(extractDateKey_(naechster) || naechster)}</div>` : ''}
+          ${terminVereinbart === 'Ja' && vereinbarterTermin ? `<div style="font-size:0.78rem;color:var(--green);margin-top:3px">✅ Vereinbart: ${formatDate(vereinbarterTermin)}${terminUhrzeit ? ' · ' + terminUhrzeit : ''}${terminErledigt ? ' · erledigt' : ''}</div>` : ''}
           ${costLine}
               <div style="display:flex;gap:8px;margin-top:8px">
                 <button class="day-edit-btn" style="padding:6px 10px;font-size:0.75rem" onclick="editGesundheitEntry(${sheetRowIndex})">✏️ Bearbeiten</button>
@@ -2549,6 +2631,7 @@ let currentFutterMonth = new Date().getMonth();
 let currentBudgetMonth = new Date().getMonth();
 window.editingGesundheitRowIndex = window.editingGesundheitRowIndex ?? null;
 let editingProtokollRowIndex = null;
+let editingGesundheitDoneState = '';
 
 const localStore = {
   // Legacy local storage (kept for backward-compat, no longer used for futter/budget)
@@ -4139,29 +4222,150 @@ function dashboardParseWoche(rows) {
 let dashboardCurrentPeriod = 7;
 const dashboardEntriesCache = {};
 const dashboardWeekCache = {};
+const dashboardHealthReminderCache = {};
 
 function dashboardUpdateHorsePills() {
   // Pferd wird ausschließlich über den bestehenden Profil-Slide-in gewählt.
 }
 
+function dashboardEscapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function dashboardShiftDateKey(value, delta, unit='day') {
+  const d = dashboardDateFromKey(value);
+  if (!d) return '';
+  if (unit === 'month') {
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth()+delta);
+    const lastDay = new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    d.setDate(Math.min(day,lastDay));
+  } else d.setDate(d.getDate()+delta);
+  return dashboardIsoDate(d);
+}
+
+function dashboardReminderRowOffset(row) {
+  return gesundheitRowOffset(row);
+}
+
+function dashboardReminderIsYes(value) {
+  return /^(ja|yes|true|1|erledigt)$/i.test(String(value ?? '').trim());
+}
+
+function dashboardReminderDaysUntil(dateKey, todayKey) {
+  const target=dashboardDateFromKey(dateKey), today=dashboardDateFromKey(todayKey);
+  if(!target||!today)return null;
+  return Math.round((target.getTime()-today.getTime())/86400000);
+}
+
+function dashboardReminderLabel(dateKey,todayKey,kind) {
+  const remaining=dashboardReminderDaysUntil(dateKey,todayKey);
+  if(remaining===null)return '';
+  if(remaining<0)return `${kind} vor ${Math.abs(remaining)} Tag${Math.abs(remaining)===1?'':'en'}`;
+  if(remaining===0)return `${kind} heute`;
+  return `${kind} in ${remaining} Tag${remaining===1?'':'en'}`;
+}
+
+function dashboardRenderReminders(rows, horseName) {
+  const section=document.getElementById('dashboard-reminders-section');
+  const horseLabel=document.getElementById('dashboard-reminders-horse');
+  if(!section)return;
+  if(horseLabel)horseLabel.textContent=horseName || 'Ausgewähltes Pferd';
+  const a1=rows?.[0]?.[0];
+  const hasHeader=!(typeof a1==='number'||/^\d+$/.test(String(a1??'').trim()));
+  const startIdx=hasHeader?1:0;
+  const todayKey=dashboardIsoDate(new Date());
+  const open=[],booked=[],archived=[];
+  (rows||[]).slice(startIdx).forEach((row,index)=>{
+    if(!Array.isArray(row)||!row.some(cell=>String(cell??'').trim()))return;
+    const off=dashboardReminderRowOffset(row);
+    const due=extractDateKey_(row[6+off])||'';
+    const isBooked=dashboardReminderIsYes(row[11+off]);
+    const appointmentDate=extractDateKey_(row[12+off])||'';
+    const appointmentTime=String(row[13+off]||'').trim();
+    const isDone=dashboardReminderIsYes(row[14+off]);
+    const art=String(row[2+off]||'Gesundheitstermin').trim();
+    const sourceDate=extractDateKey_(row[1+off])||'';
+    const rowIndex=startIdx+index+1;
+    const item={rowIndex,art,due,appointmentDate,appointmentTime,sourceDate};
+    if(isDone){archived.push(item);return;}
+    if(isBooked && appointmentDate){
+      const remindOn=dashboardShiftDateKey(appointmentDate,-7);
+      if(todayKey>=remindOn)booked.push(item);
+      return;
+    }
+    if(due){
+      const remindOn=dashboardShiftDateKey(due,-1,'month');
+      if(todayKey>=remindOn)open.push(item);
+    }
+  });
+
+  const dateLabel=value=>dashboardEscapeHtml(value?dashboardFormatDate(value):'–');
+  const actions=(item,isBooked)=>`<div class="dashboard-reminder-actions"><button class="primary" type="button" onclick="dashboardEditHealthReminder(${item.rowIndex})">${isBooked?'Termin bearbeiten':'Termin eintragen'}</button><button type="button" onclick="dashboardCompleteReminder(${item.rowIndex})">${isBooked?'Als erledigt archivieren':'Erinnerung archivieren'}</button></div>`;
+  const openHtml=open.length?open.map(item=>{
+    const dueDays=dashboardReminderDaysUntil(item.due,todayKey);
+    const over=dueDays<0;
+    return `<article class="dashboard-reminder-item ${over?'overdue':''}"><div class="dashboard-reminder-title">${dashboardEscapeHtml(item.art)} · Folgetermin fällig ${dateLabel(item.due)}</div><div class="dashboard-reminder-meta">${over?dashboardReminderLabel(item.due,todayKey,'Überfällig'):'Terminabstimmung '+dashboardReminderLabel(item.due,todayKey,'fällig')} · Erinnerung ab ${dateLabel(dashboardShiftDateKey(item.due,-1,'month'))}</div>${actions(item,false)}</article>`;
+  }).join(''):'<div class="dashboard-empty-state" style="padding:10px 2px">Keine offenen Terminabsprachen.</div>';
+  const bookedHtml=booked.length?booked.map(item=>{
+    const days=dashboardReminderDaysUntil(item.appointmentDate,todayKey);
+    const over=days<0;
+    return `<article class="dashboard-reminder-item booked ${over?'overdue':''}"><div class="dashboard-reminder-title">${dashboardEscapeHtml(item.art)} · ${dateLabel(item.appointmentDate)}${item.appointmentTime?' · '+dashboardEscapeHtml(item.appointmentTime):''}</div><div class="dashboard-reminder-meta">${dashboardReminderLabel(item.appointmentDate,todayKey,over?'Termin war':'Termin')} ${item.due?'· Folgetermin fällig '+dateLabel(item.due):''}</div>${actions(item,true)}</article>`;
+  }).join(''):'<div class="dashboard-empty-state" style="padding:10px 2px">Keine anstehenden vereinbarten Termine.</div>';
+  const archiveHtml=archived.length?`<details class="dashboard-reminder-archive"><summary>Erledigt / archiviert (${archived.length})</summary>${archived.slice(0,50).map(item=>`<article class="dashboard-reminder-item"><div class="dashboard-reminder-title">✅ ${dashboardEscapeHtml(item.art)}${item.appointmentDate?' · '+dateLabel(item.appointmentDate):''}${item.appointmentTime?' · '+dashboardEscapeHtml(item.appointmentTime):''}</div><div class="dashboard-reminder-meta">${item.due?'Folgetermin fällig '+dateLabel(item.due):'Als erledigt markiert'}</div></article>`).join('')}</details>`:'';
+  section.innerHTML=`<div class="dashboard-reminder-groups"><section class="dashboard-reminder-group"><h4>📌 Terminabstimmung offen</h4><div class="dashboard-reminder-list">${openHtml}</div></section><section class="dashboard-reminder-group"><h4>✅ Vereinbarte Termine</h4><div class="dashboard-reminder-list">${bookedHtml}</div></section></div>${archiveHtml}<div class="dashboard-reminder-meta" style="margin-top:8px">Offene Fälligkeiten erscheinen ab einem Monat vorher; vereinbarte Termine ab sieben Tagen vorher. Die Erinnerung bleibt bis zur Buchung bzw. Archivierung sichtbar.</div>`;
+  if(!window.__LUDWIG_SUPABASE_ENABLED__) window.__lastGesundRows=rows||[];
+}
+
+async function dashboardEditHealthReminder(rowIndex) {
+  const rows=dashboardHealthReminderCache[currentHorse]||window.__lastGesundRows||[];
+  if(!rows.length){showToast('Gesundheitseintrag konnte nicht geladen werden.');return;}
+  window.__lastGesundRows=rows;
+  const button=document.querySelector('nav button[data-page="gesundheit"]');
+  showPage('gesundheit',button);
+  editGesundheitEntry(Number(rowIndex));
+  document.getElementById('g-termin-vereinbart')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+async function dashboardCompleteReminder(rowIndex) {
+  if(!confirm('Diese Terminerinnerung als erledigt archivieren?'))return;
+  try {
+    await updateRow(HORSES[currentHorse].tabs.gesundheit,Number(rowIndex),{terminErledigt:'Ja'});
+    showToast('✅ Erinnerung archiviert');
+    await dashboardRender();
+  } catch(error) { showToast('❌ Erinnerung konnte nicht archiviert werden.'); }
+}
+
 async function dashboardRender() {
-  const h = HORSES[currentHorse];
+  const horseAtStart = currentHorse;
+  const h = HORSES[horseAtStart];
   const sub = document.getElementById('header-sub');
   if (sub) sub.textContent = h.display;
   dashboardUpdateHorsePills();
 
   try {
-    if (!dashboardEntriesCache[currentHorse]) {
+    if (!dashboardEntriesCache[horseAtStart]) {
       const [protokollRows, wocheRows] = await Promise.all([
         loadSheet(h.tabs.protokolle),
         loadSheet(h.tabs.woche),
       ]);
-      dashboardEntriesCache[currentHorse] = dashboardParseProtokolls(protokollRows)
+      if (horseAtStart !== currentHorse) return;
+      dashboardEntriesCache[horseAtStart] = dashboardParseProtokolls(protokollRows)
         .sort((a, b) => b.datum.localeCompare(a.datum));
-      dashboardWeekCache[currentHorse] = dashboardParseWoche(wocheRows);
+      dashboardWeekCache[horseAtStart] = dashboardParseWoche(wocheRows);
     }
-    const entries = dashboardEntriesCache[currentHorse];
-    const wocheEntries = dashboardWeekCache[currentHorse] || [];
+    const entries = dashboardEntriesCache[horseAtStart];
+    const wocheEntries = dashboardWeekCache[horseAtStart] || [];
+    try {
+      const healthRows = await loadSheet(h.tabs.gesundheit);
+      if (horseAtStart !== currentHorse) return;
+      dashboardHealthReminderCache[horseAtStart] = healthRows;
+      dashboardRenderReminders(healthRows, h.display);
+    } catch (reminderError) {
+      const reminderSection=document.getElementById('dashboard-reminders-section');
+      if(reminderSection) reminderSection.innerHTML='<div class="dashboard-empty-state">Erinnerungen konnten nicht geladen werden. Bitte erneut öffnen.</div>';
+    }
     dashboardRenderLastTraining(entries);
     dashboardRenderToday(wocheEntries);
     dashboardRenderKPIs(entries, dashboardCurrentPeriod);
@@ -4172,6 +4376,7 @@ async function dashboardRender() {
     dashboardRenderMood(entries, dashboardCurrentPeriod);
     dashboardRenderObservations(entries, dashboardCurrentPeriod);
   } catch (e) {
+    if (horseAtStart !== currentHorse) return;
     showToast('Fehler beim Laden des Dashboards');
     const targets = ['dashboard-last-training-box','dashboard-today-box','dashboard-kpi-grid','dashboard-trends-section','dashboard-health-section','dashboard-slider-section','dashboard-goal-section','dashboard-mood-section','dashboard-obs-section'];
     targets.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<div class="dashboard-empty-state">Daten konnten nicht geladen werden.</div>'; });
@@ -4351,6 +4556,11 @@ function supabaseUpdateIndex(module, key, headers) {
     behandlung:['behandlung','massnahmen','maßnahmen'],
     kosten:['kosten','betrag'],
     notizen:['notiz','notizen'],
+    naechsterTermin:['naechstertermin','folgeterminfaelligam'],
+    terminVereinbart:['terminvereinbart','folgeterminvereinbart'],
+    vereinbarterTermin:['vereinbartertermin','terminam','appointmentdate'],
+    terminUhrzeit:['terminuhrzeit','uhrzeit','appointmenttime'],
+    terminErledigt:['terminerledigt','abgeschlossen','archiviert'],
     abgeduscht:['abgeduscht','abgeschwammt','gewaschen'],
     abgeduschtKommentar:['abgeduschtkommentar','kommentardazu'],
     geschwitzt:['geschwitzt']
@@ -4359,7 +4569,7 @@ function supabaseUpdateIndex(module, key, headers) {
   if (index >= 0) return index;
   const fallback = {
     protokoll:{ kommentar:19, geschwitzt:40 },
-    gesundheit:{ person:3, befund:4, behandlung:5, kosten:7, notizen:8, abgeduscht:9, abgeduschtKommentar:10 }
+    gesundheit:{ person:3, befund:4, behandlung:5, naechsterTermin:6, kosten:7, notizen:8, abgeduscht:9, abgeduschtKommentar:10, terminVereinbart:11, vereinbarterTermin:12, terminUhrzeit:13, terminErledigt:14 }
   };
   return fallback[module]?.[key] ?? -1;
 }
@@ -4372,6 +4582,11 @@ async function appendRowToSupabase(tab, row) {
   const headers = (window.__LUDWIG_HEADERS_BY_TAB[tab] || []).slice();
   if (info.module === 'protokoll' && Array.isArray(row)) {
     while (headers.length < row.length) headers.push(headers.length === 40 ? 'Geschwitzt?' : '');
+    window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
+  }
+  if (info.module === 'gesundheit' && Array.isArray(row)) {
+    const defaults = ['Timestamp','Datum','Art','Person','Befund','Behandlung','Folgetermin fällig am','Kosten','Notizen','Abgeduscht?','Abgeduscht Kommentar','Folgetermin vereinbart?','Vereinbarter Termin','Termin-Uhrzeit','Termin erledigt?'];
+    while (headers.length < row.length) headers.push(defaults[headers.length] || '');
     window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
   }
   const { error } = await client.from('app_entries').insert({
