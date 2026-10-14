@@ -492,6 +492,27 @@ nav button.supabase-hidden { display:none !important; }
   @media (max-width:520px) { #page-rueckenkarte { padding:14px 9px 30px; } .rk-panel { padding:12px; } .rk-page-heading { padding:0 3px; } .rk-page-heading h2 { font-size:1.38rem; } .rk-page-heading p { font-size:.76rem; } .rk-fields { grid-template-columns:1fr; gap:0; } .rk-map-body { grid-template-columns:31px minmax(0,355px) 31px; gap:0; } .rk-side-label { font-size:.57rem; } .rk-analysis-head { align-items:flex-start; flex-direction:column; } .rk-period-label { max-width:190px; } .rk-actions .btn { flex:1 1 42%; } .rk-action-spacer { display:none; } .rk-actions #rk-save { flex-basis:100%; } }
 
 </style>
+
+<style>
+.dashboard-page .dashboard-trend-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.dashboard-page .dashboard-trend-panel { background:var(--sand); border:1px solid var(--border); border-radius:11px; padding:11px 12px; min-width:0; }
+.dashboard-page .dashboard-trend-panel h4 { color:var(--brown); font-size:.78rem; margin-bottom:9px; }
+.dashboard-page .dashboard-trend-row { margin-top:8px; }
+.dashboard-page .dashboard-trend-meta { display:flex; justify-content:space-between; gap:8px; align-items:baseline; font-size:.76rem; color:var(--dark); }
+.dashboard-page .dashboard-trend-name { overflow-wrap:anywhere; }
+.dashboard-page .dashboard-trend-count { color:var(--brown); white-space:nowrap; font-weight:700; font-size:.7rem; }
+.dashboard-page .dashboard-trend-track { height:7px; background:#e5dac7; border-radius:99px; overflow:hidden; margin-top:4px; }
+.dashboard-page .dashboard-trend-fill { height:100%; background:var(--accent); border-radius:99px; }
+.dashboard-page .dashboard-trend-panel:first-child .dashboard-trend-fill { background:var(--green); }
+.dashboard-page .dashboard-goal-box { background:#f8f3e8; border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:0 10px 10px 0; padding:12px 14px; }
+.dashboard-page .dashboard-goal-title { font-weight:700; color:var(--dark); font-size:.9rem; }
+.dashboard-page .dashboard-goal-detail { color:var(--brown); font-size:.76rem; margin-top:4px; }
+.dashboard-page .dashboard-goal-copy { color:var(--dark); font-size:.82rem; line-height:1.5; margin-top:8px; }
+.dashboard-page .dashboard-goal-note { color:#777; font-size:.7rem; margin-top:8px; line-height:1.4; }
+.dashboard-page .dashboard-goal-box.neutral { border-left-color:var(--green); }
+@media(max-width:520px) { .dashboard-page .dashboard-trend-grid { grid-template-columns:1fr; } }
+</style>
+
 </head>
 <body>
 
@@ -553,12 +574,12 @@ nav button.supabase-hidden { display:none !important; }
 <button data-page="woche">📅 Wochenplan</button>
 <button data-page="verlauf">📅 Verlauf</button>
 <button data-page="pat">🩺 PAT <span id="pat-nav-badge" class="pat-nav-badge" style="display:none"></span></button>
+<button data-page="rueckenkarte">🗺️ Rückenkarte</button>
 <button data-page="gesundheit">🏥 Gesundheit</button>
 <button data-page="futter">🌾 Futter</button>
 <button data-page="futterplan">📋 Futterplan</button>
 <button data-page="budget">💶 Budget</button>
 <button data-page="kommandos">🎛️ Kommandozentrale</button>
-<button data-page="rueckenkarte">🗺️ Rückenkarte</button>
 </nav>
 <div class="page" id="page-rueckenkarte">
   <div class="rk-page-heading">
@@ -674,6 +695,12 @@ nav button.supabase-hidden { display:none !important; }
     <div class="dashboard-kpi-grid" id="dashboard-kpi-grid"><div class="dashboard-loader">⏳ Lade…</div></div>
   </div>
 
+  <!-- Trainings- und Therapie-Trends -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">📈 Häufige Trainings &amp; Therapien <span class="dashboard-badge" id="dashboard-period-label-trends">–</span></div>
+    <div id="dashboard-trends-section"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
   <!-- Gesundheit -->
   <div class="dashboard-card">
     <div class="dashboard-card-title">🌿 Gesundheit <span class="dashboard-badge" id="dashboard-period-label-health">–</span></div>
@@ -684,6 +711,12 @@ nav button.supabase-hidden { display:none !important; }
   <div class="dashboard-card">
     <div class="dashboard-card-title">🎯 Tagesform (Trainingstage) <span class="dashboard-badge" id="dashboard-period-label-slider">–</span></div>
     <div id="dashboard-slider-section"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Trainingsziel aus den Schieber-Trends -->
+  <div class="dashboard-card">
+    <div class="dashboard-card-title">🎯 Trainingsziel für die nächsten Tage <span class="dashboard-badge" id="dashboard-period-label-goal">–</span></div>
+    <div id="dashboard-goal-section"><div class="dashboard-loader">⏳ Vergleiche die Schieber …</div></div>
   </div>
 
   <!-- Stimmung Verteilung -->
@@ -3532,19 +3565,41 @@ function dashboardParseProtokolls(rows) {
       verlauf_einheit: parseFloat(r[25]) || null,
       verfassung: parseFloat(r[26]) || null,
       kooperation: parseFloat(r[27]) || null,
+      rueckenempfindlichkeit: parseFloat(r[37]) || null,
+      rueckenbeweglichkeit: parseFloat(r[38]) || null,
       aufgegessen: r[30] || '',
     }));
 }
 
+function dashboardFilterByRange(entries, days, offsetDays=0) {
+  const today = new Date();
+  today.setHours(12,0,0,0);
+  const end = new Date(today);
+  end.setDate(end.getDate() - offsetDays);
+  const start = new Date(end);
+  start.setDate(start.getDate() - days + 1);
+  const fromKey = dashboardIsoDate(start);
+  const toKey = dashboardIsoDate(end);
+  return entries.filter(e => e.datum >= fromKey && e.datum <= toKey);
+}
+
 function dashboardFilterByPeriod(entries, days) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const cutKey = dashboardIsoDate(cutoff);
-  return entries.filter(e => e.datum >= cutKey);
+  return dashboardFilterByRange(entries, days, 0);
 }
 
 function dashboardIsTrainingDay(e) {
   return e.dauer > 0;
+}
+
+// Collapse duplicate protocol rows on a date so that one day can never count as
+// several training days. Keep the first (newest) training row for that date.
+function dashboardUniqueTrainingDays(entries) {
+  const byDate = new Map();
+  entries.filter(dashboardIsTrainingDay).forEach(entry => {
+    const date = String(entry.datum || '').slice(0,10);
+    if (date && !byDate.has(date)) byDate.set(date, entry);
+  });
+  return [...byDate.values()].sort((a,b) => b.datum.localeCompare(a.datum));
 }
 
 // ─── Wochenplan parsen ───────────────────────────────────────────────────────
@@ -3634,8 +3689,7 @@ function dashboardRenderKPIs(entries, days) {
   $('dashboard-period-label-kpi').textContent = `letzte ${days} Tage`;
   const grid = $('dashboard-kpi-grid');
   const period = dashboardFilterByPeriod(entries, days);
-  const trainings = period.filter(dashboardIsTrainingDay);
-  const allDays = period;
+  const trainings = dashboardUniqueTrainingDays(period);
 
   const avgDauer = dashboardAvg(trainings.map(e => e.dauer).filter(Boolean));
   const avgMood = dashboardAvg(trainings.map(e => dashboardMoodScore(e.stimmung)).filter(Boolean));
@@ -3657,7 +3711,7 @@ function dashboardRenderKPIs(entries, days) {
     <div class="dashboard-kpi">
       <div class="dashboard-kpi-label">Trainingstage</div>
       <div class="dashboard-kpi-value">${trainings.length}</div>
-      <div class="dashboard-kpi-sub">von ${allDays.length} Einträgen</div>
+      <div class="dashboard-kpi-sub">von ${days} Kalendertagen</div>
     </div>
     <div class="dashboard-kpi">
       <div class="dashboard-kpi-label">Ø Dauer</div>
@@ -3691,6 +3745,83 @@ function dashboardRenderKPIs(entries, days) {
       <div class="dashboard-kpi-sub">im Zeitraum</div>
     </div>
   `;
+}
+
+// ─── Render: Häufige Trainings- und Therapieformen ────────────────────────────
+function dashboardTypeTokens(value) {
+  return String(value || '').split(/[,;|]/).map(v => v.trim()).filter(Boolean);
+}
+
+function dashboardCountTypes(entries, key) {
+  const counts = new Map();
+  const seen = new Set();
+  entries.forEach(entry => {
+    const date = String(entry.datum || '').slice(0,10);
+    if (!date) return;
+    dashboardTypeTokens(entry[key]).forEach(type => {
+      const identity = `${date}\\u0000${type.toLowerCase()}`;
+      if (seen.has(identity)) return;
+      seen.add(identity);
+      counts.set(type, (counts.get(type) || 0) + 1);
+    });
+  });
+  return [...counts.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0], 'de'));
+}
+
+function dashboardRenderTrendMix(entries, days) {
+  const label = $('dashboard-period-label-trends');
+  const section = $('dashboard-trends-section');
+  if (label) label.textContent = `letzte ${days} Tage`;
+  if (!section) return;
+  const period = dashboardFilterByPeriod(entries, days);
+  const types = [
+    {key:'art', title:'Trainingsarten', noun:'Trainingstage', rows:dashboardCountTypes(period.filter(dashboardIsTrainingDay),'art')},
+    {key:'therapie', title:'Therapieformen', noun:'Anwendungstage', rows:dashboardCountTypes(period,'therapie')}
+  ];
+  const escape = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  section.innerHTML = `<div class="dashboard-trend-grid">${types.map(group => {
+    if (!group.rows.length) return `<section class="dashboard-trend-panel"><h4>${group.title}</h4><div class="dashboard-empty-state" style="padding:10px 0">Keine Einträge im Zeitraum</div></section>`;
+    const top = group.rows.slice(0,3), max = top[0][1];
+    return `<section class="dashboard-trend-panel"><h4>${group.title} · am häufigsten</h4>${top.map(([name,count]) => `<div class="dashboard-trend-row"><div class="dashboard-trend-meta"><span class="dashboard-trend-name">${escape(name)}</span><span class="dashboard-trend-count">${count}×</span></div><div class="dashboard-trend-track" role="img" aria-label="${count} ${group.noun}"><div class="dashboard-trend-fill" style="width:${Math.max(4,count/max*100)}%"></div></div></div>`).join('')}</section>`;
+  }).join('')}</div>`;
+}
+
+// ─── Render: Fokus für die nächsten Tage ─────────────────────────────────────
+function dashboardRenderGoal(entries, days) {
+  const section = $('dashboard-goal-section');
+  const badge = $('dashboard-period-label-goal');
+  if (badge) badge.textContent = `Vergleich: ${days} + vorherige ${days} Tage`;
+  if (!section) return;
+  const current = dashboardUniqueTrainingDays(dashboardFilterByRange(entries, days, 0));
+  const previous = dashboardUniqueTrainingDays(dashboardFilterByRange(entries, days, days));
+  const sliders = [
+    {key:'energie',label:'Energie', risk:v=>Math.abs(v-5.5), goal:'Energie im Blick behalten: die nächsten Einheiten ruhig dosieren und auf fleißige, aber nicht überdrehte Arbeit achten.'},
+    {key:'losgelassenheit',label:'Losgelassenheit', risk:v=>Math.abs(v-5.5), goal:'Losgelassenheit fördern: mit ruhigem Aufwärmen, einfachen Übergängen und kurzen Pausen arbeiten.'},
+    {key:'durchlaessigkeit',label:'Durchlässigkeit', risk:v=>Math.abs(v-5.5), goal:'Durchlässigkeit im Blick behalten: klare, leichte Hilfen geben und gute Reaktionen ruhig bestätigen.'},
+    {key:'verlauf_einheit',label:'Verlauf der Einheit', risk:v=>Math.abs(v-5.5), goal:'Den Einheitenverlauf unterstützen: sanft beginnen, Belastung schrittweise steigern und rechtzeitig lockern.'},
+    {key:'verfassung',label:'Eigene Verfassung', risk:v=>Math.abs(v-5.5), goal:'Die eigene Tagesform berücksichtigen: ein realistisches Ziel setzen und bei Bedarf Pausen einplanen.'},
+    {key:'kooperation',label:'Kooperation', risk:v=>Math.abs(v-5.5), goal:'Kooperation stärken: kurze, verständliche Aufgaben stellen und gutes Mitmachen mit Pausen belohnen.'},
+    {key:'rueckenempfindlichkeit',label:'Rückenempfindlichkeit', risk:v=>Math.max(0,5.5-v), goal:'Rückenreaktionen aufmerksam beobachten und die Arbeit vorerst locker halten. Bei anhaltender oder deutlicher Empfindlichkeit bitte fachlich abklären lassen.'},
+    {key:'rueckenbeweglichkeit',label:'Rückenbeweglichkeit / -spannung', risk:v=>Math.abs(v-5.5), goal:'Rückenbeweglichkeit und Spannung behutsam beobachten, gut aufwärmen und die Reaktion auf die Arbeit dokumentieren.'}
+  ];
+  if (current.length < 2 || previous.length < 2) {
+    section.innerHTML = '<div class="dashboard-empty-state">Für ein verlässliches Trainingsziel brauche ich mindestens 2 Trainingstage im gewählten Zeitraum und 2 im direkt vorherigen Vergleichszeitraum.</div>';
+    return;
+  }
+  const comparisons = sliders.map(slider => {
+    const now = current.map(e=>e[slider.key]).filter(v=>Number.isFinite(v));
+    const before = previous.map(e=>e[slider.key]).filter(v=>Number.isFinite(v));
+    if (now.length < 2 || before.length < 2) return null;
+    const currentAvg = dashboardAvg(now), previousAvg = dashboardAvg(before);
+    const delta = slider.risk(currentAvg) - slider.risk(previousAvg);
+    return { ...slider, currentAvg, previousAvg, delta, currentN:now.length, previousN:before.length };
+  }).filter(Boolean).sort((a,b)=>b.delta-a.delta);
+  const mostWorsened = comparisons[0];
+  if (!mostWorsened || mostWorsened.delta < 0.5) {
+    section.innerHTML = '<div class="dashboard-goal-box neutral"><div class="dashboard-goal-title">Kein klarer ungünstiger Trend erkannt</div><div class="dashboard-goal-copy">Die vergleichbaren Schieberwerte haben sich nicht deutlich weiter vom jeweiligen günstigen Bereich entfernt. Bleib beim passenden, pferdegerechten Fokus.</div><div class="dashboard-goal-note">Verglichen werden Mittelwerte mit dem direkt vorhergehenden gleich langen Zeitraum. Orientierung aus den Protokollen, keine Diagnose.</div></div>';
+    return;
+  }
+  section.innerHTML = `<div class="dashboard-goal-box"><div class="dashboard-goal-title">Fokus: ${mostWorsened.label}</div><div class="dashboard-goal-detail">Vergleich der Skalenmittelwerte: ${mostWorsened.previousAvg.toFixed(1)} → ${mostWorsened.currentAvg.toFixed(1)} · ${current.length} Trainingstage aktuell, ${previous.length} zuvor</div><div class="dashboard-goal-copy">${mostWorsened.goal}</div><div class="dashboard-goal-note">Automatischer Hinweis aus den Schieberwerten: Bewegungen weg vom mittleren/günstigen Skalenbereich gelten als ungünstiger. Vergleich mit den direkt vorhergehenden ${days} Tagen; keine Diagnose.</div></div>`;
 }
 
 // ─── Render: Gesundheit ───────────────────────────────────────────────────────
@@ -3758,7 +3889,7 @@ function dashboardRenderHealth(entries, days) {
 function dashboardRenderSliders(entries, days) {
   $('dashboard-period-label-slider').textContent = `letzte ${days} Tage`;
   const section = $('dashboard-slider-section');
-  const trainings = dashboardFilterByPeriod(entries, days).filter(dashboardIsTrainingDay);
+  const trainings = dashboardUniqueTrainingDays(dashboardFilterByPeriod(entries, days));
 
   if (!trainings.length) {
     section.innerHTML = '<div class="dashboard-empty-state">Keine Trainingstage im Zeitraum</div>';
@@ -3804,7 +3935,7 @@ function dashboardRenderSliders(entries, days) {
 function dashboardRenderMood(entries, days) {
   $('dashboard-period-label-mood').textContent = `letzte ${days} Tage`;
   const section = $('dashboard-mood-section');
-  const trainings = dashboardFilterByPeriod(entries, days).filter(dashboardIsTrainingDay).filter(e => e.stimmung);
+  const trainings = dashboardUniqueTrainingDays(dashboardFilterByPeriod(entries, days)).filter(e => e.stimmung);
 
   if (!trainings.length) {
     section.innerHTML = '<div class="dashboard-empty-state">Keine Trainingstage mit Stimmungsangabe</div>';
@@ -3846,7 +3977,7 @@ function dashboardRenderMood(entries, days) {
 function dashboardRenderObservations(entries, days) {
   const section = $('dashboard-obs-section');
   const period = dashboardFilterByPeriod(entries, days);
-  const trainings = period.filter(dashboardIsTrainingDay);
+  const trainings = dashboardUniqueTrainingDays(period);
   const obs = [];
 
   // Mindestanzahl für Aussagen
@@ -3920,17 +4051,10 @@ function dashboardRenderObservations(entries, days) {
     }
   }
 
-  // 5. Trainingsfrequenz
-  if (trainings.length >= 2) {
-    const sorted = trainings.map(e => e.datum).sort();
-    const first = dashboardDateFromKey(sorted[0]);
-    const last = dashboardDateFromKey(sorted[sorted.length - 1]);
-    if (first && last) {
-      const span = dashboardDaysBetween(first, last) || 1;
-      const freq = (trainings.length / span * 7).toFixed(1);
-      obs.push({ type: 'neutral', text: `📅 Trainingsfrequenz: Ø ${freq} Einheiten pro Woche im gewählten Zeitraum (${trainings.length} Trainingstage).` });
-    }
-  }
+  // 5. Trainingsfrequenz: distinct training dates / exact selected calendar window.
+  const uniqueTrainingDays = new Set(trainings.map(e => String(e.datum || '').slice(0,10)).filter(Boolean)).size;
+  const freq = Math.min(7, uniqueTrainingDays / days * 7).toFixed(1);
+  obs.push({ type: 'neutral', text: `📅 Trainingsfrequenz: Ø ${freq} Trainingstage pro Woche (${uniqueTrainingDays} unterschiedliche Trainingstage in den letzten ${days} Kalendertagen).` });
 
   // 6. Verletzungen
   const verletzungen = period.filter(e => e.verletzung === 'Ja');
@@ -4041,13 +4165,15 @@ async function dashboardRender() {
     dashboardRenderLastTraining(entries);
     dashboardRenderToday(wocheEntries);
     dashboardRenderKPIs(entries, dashboardCurrentPeriod);
+    dashboardRenderTrendMix(entries, dashboardCurrentPeriod);
     dashboardRenderHealth(entries, dashboardCurrentPeriod);
     dashboardRenderSliders(entries, dashboardCurrentPeriod);
+    dashboardRenderGoal(entries, dashboardCurrentPeriod);
     dashboardRenderMood(entries, dashboardCurrentPeriod);
     dashboardRenderObservations(entries, dashboardCurrentPeriod);
   } catch (e) {
     showToast('Fehler beim Laden des Dashboards');
-    const targets = ['dashboard-last-training-box','dashboard-today-box','dashboard-kpi-grid','dashboard-health-section','dashboard-slider-section','dashboard-mood-section','dashboard-obs-section'];
+    const targets = ['dashboard-last-training-box','dashboard-today-box','dashboard-kpi-grid','dashboard-trends-section','dashboard-health-section','dashboard-slider-section','dashboard-goal-section','dashboard-mood-section','dashboard-obs-section'];
     targets.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '<div class="dashboard-empty-state">Daten konnten nicht geladen werden.</div>'; });
   }
 }
@@ -4060,8 +4186,10 @@ function setDashboardPeriod(days) {
   const entries = dashboardEntriesCache[currentHorse];
   if (!entries) { dashboardRender(); return; }
   dashboardRenderKPIs(entries, days);
+  dashboardRenderTrendMix(entries, days);
   dashboardRenderHealth(entries, days);
   dashboardRenderSliders(entries, days);
+  dashboardRenderGoal(entries, days);
   dashboardRenderMood(entries, days);
   dashboardRenderObservations(entries, days);
 }
