@@ -606,6 +606,16 @@ nav button.supabase-hidden { display:none !important; }
   @media(prefers-reduced-motion:reduce) { .obs-card,.obs-actions button { transition:none !important; scroll-behavior:auto !important; } }
 </style>
 
+
+<style>
+  .bridle-details { margin:11px 0 4px; border-left:3px solid var(--accent); padding-left:11px; }
+  .bridle-subgroup { background:var(--sand); border:1px solid var(--border); border-radius:10px; padding:11px; margin:9px 0; }
+  .bridle-subgroup .field-label:first-child { margin-top:0; }
+  .bridle-classic-details { margin-top:10px; padding-top:9px; border-top:1px solid var(--border); }
+  .bridle-hint { color:var(--brown); font-size:.76rem; margin-top:9px; line-height:1.4; }
+  .bridle-loading { font-size:.72rem; color:var(--brown); margin:5px 2px 0; }
+</style>
+
 </head>
 <body>
 
@@ -1081,15 +1091,48 @@ nav button.supabase-hidden { display:none !important; }
 <div class="card-title">🎠 Ausrüstung</div>
 <label class="field-label">Zäumung</label>
 <div class="check-group" id="t-zaeum">
-<label><input type="checkbox" value="Trense"/><span>🔗 Trense</span></label>
-<label><input type="checkbox" value="Kandare"/><span>⚙️ Kandare</span></label>
+<label><input type="checkbox" value="Trense" onchange="updateBridleDetails()"/><span>🔗 Trense</span></label>
+<label><input type="checkbox" value="Kandare" onchange="updateBridleDetails()"/><span>⚙️ Kandare</span></label>
 <label><input type="checkbox" value="Bosal"/><span>🪢 Bosal</span></label>
 <label><input type="checkbox" value="Kappzaum"/><span>🎯 Kappzaum</span></label>
 <label><input type="checkbox" value="Halsring"/><span>⭕ Halsring</span></label>
 <label><input type="checkbox" value="Glücksrad"/><span>🎡 Glücksrad</span></label>
 <label><input type="checkbox" value="Mobility Bridle"/><span>🐴 Mobility Bridle</span></label>
+<label><input type="checkbox" value="Knotenhalfter"/><span>🪢 Knotenhalfter</span></label>
+<label><input type="checkbox" value="Rhythm Beads"/><span>📿 Rhythm Beads</span></label>
 <label><input type="checkbox" value="Ohne Zäumung"/><span>🕊️ Ohne Zäumung</span></label>
 </div>
+<div id="bridle-details" class="bridle-details" style="display:none">
+  <div id="trense-details" class="bridle-subgroup" style="display:none">
+    <label class="field-label" for="t-trense-gebiss">Gebiss zur Trense</label>
+    <select id="t-trense-gebiss">
+      <option value="">— bitte wählen —</option>
+      <option>Wassertrense</option><option>Bauchergebiss</option><option>Baucherstange</option>
+      <option>Schenkeltrense</option><option>Olivenkopfgebiss</option><option>Olivenkopfstange</option>
+      <option>Stehnschenkeltrense</option>
+    </select>
+  </div>
+  <div id="kandare-details" class="bridle-subgroup" style="display:none">
+    <label class="field-label" for="t-kandare-art">Kandarenart</label>
+    <select id="t-kandare-art" onchange="toggleClassicKandareDetails()">
+      <option value="">— bitte wählen —</option>
+      <option>Portugiesische Kandare (2 Z&uuml;gel)</option><option>Springkandare</option>
+      <option>Pelham</option><option>Blanke Kandare</option><option>Klassische Kandare (zwei Gebisse)</option>
+    </select>
+    <div id="klassische-kandare-details" class="bridle-classic-details" style="display:none">
+      <label class="field-label" for="t-kandarengebiss">Kandarengebiss (genau eins)</label>
+      <select id="t-kandarengebiss">
+        <option value="">— bitte wählen —</option><option>Dressurkandare</option><option>Barock Kandare</option>
+      </select>
+      <label class="field-label" for="t-unterleggebiss">Unterleggebiss (genau eins)</label>
+      <select id="t-unterleggebiss">
+        <option value="">— bitte wählen —</option><option>Bauchertrense</option><option>Wassertrense</option><option>Olivenkopftrense</option>
+      </select>
+      <p class="bridle-hint">Klassische Kandare: ein Kandarengebiss plus genau ein Unterleggebiss.</p>
+    </div>
+  </div>
+</div>
+<div id="bridle-pref-status" class="bridle-loading" aria-live="polite"></div>
 <input id="t-zaeum-sonstige" placeholder="Sonstige Zäumung…" style="margin-top:8px" type="text"/>
 <label class="field-label">Sattel</label>
 <div class="check-group" id="t-sattel">
@@ -1641,7 +1684,9 @@ const AVATARS = {
 function setHorse(key) {
   if (!HORSES[key]) return;
   if (window.__LUDWIG_SUPABASE_ENABLED__ && Array.isArray(window.__LUDWIG_ACCESS_KEYS) && !window.__LUDWIG_ACCESS_KEYS.includes(key)) return;
+  const previousHorse = currentHorse;
   currentHorse = key;
+  if (previousHorse !== key && typeof resetBridleSubfields === 'function') resetBridleSubfields();
   try { localStorage.setItem('ludwig_lastHorse', key); } catch (e) {}
   const h = HORSES[key];
 
@@ -1681,12 +1726,14 @@ function setHorse(key) {
 
   // Alle aktiven Seiten neu laden
   const active = document.querySelector('.page.active');
+  if (active?.id !== 'page-training' && typeof loadBridlePreferences === 'function') loadBridlePreferences(key, true);
   if (!active) return;
   if (active.id === 'page-dashboard') dashboardRender();
   if (active.id === 'page-training') {
     loadSheet(h.tabs.protokolle).then(rows => {
+      if (typeof updateBridlePreferencesFromRows === 'function') updateBridlePreferencesFromRows(rows, key);
       const data = rows.slice(1);
-      if (data.length > 0) showPrevBanner(data.map(r => ({
+      if (data.length > 0 && key === currentHorse) showPrevBanner(data.map(r => ({
         datum: r[1], wer: r[2], art: r[6], stimmung: r[3], verdauung: r[14]
       })));
       else { const b = $('prev-banner'); if (b) b.style.display = 'none'; }
@@ -2149,6 +2196,15 @@ function validateTrainingRequiredFields() {
   if (trainingArt) {
     required.push(['t-dauer', $('t-dauer')?.value]);
   }
+  const zaeumSelection = getChecked('t-zaeum').split(',').map(value=>value.trim());
+  if (zaeumSelection.includes('Trense')) required.push(['t-trense-gebiss', $('t-trense-gebiss')?.value]);
+  if (zaeumSelection.includes('Kandare')) {
+    required.push(['t-kandare-art', $('t-kandare-art')?.value]);
+    if ($('t-kandare-art')?.value === 'Klassische Kandare (zwei Gebisse)') {
+      required.push(['t-kandarengebiss', $('t-kandarengebiss')?.value]);
+      required.push(['t-unterleggebiss', $('t-unterleggebiss')?.value]);
+    }
+  }
   const missing = required.filter(([id, value]) => !String(value || '').trim());
   missing.forEach(([id]) => markRequiredMissing($(id)));
   if (missing.length) {
@@ -2174,6 +2230,9 @@ function clearForm() {
     l.classList.remove('checked', 'checked-yes', 'checked-no');
   });
   document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+  ['t-trense-gebiss','t-kandare-art','t-kandarengebiss','t-unterleggebiss'].forEach(id => { const el=$(id); if (el) el.value=''; });
+  ['bridle-details','trense-details','kandare-details','klassische-kandare-details'].forEach(id => { const el=$(id); if (el) el.style.display='none'; });
+  const bridleStatus=$('bridle-pref-status'); if (bridleStatus) bridleStatus.textContent='';
   const eingedecktDetails = document.getElementById('t-eingedeckt-details');
   if (eingedecktDetails) eingedecktDetails.style.display = 'none';
   ['t-wer','t-temp','t-dauer','t-zaeum-sonstige','t-sattel-sonstige','t-geschirr-sonstige','t-schutz-kommentar','t-futter-abweich','t-verletzung-welche','t-decke-gramm','t-decke-kommentar','t-kommentar'].forEach(id => {
@@ -2245,11 +2304,13 @@ async function saveTraining() {
     $('t-rueckenempfindlichkeit').value, // Rückenempfindlichkeit
     $('t-rueckenbeweglichkeit').value,   // Rückenbeweglichkeit / -spannung
     getChecked('t-abgeduscht'),          // Abgeduscht / Gewaschen
-    getRadio('geschwitzt')                 // Geschwitzt? (new column, appended for compatibility)
+    getRadio('geschwitzt'),                // Geschwitzt? (column 40)
+    ...getBridleSubfieldValues()            // Bit selections (columns 41-44)
   ];
 
   try {
     await appendRow(HORSES[currentHorse].tabs.protokolle, row);
+    rememberBridlePreferencesFromRow(currentHorse, row);
     showToast('✅ Protokoll gespeichert!');
     clearForm();
     initTrainingForm();
@@ -2295,6 +2356,7 @@ async function renderVerlauf() {
       schutz: r[31], schutz_kommentar: r[32], eingedeckt: r[33],
       deckentyp: r[34], decke_gramm: r[35], decke_kommentar: r[36],
       rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38], abgeduscht: r[39], geschwitzt: r[40] || '',
+      trense_gebiss: r[41] || '', kandare_art: r[42] || '', kandarengebiss: r[43] || '', unterleggebiss: r[44] || '', 
     }));
 
     cachedEntries = data.slice().reverse();
@@ -2352,7 +2414,7 @@ function renderVerlaufList() {
 
         ${e.verletzung === 'Ja' ? `<div style="background:#fee;border:1.5px solid #a03030;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:0.85rem;color:#a03030;font-weight:600">⚠️ Verletzung: ${e.verletzung_w || 'Ja'}</div>` : ''}
 
-        ${detailRow('Zäumung', (e.zaeum || '') + (e.zaeum_s ? ' / ' + e.zaeum_s : ''))}
+        ${detailRow('Zäumung', [e.zaeum, e.zaeum_s, e.trense_gebiss ? 'Trense: ' + e.trense_gebiss : '', e.kandare_art ? 'Kandare: ' + e.kandare_art : '', e.kandarengebiss ? 'Kandarengebiss: ' + e.kandarengebiss : '', e.unterleggebiss ? 'Unterleggebiss: ' + e.unterleggebiss : ''].filter(Boolean).join(' · '))}
         ${detailRow('Sattel', (e.sattel || '') + (e.sattel_s ? ' / ' + e.sattel_s : ''))}
         ${detailRow('Geschirr / Kutsche', (e.geschirr || '') + (e.geschirr_s ? ' / ' + e.geschirr_s : ''))}
         ${detailRow('Schutz & Decken', (e.schutz || '') + (e.schutz_kommentar ? ' / ' + e.schutz_kommentar : ''))}
@@ -2441,9 +2503,11 @@ async function saveProtokollEditIfNeeded() {
 function initTrainingForm() {
   $('t-datum').value = isoDate(new Date());
   // Banner nachladen
-  loadSheet(HORSES[currentHorse].tabs.protokolle).then(rows => {
+  const horseAtStart = currentHorse;
+  loadSheet(HORSES[horseAtStart].tabs.protokolle).then(rows => {
+    if (typeof updateBridlePreferencesFromRows === 'function') updateBridlePreferencesFromRows(rows, horseAtStart);
     const data = rows.slice(1);
-    if (data.length > 0) showPrevBanner(data.map(r => ({
+    if (data.length > 0 && horseAtStart === currentHorse) showPrevBanner(data.map(r => ({
       datum: r[1], wer: r[2], art: r[6], stimmung: r[3], verdauung: r[14]
     })));
   }).catch(() => {});
@@ -4744,7 +4808,8 @@ async function appendRowToSupabase(tab, row) {
   if (!client || !horseId || !info.module) throw new Error('Supabase-Ziel für diesen Bereich nicht gefunden.');
   const headers = (window.__LUDWIG_HEADERS_BY_TAB[tab] || []).slice();
   if (info.module === 'protokoll' && Array.isArray(row)) {
-    while (headers.length < row.length) headers.push(headers.length === 40 ? 'Geschwitzt?' : '');
+    const protocolHeaders = {40:'Geschwitzt?',41:'Gebiss zur Trense',42:'Kandarenart',43:'Kandarengebiss',44:'Unterleggebiss'};
+    while (headers.length < row.length) headers.push(protocolHeaders[headers.length] || '');
     window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
   }
   if (info.module === 'gesundheit' && Array.isArray(row)) {
@@ -5712,6 +5777,142 @@ async function obsDelete(id) {
     await loadAuff\u00e4lligkeiten();
     if (document.getElementById('page-dashboard')?.classList.contains('active')) await obsRenderDashboardIssues();
   } catch (error) { showToast('L\u00f6schen fehlgeschlagen. Bitte Berechtigung pr\u00fcfen.'); }
+}
+
+
+
+// ===== Horse-specific bridle defaults (loaded from saved protocol rows) =====
+const bridlePreferencesByHorse = new Map();
+const bridlePreferenceLoads = new Map();
+function bridleSelectionSet() {
+  return new Set(getChecked('t-zaeum').split(',').map(value=>value.trim()).filter(Boolean));
+}
+function updateBridlePreferenceStatus(prefs,loading=false) {
+  const el=document.getElementById('bridle-pref-status');
+  if (!el) return;
+  const selected=bridleSelectionSet();
+  const hasTrense=selected.has('Trense');
+  const hasKandare=selected.has('Kandare');
+  if (!hasTrense && !hasKandare) { el.textContent=''; return; }
+  if (loading) { el.textContent='Letzte Auswahl wird aus den gespeicherten Protokollen geladen …'; return; }
+  const classic=hasKandare && $('t-kandare-art')?.value==='Klassische Kandare (zwei Gebisse)';
+  const missing=(hasTrense && !prefs?.trense) || (hasKandare && !prefs?.kandareArt) || (classic && (!prefs?.kandarengebiss || !prefs?.unterleggebiss));
+  el.textContent=missing ? 'Noch keine letzte Auswahl gespeichert – bitte Gebiss ausw\u00e4hlen.' : 'Letzte gespeicherte Auswahl dieses Pferdes wurde vorausgew\u00e4hlt.';
+}
+function resetBridleSubfields() {
+  ['t-trense-gebiss','t-kandare-art','t-kandarengebiss','t-unterleggebiss'].forEach(id=>{const el=$(id);if(el)el.value='';});
+  const selected=bridleSelectionSet();
+  const trense=document.getElementById('trense-details');
+  const kandare=document.getElementById('kandare-details');
+  const classic=document.getElementById('klassische-kandare-details');
+  const wrap=document.getElementById('bridle-details');
+  if (trense) trense.style.display=selected.has('Trense')?'block':'none';
+  if (kandare) kandare.style.display=selected.has('Kandare')?'block':'none';
+  if (classic) classic.style.display='none';
+  if (wrap) wrap.style.display=(selected.has('Trense')||selected.has('Kandare'))?'block':'none';
+  updateBridlePreferenceStatus(null,true);
+}
+function updateBridleDetails(loadIfMissing=true) {
+  const selected=bridleSelectionSet();
+  const hasTrense=selected.has('Trense');
+  const hasKandare=selected.has('Kandare');
+  const wrap=document.getElementById('bridle-details');
+  const trense=document.getElementById('trense-details');
+  const kandare=document.getElementById('kandare-details');
+  if (wrap) wrap.style.display=(hasTrense||hasKandare)?'block':'none';
+  if (trense) trense.style.display=hasTrense?'block':'none';
+  if (kandare) kandare.style.display=hasKandare?'block':'none';
+  if (!hasTrense && !hasKandare) { updateBridlePreferenceStatus(null); return; }
+  const prefs=bridlePreferencesByHorse.get(currentHorse);
+  if (prefs) applyBridlePreferencesToForm(prefs);
+  toggleClassicKandareDetails(false);
+  if (!prefs) {
+    updateBridlePreferenceStatus(null,true);
+    const horseAtStart=currentHorse;
+    if (loadIfMissing) loadBridlePreferences(horseAtStart).then(loaded=>{
+      if (currentHorse!==horseAtStart) return;
+      if (loaded) applyBridlePreferencesToForm(loaded);
+      updateBridlePreferenceStatus(loaded || null);
+    });
+  } else updateBridlePreferenceStatus(prefs);
+}
+function toggleClassicKandareDetails(loadIfMissing=true) {
+  const selected=bridleSelectionSet();
+  const classic=selected.has('Kandare') && $('t-kandare-art')?.value==='Klassische Kandare (zwei Gebisse)';
+  const el=document.getElementById('klassische-kandare-details');
+  if (el) el.style.display=classic?'block':'none';
+  const prefs=bridlePreferencesByHorse.get(currentHorse);
+  if (classic && prefs) {
+    if (!$('t-kandarengebiss')?.value && prefs.kandarengebiss) $('t-kandarengebiss').value=prefs.kandarengebiss;
+    if (!$('t-unterleggebiss')?.value && prefs.unterleggebiss) $('t-unterleggebiss').value=prefs.unterleggebiss;
+  } else if (classic && loadIfMissing && !prefs) loadBridlePreferences(currentHorse);
+}
+function bridlePreferencesFromRows(rows) {
+  const prefs={trense:'',kandareArt:'',kandarengebiss:'',unterleggebiss:''};
+  const data=Array.isArray(rows)?rows.slice(1).slice().reverse():[];
+  for (const row of data) {
+    if (!Array.isArray(row)) continue;
+    if (!prefs.trense && String(row[41]||'').trim()) prefs.trense=String(row[41]).trim();
+    if (!prefs.kandareArt && String(row[42]||'').trim()) prefs.kandareArt=String(row[42]).trim();
+    if (!prefs.kandarengebiss && String(row[43]||'').trim()) prefs.kandarengebiss=String(row[43]).trim();
+    if (!prefs.unterleggebiss && String(row[44]||'').trim()) prefs.unterleggebiss=String(row[44]).trim();
+    if (prefs.trense && prefs.kandareArt && prefs.kandarengebiss && prefs.unterleggebiss) break;
+  }
+  return prefs;
+}
+function updateBridlePreferencesFromRows(rows,horseKey=currentHorse) {
+  const prefs=bridlePreferencesFromRows(rows);
+  bridlePreferencesByHorse.set(horseKey,prefs);
+  if (horseKey===currentHorse) {
+    applyBridlePreferencesToForm(prefs);
+    updateBridlePreferenceStatus(prefs);
+  }
+  return prefs;
+}
+function applyBridlePreferencesToForm(prefs) {
+  if (!prefs || currentHorse==null) return;
+  const selected=bridleSelectionSet();
+  if (selected.has('Trense') && !$('t-trense-gebiss')?.value && prefs.trense) $('t-trense-gebiss').value=prefs.trense;
+  if (selected.has('Kandare') && !$('t-kandare-art')?.value && prefs.kandareArt) $('t-kandare-art').value=prefs.kandareArt;
+  toggleClassicKandareDetails(false);
+  if (selected.has('Kandare') && $('t-kandare-art')?.value==='Klassische Kandare (zwei Gebisse)') {
+    if (!$('t-kandarengebiss')?.value && prefs.kandarengebiss) $('t-kandarengebiss').value=prefs.kandarengebiss;
+    if (!$('t-unterleggebiss')?.value && prefs.unterleggebiss) $('t-unterleggebiss').value=prefs.unterleggebiss;
+  }
+}
+function loadBridlePreferences(horseKey=currentHorse, force=false) {
+  if (!HORSES[horseKey]) return Promise.resolve(null);
+  if (bridlePreferenceLoads.has(horseKey)) return bridlePreferenceLoads.get(horseKey);
+  if (!force && bridlePreferencesByHorse.has(horseKey)) return Promise.resolve(bridlePreferencesByHorse.get(horseKey));
+  if (force) bridlePreferencesByHorse.delete(horseKey);
+  const request=loadSheet(HORSES[horseKey].tabs.protokolle)
+    .then(rows=>updateBridlePreferencesFromRows(rows,horseKey))
+    .catch(error=>{
+      console.warn('Gebiss-Vorauswahl konnte nicht geladen werden:',error);
+      const prefs=bridlePreferencesByHorse.get(horseKey) || {trense:'',kandareArt:'',kandarengebiss:'',unterleggebiss:''};
+      bridlePreferencesByHorse.set(horseKey,prefs);
+      return prefs;
+    })
+    .finally(()=>bridlePreferenceLoads.delete(horseKey));
+  bridlePreferenceLoads.set(horseKey,request);
+  return request;
+}
+function getBridleSubfieldValues() {
+  const selected=bridleSelectionSet();
+  const trense=selected.has('Trense') ? String($('t-trense-gebiss')?.value||'') : '';
+  const hasKandare=selected.has('Kandare');
+  const kandareArt=hasKandare ? String($('t-kandare-art')?.value||'') : '';
+  const isClassic=hasKandare && kandareArt==='Klassische Kandare (zwei Gebisse)';
+  return [trense,kandareArt,isClassic?String($('t-kandarengebiss')?.value||''):'',isClassic?String($('t-unterleggebiss')?.value||''):''];
+}
+function rememberBridlePreferencesFromRow(horseKey,row) {
+  const previous=bridlePreferencesByHorse.get(horseKey) || {trense:'',kandareArt:'',kandarengebiss:'',unterleggebiss:''};
+  const prefs={...previous};
+  if (String(row?.[41]||'').trim()) prefs.trense=String(row[41]).trim();
+  if (String(row?.[42]||'').trim()) prefs.kandareArt=String(row[42]).trim();
+  if (String(row?.[43]||'').trim()) prefs.kandarengebiss=String(row[43]).trim();
+  if (String(row?.[44]||'').trim()) prefs.unterleggebiss=String(row[44]).trim();
+  bridlePreferencesByHorse.set(horseKey,prefs);
 }
 
 </script>
