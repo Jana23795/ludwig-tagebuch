@@ -394,7 +394,8 @@
 #supabase-auth-gate p { font-size:.84rem; line-height:1.45; color:var(--brown); margin:0 0 14px; }
 #supabase-auth-gate label { display:block; margin:12px 0 6px; color:var(--brown); font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
 #supabase-auth-gate input { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:9px; background:var(--sand); font-family:'DM Sans',sans-serif; font-size:.9rem; color:var(--dark); }
-#supabase-auth-gate button { width:100%; padding:12px; border:0; border-radius:10px; background:var(--dark); color:var(--sand); font-weight:700; cursor:pointer; margin-top:16px; }
+#supabase-auth-gate .auth-session-note { margin:10px 0 0; color:var(--brown); font-size:.72rem; line-height:1.4; }
+  #supabase-auth-gate button { width:100%; padding:12px; border:0; border-radius:10px; background:var(--dark); color:var(--sand); font-weight:700; cursor:pointer; margin-top:16px; }
 #supabase-auth-gate button:disabled { opacity:.6; cursor:wait; }
 #supabase-auth-status { display:none; margin-top:12px; padding:10px 12px; border-radius:9px; font-size:.82rem; line-height:1.4; }
 #supabase-auth-status.show { display:block; }
@@ -616,6 +617,23 @@ nav button.supabase-hidden { display:none !important; }
   .bridle-loading { font-size:.72rem; color:var(--brown); margin:5px 2px 0; }
 </style>
 
+
+<style>
+  #supabase-password-dialog { width:min(440px,calc(100% - 28px)); max-width:none; padding:0; border:1px solid var(--border); border-radius:16px; color:var(--dark); background:var(--white); box-shadow:0 12px 48px rgba(35,25,15,.28); }
+  #supabase-password-dialog::backdrop { background:rgba(30,24,18,.58); }
+  .password-dialog-head { display:flex; justify-content:flex-end; padding:10px 12px 0; margin:0; }
+  .password-dialog-close { border:0; background:transparent; color:var(--brown); font-size:1.2rem; cursor:pointer; padding:4px 8px; }
+  .password-dialog-content { padding:4px 22px 22px; }
+  .password-dialog-content h2 { margin:0 0 7px; color:var(--brown); font-family:'Playfair Display',serif; font-size:1.25rem; }
+  .password-dialog-content p { margin:0 0 14px; color:var(--brown); font-size:.84rem; line-height:1.45; }
+  .password-dialog-content label { display:block; margin:12px 0 6px; color:var(--brown); font-size:.72rem; font-weight:700; }
+  .password-dialog-content input { width:100%; padding:10px 12px; border:1.5px solid var(--border); border-radius:9px; background:var(--sand); color:var(--dark); font:inherit; }
+  .password-dialog-content input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+  #password-change-status { min-height:1.2em; margin:10px 0; font-size:.82rem; color:var(--brown); }
+  #password-change-status.error { color:#a12d21; }
+  #password-change-status.ok { color:#317047; }
+</style>
+
 </head>
 <body>
 
@@ -632,6 +650,7 @@ nav button.supabase-hidden { display:none !important; }
     <label for="supabase-password">Passwort</label>
     <input id="supabase-password" type="password" autocomplete="current-password" />
     <button id="supabase-login-btn" type="button">Anmelden</button>
+    <p class="auth-session-note">Auf diesem Browser angemeldet bleiben, bis du dich im Profil abmeldest. Auf gemeinsam genutzten Geräten bitte abmelden.</p>
     <div id="supabase-auth-status"></div>
   </div>
 </div>
@@ -667,9 +686,29 @@ nav button.supabase-hidden { display:none !important; }
 
     <div class="section-h">Dokumente</div>
     <div id="profileDocuments"></div>
+    <div class="section-h">Konto</div>
+    <button class="btn" type="button" onclick="openPasswordDialog()">🔑 Passwort ändern</button>
     <button class="btn btn-danger" type="button" onclick="logoutSupabase()">🚪 Abmelden</button>
   </div>
 </aside>
+
+<dialog id="supabase-password-dialog" aria-labelledby="password-dialog-title">
+  <form method="dialog" class="password-dialog-head">
+    <button class="password-dialog-close" aria-label="Schließen">✕</button>
+  </form>
+  <div class="password-dialog-content">
+    <h2 id="password-dialog-title">Passwort ändern</h2>
+    <p>Bestätige zuerst dein aktuelles Passwort und wähle danach ein neues.</p>
+    <label for="password-current">Aktuelles Passwort</label>
+    <input id="password-current" type="password" autocomplete="current-password" />
+    <label for="password-new">Neues Passwort</label>
+    <input id="password-new" type="password" autocomplete="new-password" />
+    <label for="password-confirm">Neues Passwort wiederholen</label>
+    <input id="password-confirm" type="password" autocomplete="new-password" />
+    <div id="password-change-status" role="status" aria-live="polite"></div>
+    <button id="password-change-btn" class="btn" type="button" onclick="changeSupabasePassword()">Passwort speichern</button>
+  </div>
+</dialog>
 
 <nav>
 <button data-page="dashboard">&#128202; Dashboard</button>
@@ -4901,6 +4940,56 @@ function applySupabaseModuleVisibility() {
   }
 }
 
+async function activateSupabaseSession(client, authUser, announce=true) {
+  const { data: profile, error: profileError } = await client
+    .from('profiles')
+    .select('id,username,display_name,is_admin,active')
+    .eq('auth_user_id', authUser.id)
+    .single();
+  if (profileError) throw profileError;
+  if (profile.active === false) throw new Error('Dieses Benutzerkonto ist deaktiviert.');
+
+  const { data: memberships, error: memberError } = await client
+    .from('horse_members')
+    .select('horse_id,can_manage_owner_areas')
+    .eq('profile_id', profile.id);
+  if (memberError) throw memberError;
+  const horseIds = (memberships || []).map(row => row.horse_id);
+  if (!horseIds.length) throw new Error('Für diesen Benutzer sind keine Pferde freigeschaltet.');
+  const { data: horses, error: horseError } = await client.from('horses').select('id,slug').in('id', horseIds);
+  if (horseError) throw horseError;
+
+  window.__LUDWIG_SUPABASE_CLIENT__ = client;
+  window.__LUDWIG_PROFILE__ = profile;
+  window.__LUDWIG_HORSE_IDS = horseIds;
+  window.__LUDWIG_ACCESS_KEYS = (horses || []).map(horse => supabaseHorseKey(horse.slug));
+  window.__LUDWIG_OWNER_ACCESS_BY_HORSE = new Map((memberships || []).map(row => [row.horse_id, Boolean(row.can_manage_owner_areas)]));
+  window.__LUDWIG_HORSE_ID_BY_KEY = new Map((horses || []).map(horse => [supabaseHorseKey(horse.slug), horse.id]));
+  applySupabaseHorseAccess();
+  applySupabaseModuleVisibility();
+  document.getElementById('supabase-auth-gate').style.display = 'none';
+  document.body.classList.add('supabase-authenticated');
+  if (announce) showToast('✅ Angemeldet: ' + profile.display_name);
+
+  const firstHorse = window.__LUDWIG_ACCESS_KEYS.includes(initialHorse) ? initialHorse : window.__LUDWIG_ACCESS_KEYS[0];
+  if (firstHorse) {
+    initTrainingForm();
+    setHorse(firstHorse);
+    applySupabaseModuleVisibility();
+    if (initialPage !== 'training') {
+      const initialBtn = document.querySelector(`nav button[data-page="${initialPage}"]`);
+      showPage(initialPage, initialBtn);
+    }
+  }
+  return profile;
+}
+
+function createPersistentSupabaseClient(url, key) {
+  return window.supabase.createClient(url, key, {
+    auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }
+  });
+}
+
 async function loginSupabase() {
   const btn = document.getElementById('supabase-login-btn');
   const url = document.getElementById('supabase-project-url').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
@@ -4911,52 +5000,22 @@ async function loginSupabase() {
     showSupabaseAuthStatus('Bitte Project URL, technischen Schlüssel, Benutzername und Passwort ausfüllen.', 'error');
     return;
   }
-  try { localStorage.setItem('ludwig_supabase_publishable_key', key); } catch (e) {}
+  try {
+    localStorage.setItem('ludwig_supabase_publishable_key', key);
+    localStorage.setItem('ludwig_supabase_project_url', url);
+    localStorage.setItem('ludwig_supabase_username', username);
+  } catch (e) {}
   btn.disabled = true;
   btn.textContent = '⏳ Anmelden…';
+  let client;
   try {
-    const client = window.supabase.createClient(url, key, { auth:{ persistSession:false, autoRefreshToken:false } });
+    client = createPersistentSupabaseClient(url, key);
     const { data: authData, error: authError } = await client.auth.signInWithPassword({ email:supabaseInternalEmail(username), password });
     if (authError) throw authError;
-    const { data: profile, error: profileError } = await client
-      .from('profiles')
-      .select('id,username,display_name,is_admin,active')
-      .eq('auth_user_id', authData.user.id)
-      .single();
-    if (profileError) throw profileError;
-    const { data: memberships, error: memberError } = await client
-      .from('horse_members')
-      .select('horse_id,can_manage_owner_areas')
-      .eq('profile_id', profile.id);
-    if (memberError) throw memberError;
-    const horseIds = (memberships || []).map(row => row.horse_id);
-    if (!horseIds.length) throw new Error('Für diesen Benutzer sind keine Pferde freigeschaltet.');
-    const { data: horses, error: horseError } = await client.from('horses').select('id,slug').in('id', horseIds);
-    if (horseError) throw horseError;
-
-    window.__LUDWIG_SUPABASE_CLIENT__ = client;
-    window.__LUDWIG_PROFILE__ = profile;
-    window.__LUDWIG_HORSE_IDS = horseIds;
-    window.__LUDWIG_ACCESS_KEYS = (horses || []).map(horse => supabaseHorseKey(horse.slug));
-    window.__LUDWIG_OWNER_ACCESS_BY_HORSE = new Map((memberships || []).map(row => [row.horse_id, Boolean(row.can_manage_owner_areas)]));
-    window.__LUDWIG_HORSE_ID_BY_KEY = new Map((horses || []).map(horse => [supabaseHorseKey(horse.slug), horse.id]));
-    applySupabaseHorseAccess();
-    applySupabaseModuleVisibility();
-    document.getElementById('supabase-auth-gate').style.display = 'none';
-    document.body.classList.add('supabase-authenticated');
-    showToast('✅ Angemeldet: ' + profile.display_name);
-
-    const firstHorse = window.__LUDWIG_ACCESS_KEYS.includes(initialHorse) ? initialHorse : window.__LUDWIG_ACCESS_KEYS[0];
-    if (firstHorse) {
-      initTrainingForm();
-      setHorse(firstHorse);
-      applySupabaseModuleVisibility();
-      if (initialPage !== 'training') {
-        const initialBtn = document.querySelector(`nav button[data-page="${initialPage}"]`);
-        showPage(initialPage, initialBtn);
-      }
-    }
+    await activateSupabaseSession(client, authData.user, true);
+    document.getElementById('supabase-password').value = '';
   } catch (error) {
+    if (client) { try { await client.auth.signOut(); } catch (e) {} }
     showSupabaseAuthStatus('Login fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'), 'error');
   } finally {
     btn.disabled = false;
@@ -4964,6 +5023,79 @@ async function loginSupabase() {
   }
 }
 
+async function restoreSupabaseSession() {
+  let url, key;
+  try {
+    url = (localStorage.getItem('ludwig_supabase_project_url') || document.getElementById('supabase-project-url').value).trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
+    key = localStorage.getItem('ludwig_supabase_publishable_key') || '';
+    const username = localStorage.getItem('ludwig_supabase_username') || '';
+    if (username) document.getElementById('supabase-username').value = username;
+    if (url) document.getElementById('supabase-project-url').value = url;
+    if (key) document.getElementById('supabase-publishable-key').value = key;
+  } catch (e) { return; }
+  if (!url || !key) return;
+
+  try {
+    const client = createPersistentSupabaseClient(url, key);
+    const { data, error } = await client.auth.getSession();
+    if (error) throw error;
+    if (!data.session?.user) return;
+    showSupabaseAuthStatus('Gespeicherte Sitzung wird geprüft …', 'ok');
+    await activateSupabaseSession(client, data.session.user, false);
+  } catch (error) {
+    showSupabaseAuthStatus('Die gespeicherte Anmeldung konnte nicht wiederhergestellt werden. Bitte melde dich erneut an. ' + (error.message || ''), 'error');
+  }
+}
+
+function openPasswordDialog() {
+  closeDrawer();
+  const dialog = document.getElementById('supabase-password-dialog');
+  const status = document.getElementById('password-change-status');
+  if (status) { status.textContent = ''; status.className = ''; }
+  ['password-current','password-new','password-confirm'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  if (dialog && !dialog.open) dialog.showModal();
+  setTimeout(() => document.getElementById('password-current')?.focus(), 0);
+}
+
+async function changeSupabasePassword() {
+  const client = window.__LUDWIG_SUPABASE_CLIENT__;
+  const profile = window.__LUDWIG_PROFILE__;
+  const currentPassword = document.getElementById('password-current').value;
+  const newPassword = document.getElementById('password-new').value;
+  const confirmPassword = document.getElementById('password-confirm').value;
+  const status = document.getElementById('password-change-status');
+  const btn = document.getElementById('password-change-btn');
+  const setStatus = (message, type='') => { status.textContent=message; status.className=type; };
+
+  if (!client || !profile?.username) { setStatus('Bitte zuerst anmelden.', 'error'); return; }
+  if (!currentPassword || !newPassword || !confirmPassword) { setStatus('Bitte alle drei Passwortfelder ausfüllen.', 'error'); return; }
+  if (newPassword.length < 8) { setStatus('Das neue Passwort muss mindestens 8 Zeichen lang sein.', 'error'); return; }
+  if (newPassword !== confirmPassword) { setStatus('Die neuen Passwörter stimmen nicht überein.', 'error'); return; }
+  if (newPassword === currentPassword) { setStatus('Das neue Passwort muss sich vom aktuellen unterscheiden.', 'error'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Wird gespeichert …';
+  try {
+    const { error: verifyError } = await client.auth.signInWithPassword({
+      email: supabaseInternalEmail(String(profile.username).toLowerCase()),
+      password: currentPassword
+    });
+    if (verifyError) throw new Error('Das aktuelle Passwort ist nicht korrekt.');
+    const { error } = await client.auth.updateUser({ password:newPassword });
+    if (error) throw error;
+    setStatus('Passwort geändert. Du kannst die App auf diesem Gerät weiter nutzen.', 'ok');
+    document.getElementById('password-current').value = '';
+    document.getElementById('password-new').value = '';
+    document.getElementById('password-confirm').value = '';
+    showToast('✅ Passwort geändert');
+    setTimeout(() => document.getElementById('supabase-password-dialog')?.close(), 1200);
+  } catch (error) {
+    setStatus(error.message || 'Das Passwort konnte nicht geändert werden.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Passwort speichern';
+  }
+}
 
 // Desktop: vertikales Mausrad innerhalb einer Monatsleiste horizontal bewegen.
 document.addEventListener('wheel', event => {
@@ -4977,13 +5109,21 @@ document.addEventListener('wheel', event => {
 
 try {
   const storedSupabaseKey = localStorage.getItem('ludwig_supabase_publishable_key');
+  const storedSupabaseUrl = localStorage.getItem('ludwig_supabase_project_url');
+  const storedUsername = localStorage.getItem('ludwig_supabase_username');
   if (storedSupabaseKey) document.getElementById('supabase-publishable-key').value = storedSupabaseKey;
+  if (storedSupabaseUrl) document.getElementById('supabase-project-url').value = storedSupabaseUrl;
+  if (storedUsername) document.getElementById('supabase-username').value = storedUsername;
 } catch (e) {}
 
 document.getElementById('supabase-login-btn').addEventListener('click', loginSupabase);
 document.getElementById('supabase-password').addEventListener('keydown', event => {
   if (event.key === 'Enter') loginSupabase();
 });
+document.getElementById('supabase-password-dialog').addEventListener('click', event => {
+  if (event.target === event.currentTarget) event.currentTarget.close();
+});
+restoreSupabaseSession();
 </script>
 
 <!-- PUSH BENACHRICHTIGUNG – Täglich um 22 Uhr -->
