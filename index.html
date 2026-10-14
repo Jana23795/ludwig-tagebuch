@@ -401,7 +401,7 @@
 #supabase-auth-status.error { color:var(--red); background:#fdecea; border:1px solid #e8a0a0; }
 #supabase-auth-status.ok { color:var(--green); background:#e8f5e2; border:1px solid #b2d9a0; }
 #supabase-read-banner { display:none; position:fixed; right:12px; bottom:12px; z-index:150; background:var(--dark); color:var(--sand); border-radius:9px; padding:7px 10px; font-size:.72rem; opacity:.9; }
-body.supabase-read-only #supabase-read-banner { display:block; }
+body.supabase-authenticated #supabase-read-banner { display:block; }
 
 nav button.supabase-hidden { display:none !important; }
 
@@ -855,6 +855,11 @@ nav button.supabase-hidden { display:none !important; }
 <label class="field-label">Kommentar (Decke)</label>
 <input id="t-decke-kommentar" type="text" placeholder="Weitere Anmerkungen zur Decke…"/>
 </div>
+<label class="field-label" style="margin-top:16px">💦 GESCHWITZT?</label>
+<div class="yn-group" id="t-geschwitzt">
+<label onclick="ynSelect('t-geschwitzt','yes')"><input name="geschwitzt" type="radio" value="Ja"/> ✅ Ja</label>
+<label onclick="ynSelect('t-geschwitzt','no')"><input name="geschwitzt" type="radio" value="Nein"/> ❌ Nein</label>
+</div>
 <label class="field-label" style="margin-top:16px">🚿 ABGEDUSCHT / GEWASCHEN</label>
 <div class="check-group" id="t-abgeduscht" style="gap:8px">
 <label onclick="event.preventDefault(); singleCheckSelect('t-abgeduscht', this)"><input type="checkbox" value="Abgeduscht"/><span>🚿 Abgeduscht</span></label>
@@ -1135,10 +1140,9 @@ nav button.supabase-hidden { display:none !important; }
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec';
-const APP_BUILD = '2026-07-08-kommandozentrale-linkonly-2';
+const APP_BUILD = '2026-10-14-sweat-weekplan-options';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
-const SUPABASE_READ_TEST = true;
-window.__LUDWIG_SUPABASE_TEST__ = true;
+window.__LUDWIG_SUPABASE_ENABLED__ = true;
 
 
 // ── Pferde-Konfiguration ──
@@ -1241,7 +1245,7 @@ const AVATARS = {
 
 function setHorse(key) {
   if (!HORSES[key]) return;
-  if (window.__LUDWIG_SUPABASE_TEST__ && Array.isArray(window.__LUDWIG_ACCESS_KEYS) && !window.__LUDWIG_ACCESS_KEYS.includes(key)) return;
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && Array.isArray(window.__LUDWIG_ACCESS_KEYS) && !window.__LUDWIG_ACCESS_KEYS.includes(key)) return;
   currentHorse = key;
   try { localStorage.setItem('ludwig_lastHorse', key); } catch (e) {}
   const h = HORSES[key];
@@ -1327,7 +1331,7 @@ async function logoutSupabase() {
     window.__LUDWIG_OWNER_ACCESS_BY_HORSE = new Map();
     window.__LUDWIG_HORSE_ID_BY_KEY = new Map();
     closeDrawer();
-    document.body.classList.remove('supabase-read-only');
+    document.body.classList.remove('supabase-authenticated');
     document.getElementById('supabase-auth-gate').style.display = 'flex';
     showSupabaseAuthStatus('Abgemeldet.', 'ok');
   }
@@ -1402,8 +1406,8 @@ function showToast(msg = '✅ Gespeichert!') {
 }
 
 function showPage(name, btn) {
-  if (window.__LUDWIG_SUPABASE_TEST__ && name === 'budget' && !supabaseCanManageOwnerArea()) return;
-  if (window.__LUDWIG_SUPABASE_TEST__ && name === 'futter' && !supabaseCanManageOwnerArea()) return;
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && name === 'budget' && !supabaseCanManageOwnerArea()) return;
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && name === 'futter' && !supabaseCanManageOwnerArea()) return;
   const pages = document.querySelectorAll('.page');
   pages.forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
@@ -1558,7 +1562,7 @@ document.querySelectorAll('nav button').forEach(btn=>{
 // ═══════════════════════════════════════════════════════
 // LESEN via JSONP (umgeht CORS) – mit automatischem Retry (3 Versuche)
 function loadSheet(tab, _attempt) {
-  if (window.__LUDWIG_SUPABASE_TEST__) return loadSheetFromSupabase(tab);
+  if (window.__LUDWIG_SUPABASE_ENABLED__) return loadSheetFromSupabase(tab);
   const attempt = _attempt || 1;
   return new Promise((resolve, reject) => {
     // Callback name must be a valid JS identifier (no dashes, no leading digits)
@@ -1629,7 +1633,7 @@ function loadSheet(tab, _attempt) {
 
 // SCHREIBEN via fetch no-cors – mit Retry (3 Versuche, steigendes Delay)
 async function appendRow(tab, row, _attempt) {
-  if (window.__LUDWIG_SUPABASE_TEST__) return appendRowToSupabase(tab, row);
+  if (window.__LUDWIG_SUPABASE_ENABLED__) return appendRowToSupabase(tab, row);
   const attempt = _attempt || 1;
   const body = JSON.stringify({ sheetId: SHEET_ID, action: 'append', tab, row });
   try { await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body }); }
@@ -1638,14 +1642,14 @@ async function appendRow(tab, row, _attempt) {
 }
 // LÖSCHEN via fetch no-cors
 async function deleteRow(tab, rowIndex) {
-  if (window.__LUDWIG_SUPABASE_TEST__) return deleteRowFromSupabase(tab, rowIndex);
+  if (window.__LUDWIG_SUPABASE_ENABLED__) return deleteRowFromSupabase(tab, rowIndex);
   const body = JSON.stringify({ sheetId: SHEET_ID, action: 'delete', tab, rowIndex });
   await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body });
   await new Promise(r => setTimeout(r, 1200));
 }
 // UPDATE via fetch no-cors
 async function updateRow(tab, rowIndex, updates) {
-  if (window.__LUDWIG_SUPABASE_TEST__) return updateRowInSupabase(tab, rowIndex, updates);
+  if (window.__LUDWIG_SUPABASE_ENABLED__) return updateRowInSupabase(tab, rowIndex, updates);
   const body = JSON.stringify({ sheetId: SHEET_ID, action: 'update', tab, rowIndex, updates });
   await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body });
   await new Promise(r => setTimeout(r, 1200));
@@ -1841,7 +1845,8 @@ async function saveTraining() {
     $('t-decke-kommentar').value,       // Decke Kommentar
     $('t-rueckenempfindlichkeit').value, // Rückenempfindlichkeit
     $('t-rueckenbeweglichkeit').value,   // Rückenbeweglichkeit / -spannung
-    getChecked('t-abgeduscht')           // Abgeduscht / Gewaschen
+    getChecked('t-abgeduscht'),          // Abgeduscht / Gewaschen
+    getRadio('geschwitzt')                 // Geschwitzt? (new column, appended for compatibility)
   ];
 
   try {
@@ -1890,7 +1895,7 @@ async function renderVerlauf() {
       geschirr: r[28], geschirr_s: r[29], aufgegessen: r[30],
       schutz: r[31], schutz_kommentar: r[32], eingedeckt: r[33],
       deckentyp: r[34], decke_gramm: r[35], decke_kommentar: r[36],
-      rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38], abgeduscht: r[39],
+      rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38], abgeduscht: r[39], geschwitzt: r[40] || '',
     }));
 
     cachedEntries = data.slice().reverse();
@@ -1958,6 +1963,7 @@ function renderVerlaufList() {
         ${detailRow('Aufgegessen', e.aufgegessen || '')}
         ${e.inhaliert ? detailRow('Inhaliert', e.inhaliert) : ''}
         ${e.therapie ? detailRow('Therapie', e.therapie + (e.therapie_notiz ? ' · ' + e.therapie_notiz : '')) : ''}
+        ${e.geschwitzt ? detailRow('Geschwitzt', e.geschwitzt) : ''}
         ${e.abgeduscht ? detailRow('Abgeduscht / Gewaschen', e.abgeduscht) : ''}
 
         ${(e.energie || e.losgelassenheit || e.durchlaessigkeit || e.verlauf_einheit || e.verfassung || e.kooperation) ? `
@@ -2877,6 +2883,8 @@ function drawWeekUI() {
           <option ${entry?.training==='Freiarbeit'?'selected':''}>Freiarbeit</option>
           <option ${entry?.training==='Equikinetik'?'selected':''}>Equikinetik</option>
           <option ${entry?.training==='Equi-Classic-Work'?'selected':''}>Equi-Classic-Work</option>
+          <option ${entry?.training==='Laufenlassen'?'selected':''}>Laufenlassen</option>
+          <option ${entry?.training==='Fahren'?'selected':''}>Fahren</option>
           <option ${entry?.training==='Nur füttern'?'selected':''}>🥕 Nur füttern</option>
         </select>
         <textarea id="fn-${dateStr}" placeholder="Notiz (optional)…">${hasEntry ? (entry.note||'') : ''}</textarea>
@@ -3902,7 +3910,7 @@ try {
   if (HORSES[localStorage.getItem('ludwig_lastHorse')]) initialHorse = localStorage.getItem('ludwig_lastHorse');
   if (document.getElementById('page-' + localStorage.getItem('ludwig_lastPage'))) initialPage = localStorage.getItem('ludwig_lastPage');
 } catch (e) {}
-if (!window.__LUDWIG_SUPABASE_TEST__) {
+if (!window.__LUDWIG_SUPABASE_ENABLED__) {
   initTrainingForm();
   setHorse(initialHorse);
   if (initialPage !== 'training') {
@@ -3917,7 +3925,7 @@ if (!window.__LUDWIG_SUPABASE_TEST__) {
 
 <script>
 // ═══════════════════════════════════════════════════════
-// SUPABASE READ TEST ADAPTER
+// SUPABASE DATA ADAPTER
 // ═══════════════════════════════════════════════════════
 window.__LUDWIG_SUPABASE_CLIENT__ = null;
 window.__LUDWIG_PROFILE__ = null;
@@ -4050,12 +4058,13 @@ function supabaseUpdateIndex(module, key, headers) {
     kosten:['kosten','betrag'],
     notizen:['notiz','notizen'],
     abgeduscht:['abgeduscht','abgeschwammt','gewaschen'],
-    abgeduschtKommentar:['abgeduschtkommentar','kommentardazu']
+    abgeduschtKommentar:['abgeduschtkommentar','kommentardazu'],
+    geschwitzt:['geschwitzt']
   }[key] || [normalizedKey];
   const index = (headers || []).findIndex(header => aliases.includes(normalizedSupabaseHeader(header)));
   if (index >= 0) return index;
   const fallback = {
-    protokoll:{ kommentar:19 },
+    protokoll:{ kommentar:19, geschwitzt:40 },
     gesundheit:{ person:3, befund:4, behandlung:5, kosten:7, notizen:8, abgeduscht:9, abgeduschtKommentar:10 }
   };
   return fallback[module]?.[key] ?? -1;
@@ -4066,7 +4075,11 @@ async function appendRowToSupabase(tab, row) {
   const info = supabaseTabInfo(tab);
   const horseId = window.__LUDWIG_HORSE_ID_BY_KEY.get(supabaseHorseKey(info.slug));
   if (!client || !horseId || !info.module) throw new Error('Supabase-Ziel für diesen Bereich nicht gefunden.');
-  const headers = window.__LUDWIG_HEADERS_BY_TAB[tab] || [];
+  const headers = (window.__LUDWIG_HEADERS_BY_TAB[tab] || []).slice();
+  if (info.module === 'protokoll' && Array.isArray(row)) {
+    while (headers.length < row.length) headers.push(headers.length === 40 ? 'Geschwitzt?' : '');
+    window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
+  }
   const { error } = await client.from('app_entries').insert({
     horse_id: horseId,
     module: info.module,
@@ -4151,7 +4164,7 @@ function applySupabaseModuleVisibility() {
   }
 }
 
-async function loginSupabaseReadTest() {
+async function loginSupabase() {
   const btn = document.getElementById('supabase-login-btn');
   const url = document.getElementById('supabase-project-url').value.trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '');
   const key = document.getElementById('supabase-publishable-key').value.trim();
@@ -4193,8 +4206,8 @@ async function loginSupabaseReadTest() {
     applySupabaseHorseAccess();
     applySupabaseModuleVisibility();
     document.getElementById('supabase-auth-gate').style.display = 'none';
-    document.body.classList.add('supabase-read-only');
-    showToast('✅ Supabase-Lesetest aktiv: ' + profile.display_name);
+    document.body.classList.add('supabase-authenticated');
+    showToast('✅ Angemeldet: ' + profile.display_name);
 
     const firstHorse = window.__LUDWIG_ACCESS_KEYS.includes(initialHorse) ? initialHorse : window.__LUDWIG_ACCESS_KEYS[0];
     if (firstHorse) {
@@ -4230,9 +4243,9 @@ try {
   if (storedSupabaseKey) document.getElementById('supabase-publishable-key').value = storedSupabaseKey;
 } catch (e) {}
 
-document.getElementById('supabase-login-btn').addEventListener('click', loginSupabaseReadTest);
+document.getElementById('supabase-login-btn').addEventListener('click', loginSupabase);
 document.getElementById('supabase-password').addEventListener('keydown', event => {
-  if (event.key === 'Enter') loginSupabaseReadTest();
+  if (event.key === 'Enter') loginSupabase();
 });
 </script>
 
@@ -4357,7 +4370,7 @@ async function initDailyReminder() {
   }
 }
 
-if (!window.__LUDWIG_SUPABASE_TEST__) document.addEventListener('DOMContentLoaded', initDailyReminder);
+if (!window.__LUDWIG_SUPABASE_ENABLED__) document.addEventListener('DOMContentLoaded', initDailyReminder);
 </script>
 <!-- ============================================ -->
 <!-- ENDE PUSH BENACHRICHTIGUNG -->
