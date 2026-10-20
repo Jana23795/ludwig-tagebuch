@@ -446,10 +446,11 @@ nav button.supabase-hidden { display:none !important; }
   .rk-map-body { display:grid; grid-template-columns:44px minmax(0,355px) 44px; justify-content:center; align-items:center; gap:4px; }
   .rk-side-label { font-size:.65rem; font-weight:800; letter-spacing:.1em; color:var(--brown); writing-mode:vertical-rl; justify-self:center; }
   .rk-right { transform:rotate(180deg); }
-  .rk-map-frame,.rk-heat-frame { position:relative; width:min(100%,355px); aspect-ratio:355 / 895; margin:0 auto; overflow:hidden; background:#fff; touch-action:none; user-select:none; }
+  .rk-map-frame,.rk-heat-frame { position:relative; width:min(100%,355px); aspect-ratio:355 / 895; margin:0 auto; overflow:hidden; background:#fff; touch-action:pan-y; user-select:none; }
   .rk-template { display:block; position:absolute; inset:0; width:100%; height:100%; object-fit:fill; pointer-events:none; }
   #rk-editor-svg,#rk-heat-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
-  #rk-editor-svg { touch-action:none; cursor:crosshair; outline:none; }
+  #rk-editor-svg { touch-action:pan-y; cursor:crosshair; outline:none; }
+  #rk-editor-svg.rk-drawing-area { touch-action:none; }
   #rk-editor-svg:focus-visible { outline:3px solid #3d7fa6; outline-offset:2px; }
   .rk-mark-shape { pointer-events:none; }
   .rk-mark-number { font:700 10px 'DM Sans',sans-serif; fill:white; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
@@ -5410,7 +5411,22 @@ let rkDraftMarks = [];
 let rkSelectedId = null;
 let rkMode = 'point';
 let rkDrawingPoints = null;
+let rkDrawingInvalid = false;
 let rkLoadToken = 0;
+const RK_BODY_INSET = 9;
+const RK_BACK_Y_MIN = 12;
+const RK_BACK_Y_MAX = 870;
+// Approximate outer silhouette of the bundled 355x895 back template, sampled by y.
+const RK_BODY_BOUNDS = [
+  [0,110,251],[25,107,254],[50,106,258],[75,102,267],[100,92,268],
+  [125,82,278],[150,67,291],[175,64,304],[200,52,314],[225,39,323],
+  [250,37,329],[275,33,333],[300,34,333],[325,33,328],[350,32,335],
+  [375,26,341],[400,17,351],[425,18,354],[450,17,351],[475,18,351],
+  [500,20,349],[525,24,350],[550,29,340],[575,31,339],[600,18,351],
+  [625,15,354],[650,14,353],[675,18,354],[700,24,344],[725,17,347],
+  [750,22,347],[775,25,344],[800,34,335],[825,49,320],[850,63,299],
+  [875,95,273]
+];
 
 function rkToday() {
   const d = new Date();
@@ -5426,6 +5442,46 @@ function rkSetStatus(text, type='') {
 }
 function rkCurrentMarks() { return rkDraftMarks; }
 function rkClamp(value, max) { return Math.max(0, Math.min(max, Number(value) || 0)); }
+function rkBodyBoundsAtY(y) {
+  if (!Number.isFinite(y) || y < RK_BACK_Y_MIN || y > RK_BACK_Y_MAX) return null;
+  let hi = RK_BODY_BOUNDS.findIndex(row => row[0] >= y);
+  if (hi < 0) hi = RK_BODY_BOUNDS.length - 1;
+  const b = RK_BODY_BOUNDS[hi];
+  const a = RK_BODY_BOUNDS[Math.max(0, hi - 1)];
+  const t = b[0] === a[0] ? 0 : (y - a[0]) / (b[0] - a[0]);
+  return { left:a[1] + (b[1]-a[1])*t, right:a[2] + (b[2]-a[2])*t };
+}
+function rkIsInsideBack(point, inset=RK_BODY_INSET) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+  const bounds = rkBodyBoundsAtY(point.y);
+  return Boolean(bounds && point.x >= bounds.left + inset && point.x <= bounds.right - inset);
+}
+function rkBodyClipPath() {
+  const left = [], right = [];
+  for (let y=RK_BACK_Y_MIN; y<=RK_BACK_Y_MAX; y+=10) {
+    const b = rkBodyBoundsAtY(y); if (b) left.push(`${(b.left+RK_BODY_INSET).toFixed(1)},${y}`);
+  }
+  for (let y=RK_BACK_Y_MAX; y>=RK_BACK_Y_MIN; y-=10) {
+    const b = rkBodyBoundsAtY(y); if (b) right.push(`${(b.right-RK_BODY_INSET).toFixed(1)},${y}`);
+  }
+  return `M${left.join(' L')} L${right.join(' L')} Z`;
+}
+function rkSegmentInsideBack(a,b) {
+  const length = Math.hypot(b.x-a.x,b.y-a.y);
+  const steps = Math.max(1,Math.ceil(length/4));
+  for (let i=0;i<=steps;i++) {
+    const t=i/steps;
+    if (!rkIsInsideBack({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t})) return false;
+  }
+  return true;
+}
+function rkAreaInsideBack(points) {
+  if (!Array.isArray(points) || points.length < 3) return false;
+  for (let i=0;i<points.length;i++) {
+    if (!rkSegmentInsideBack(points[i],points[(i+1)%points.length])) return false;
+  }
+  return true;
+}
 function rkNormalizeMark(mark) {
   if (!mark || !['point','area'].includes(mark.type)) return null;
   const intensity = Math.max(0, Math.min(3, Number.parseInt(mark.intensity,10) || 0));
@@ -5506,7 +5562,7 @@ function rkRenderEditor() {
     const points = rkDrawingPoints.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
     pending = `<polyline points="${points}" fill="none" stroke="${color(document.getElementById('rk-intensity')?.value)}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`;
   }
-  svg.innerHTML = `<g>${shapes}</g>${pending}`;
+  svg.innerHTML = `<defs><clipPath id="rk-horse-back-clip" clipPathUnits="userSpaceOnUse"><path d="${rkBodyClipPath()}"/></clipPath></defs><g clip-path="url(#rk-horse-back-clip)"><g>${shapes}</g>${pending}</g>`;
 }
 function rkRenderSessionSelect() {
   const select = document.getElementById('rk-session-select'); if (!select) return;
@@ -5544,9 +5600,9 @@ function rkGetSvgPoint(event) {
   const svg = document.getElementById('rk-editor-svg');
   const pt = svg.createSVGPoint(); pt.x = event.clientX; pt.y = event.clientY;
   const matrix = svg.getScreenCTM();
-  if (!matrix) return {x:RK_WIDTH/2,y:RK_HEIGHT/2};
+  if (!matrix) return {x:NaN,y:NaN};
   const pos = pt.matrixTransform(matrix.inverse());
-  return {x:rkClamp(pos.x,RK_WIDTH),y:rkClamp(pos.y,RK_HEIGHT)};
+  return {x:pos.x,y:pos.y};
 }
 function rkSetMode(mode) {
   rkMode = mode;
@@ -5554,31 +5610,51 @@ function rkSetMode(mode) {
   point?.classList.toggle('active',mode==='point'); area?.classList.toggle('active',mode==='area');
   point?.setAttribute('aria-pressed',String(mode==='point')); area?.setAttribute('aria-pressed',String(mode==='area'));
   const hint = document.getElementById('rk-map-hint');
-  if (hint) hint.textContent = mode==='point' ? 'Tippe oder klicke auf den Rücken, um einen Punkt zu setzen.' : 'Ziehe mit Finger oder Maus eine geschlossene Fläche auf dem Rücken.';
+  if (hint) hint.textContent = mode==='point'
+    ? 'Punkte mit einem Tippen im Pferdebereich setzen. In diesem Modus kannst du über die Karte scrollen.'
+    : 'Ziehe mit Finger oder Maus eine geschlossene Fläche innerhalb der Pferdesilhouette.';
+  const svg = document.getElementById('rk-editor-svg');
+  svg?.classList.toggle('rk-drawing-area', mode==='area');
+}
+function rkPlacePoint(event) {
+  if (rkMode !== 'point' || event.detail === 0) return;
+  const p = rkGetSvgPoint(event);
+  if (!rkIsInsideBack(p)) {
+    rkSetStatus('Bitte innerhalb der Rücken-Silhouette markieren.');
+    return;
+  }
+  rkDraftMarks.push({type:'point',x:p.x,y:p.y,intensity:Number(document.getElementById('rk-intensity')?.value||0)});
+  rkRenderEditor(); rkSetStatus('Punkt gesetzt. Zum Ändern kannst du ihn zurücknehmen.');
+  event.preventDefault();
 }
 function rkStartDraw(event) {
   if (event.button !== undefined && event.button !== 0) return;
+  if (rkMode === 'point') return;
   const svg = document.getElementById('rk-editor-svg');
-  if (rkMode === 'point') {
-    const p = rkGetSvgPoint(event);
-    rkDraftMarks.push({type:'point',x:p.x,y:p.y,intensity:Number(document.getElementById('rk-intensity')?.value||0)});
-    rkRenderEditor(); rkSetStatus('Punkt hinzugefügt. Du kannst weitere Markierungen setzen.');
-    event.preventDefault(); return;
+  const p = rkGetSvgPoint(event);
+  if (!rkIsInsideBack(p)) {
+    rkSetStatus('Flächen bitte vollständig innerhalb der Rücken-Silhouette zeichnen.');
+    return;
   }
-  rkDrawingPoints = [rkGetSvgPoint(event)];
+  rkDrawingInvalid = false;
+  rkDrawingPoints = [p];
   try { svg.setPointerCapture(event.pointerId); } catch(e) {}
   rkRenderEditor(); event.preventDefault();
 }
 function rkMoveDraw(event) {
   if (!rkDrawingPoints) return;
   const p = rkGetSvgPoint(event), last = rkDrawingPoints[rkDrawingPoints.length-1];
-  if (Math.hypot(p.x-last.x,p.y-last.y) >= 3) rkDrawingPoints.push(p);
+  if (!rkIsInsideBack(p)) rkDrawingInvalid = true;
+  if (Math.hypot(p.x-last.x,p.y-last.y) >= 3 && rkIsInsideBack(p)) rkDrawingPoints.push(p);
   rkRenderEditor(); event.preventDefault();
 }
 function rkFinishDraw() {
   if (!rkDrawingPoints) return;
   const points = rkDrawingPoints; rkDrawingPoints = null;
-  if (points.length >= 3) {
+  if (rkDrawingInvalid || !rkAreaInsideBack(points)) {
+    rkDrawingInvalid = false;
+    rkSetStatus('Fläche verworfen: Bitte komplett innerhalb der Rücken-Silhouette zeichnen.','error');
+  } else if (points.length >= 3) {
     rkDraftMarks.push({type:'area',points,intensity:Number(document.getElementById('rk-intensity')?.value||0)});
     rkSetStatus('Fläche hinzugefügt. Du kannst weitere Markierungen setzen.');
   } else rkSetStatus('Für eine Fläche bitte eine größere Bewegung mit mindestens drei Punkten zeichnen.');
@@ -5641,7 +5717,8 @@ function rkFilteredSessions() {
 function rkRenderAnalysis() {
   const sessions = rkFilteredSessions();
   const checks = sessions.length;
-  const marks = sessions.flatMap(s => rkSessionPayload(s).marks.map(m => ({...m,date:rkDate(s)})));
+  const marks = sessions.flatMap(s => rkSessionPayload(s).marks.map(m => ({...m,date:rkDate(s)})))
+    .filter(mark => mark.type === 'point' ? rkIsInsideBack(mark) : rkAreaInsideBack(mark.points));
   const mean = marks.length ? marks.reduce((sum,m)=>sum+m.intensity,0)/marks.length : null;
   const stats = document.getElementById('rk-stats');
   if (stats) stats.innerHTML = `<div class="rk-stat"><strong>${checks}</strong><span>Checks</span></div><div class="rk-stat"><strong>${marks.length}</strong><span>Markierungen</span></div><div class="rk-stat"><strong>${mean===null?'–':mean.toFixed(1)}</strong><span>Ø Intensität</span></div>`;
@@ -5669,7 +5746,7 @@ function rkRenderHeatmap(marks) {
     const avg=c.severity/c.n, opacity=Math.min(.72,.20+c.n*.12+avg*.08), radius=Math.min(58,22+c.n*5+avg*4);
     return `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${radius.toFixed(1)}" fill="${RK_COLORS[Math.round(avg)]}" fill-opacity="${opacity.toFixed(2)}" stroke="#fffdf8" stroke-width="1.5"><title>${c.n} Markierung(en), durchschnittliche Intensität ${avg.toFixed(1)}</title></circle>`;
   }).join('');
-  svg.innerHTML = `<g>${areas.join('')}${blobs}</g>`;
+  svg.innerHTML = `<defs><clipPath id="rk-heat-back-clip" clipPathUnits="userSpaceOnUse"><path d="${rkBodyClipPath()}"/></clipPath></defs><g clip-path="url(#rk-heat-back-clip)">${areas.join('')}${blobs}</g>`;
 }
 function rkRenderTrend(sessions) {
   const svg=document.getElementById('rk-trend-svg'); if(!svg)return;
@@ -5709,12 +5786,14 @@ function rkRenderHistory(sessions) {
   if(!svg)return;
   document.getElementById('rk-date').value=rkToday();
   svg.addEventListener('pointerdown',rkStartDraw);
+  svg.addEventListener('click',rkPlacePoint);
   svg.addEventListener('pointermove',rkMoveDraw);
   svg.addEventListener('pointerup',rkFinishDraw);
   svg.addEventListener('pointercancel',rkFinishDraw);
   svg.addEventListener('keydown',event=>{
-    if(event.key==='Enter'||event.key===' '){event.preventDefault();rkDraftMarks.push({type:'point',x:RK_WIDTH/2,y:RK_HEIGHT/2,intensity:Number(document.getElementById('rk-intensity').value||0)});rkRenderEditor();rkSetStatus('Punkt in der Kartenmitte hinzugefügt.');}
+    if(event.key==='Enter'||event.key===' '){event.preventDefault();const p={x:RK_WIDTH/2,y:RK_HEIGHT/2};if(!rkIsInsideBack(p)){rkSetStatus('Punkt liegt außerhalb der Rücken-Silhouette.');return;}rkDraftMarks.push({type:'point',x:p.x,y:p.y,intensity:Number(document.getElementById('rk-intensity').value||0)});rkRenderEditor();rkSetStatus('Punkt in der Kartenmitte hinzugefügt.');}
   });
+  rkSetMode('point');
   document.getElementById('rk-mode-point').addEventListener('click',()=>rkSetMode('point'));
   document.getElementById('rk-mode-area').addEventListener('click',()=>rkSetMode('area'));
   document.getElementById('rk-session-select').addEventListener('change',e=>rkSelectSession(e.target.value));
@@ -5942,7 +6021,7 @@ function obsRenderPage(entries) {
     obsPendingFocusId = null;
   }
 }
-async function loadAuff\u00e4lligkeiten() {
+async function loadAuffaelligkeiten() {
   const token = ++obsLoadToken;
   const horse = currentHorse;
   obsSetFeedback('Lade Auff\u00e4lligkeiten …');
@@ -6044,7 +6123,7 @@ async function obsSave() {
     }
     document.getElementById('obs-dialog').close();
     showToast(obsDialogMode === 'new' ? 'Auff\u00e4lligkeit gespeichert.' : 'Verlauf aktualisiert.');
-    if (document.getElementById('page-auffaelligkeiten')?.classList.contains('active')) await loadAuff\u00e4lligkeiten();
+    if (document.getElementById('page-auffaelligkeiten')?.classList.contains('active')) await loadAuffaelligkeiten();
     if (document.getElementById('page-dashboard')?.classList.contains('active')) await obsRenderDashboardIssues();
   } catch (error) {
     obsSetDialogError(error.message || 'Speichern fehlgeschlagen.');
@@ -6061,7 +6140,7 @@ async function obsDelete(id) {
     const {error} = await client.from('app_entries').delete().eq('id',id).eq('horse_id',horseId).eq('module','auffaelligkeiten');
     if (error) throw error;
     showToast('Auff\u00e4lligkeit gel\u00f6scht.');
-    await loadAuff\u00e4lligkeiten();
+    await loadAuffaelligkeiten();
     if (document.getElementById('page-dashboard')?.classList.contains('active')) await obsRenderDashboardIssues();
   } catch (error) { showToast('L\u00f6schen fehlgeschlagen. Bitte Berechtigung pr\u00fcfen.'); }
 }
