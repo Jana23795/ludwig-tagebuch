@@ -715,6 +715,23 @@ nav button.supabase-hidden { display:none !important; }
   #password-change-status.ok { color:#317047; }
 </style>
 
+
+<style id="winter-advice-styles">
+.winter-advice-card{border-left:4px solid #90a8a2}
+.winter-advice-main{display:grid;grid-template-columns:1.1fr .9fr;gap:12px;align-items:stretch}
+.winter-weather-fact,.winter-rug-suggestion{background:var(--sand);border:1px solid var(--border);border-radius:10px;padding:12px;min-width:0}
+.winter-weather-fact strong,.winter-rug-suggestion strong{display:block;color:var(--dark);font-size:.88rem}
+.winter-weather-meta{font-size:.74rem;color:var(--brown);line-height:1.5;margin-top:5px}
+.winter-rug-value{font:700 1.25rem 'Playfair Display',serif;color:var(--brown);margin-top:5px}
+.winter-disclaimer{font-size:.68rem;color:#777;line-height:1.45;margin:9px 0 0}
+.winter-profile-editor{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+.winter-profile-editor summary{cursor:pointer;color:var(--brown);font-weight:700;font-size:.74rem}
+.winter-profile-controls{display:flex;align-items:end;flex-wrap:wrap;gap:9px;padding-top:9px}
+.winter-profile-controls label{display:grid;gap:5px;color:var(--brown);font-size:.7rem;font-weight:700;min-width:0}
+.winter-profile-controls select{min-width:180px;max-width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--dark);font:600 .85rem 'DM Sans',sans-serif}
+@media(max-width:560px){.winter-advice-main{grid-template-columns:minmax(0,1fr)}.winter-profile-controls{align-items:stretch;flex-direction:column}.winter-profile-controls select,.winter-profile-controls button{width:100%;min-width:0;box-sizing:border-box}}
+</style>
+
 </head>
 <body>
 
@@ -912,6 +929,20 @@ nav button.supabase-hidden { display:none !important; }
   <div class="dashboard-card">
     <div class="dashboard-card-title">📅 Heute im Wochenplan</div>
     <div id="dashboard-today-box"><div class="dashboard-loader">⏳ Lade…</div></div>
+  </div>
+
+  <!-- Individueller Winter- und Deckenhinweis -->
+  <div class="dashboard-card winter-advice-card" id="dashboard-winter-card">
+    <div class="dashboard-card-title">❄️ Winterhinweis &amp; Deckenorientierung <span class="dashboard-badge" id="winter-location-badge">Wetter</span></div>
+    <div id="winter-advice-content"><div class="dashboard-loader">Lade Wettervorhersage …</div></div>
+    <details class="winter-profile-editor" id="winter-profile-editor" hidden>
+      <summary>Pferdeprofil anpassen</summary>
+      <div class="winter-profile-controls">
+        <label>Fell / Schur<select id="winter-coat-profile"><option value="unclipped">Ungeschoren / teilweise geschoren</option><option value="clipped">Voll geschoren</option></select></label>
+        <label>Individueller Wärmebedarf<select id="winter-warmth-steps"><option value="0">Standard</option><option value="1">Eine Stufe wärmer</option><option value="2">Zwei Stufen wärmer</option></select></label>
+        <button type="button" class="btn btn-accent" onclick="saveWinterProfile()">Profil speichern</button>
+      </div>
+    </details>
   </div>
 
   <!-- Fälligkeiten und bestätigte Termine -->
@@ -1552,7 +1583,7 @@ nav button.supabase-hidden { display:none !important; }
 <tbody id="futter-body"></tbody></table>
 </div>
 <button class="btn btn-accent" onclick="addFutterRow()" style="margin-top:12px">➕ Zeile hinzufügen</button>
-<button class="btn" onclick="saveFutter()">💾 Futterplan speichern</button>
+<button class="btn" type="button" onclick="saveFutter(this)">💾 Futterplan speichern</button>
 </div>
 </div>
 <!-- ═══ PAGE 5b: FUTTERPLAN (Ansicht) ═══ -->
@@ -1946,24 +1977,11 @@ function setHorse(key) {
   if (!active) return;
   if (active.id === 'page-dashboard') dashboardRender();
   if (active.id === 'page-budget') renderBudget();
-  if (active.id === 'page-training') {
-    const banner = $('prev-banner'); if (banner) banner.style.display = 'none';
-    const summary = $('prev-summary'); if (summary) summary.textContent = '';
-    loadSheet(h.tabs.protokolle).then(rows => {
-      if (key !== currentHorse) return; // Veraltete Antworten beim schnellen Pferdewechsel ignorieren.
-      if (typeof updateBridlePreferencesFromRows === 'function') updateBridlePreferencesFromRows(rows, key);
-      const data = Array.isArray(rows) ? rows.slice(1) : [];
-      if (data.length > 0) showPrevBanner(data.map(r => ({
-        datum: r[1], wer: r[2], art: r[6], stimmung: r[3], verdauung: r[14]
-      })));
-      else clearPrevBanner();
-    }).catch(() => {
-      if (key === currentHorse) clearPrevBanner();
-    });
-  }
+  if (active.id === 'page-training') loadLatestProtocolBanner(key);
   if (active.id === 'page-verlauf') renderVerlauf();
   if (active.id === 'page-pat') renderPAT();
   if (active.id === 'page-gesundheit') renderGesundheit();
+  if (active.id === 'page-futter') { renderMonthBar('futter'); renderFutter(); }
   if (active.id === 'page-futterplan') renderFutterplanView();
   if (active.id === 'page-woche') { weekData = {}; renderWoche(); }
   if (active.id === 'page-rueckenkarte') loadRueckenkarte();
@@ -2088,6 +2106,7 @@ function showPage(name, btn) {
   if (pageEl) { pageEl.classList.add('active'); pageEl.style.display = 'block'; }
   if (btn) btn.classList.add('active');
   try { localStorage.setItem('ludwig_lastPage', name); } catch (e) {}
+  if (name === 'training') loadLatestProtocolBanner(currentHorse);
   if (name === 'verlauf') renderVerlauf();
   if (name === 'pat') renderPAT();
   if (name === 'gesundheit') renderGesundheit();
@@ -2745,17 +2764,28 @@ async function saveProtokollEditIfNeeded() {
   showToast('✅ Verlauf aktualisiert');
   return true;
 }
-function initTrainingForm() {
-  $('t-datum').value = isoDate(new Date());
-  // Banner nachladen
-  const horseAtStart = currentHorse;
-  loadSheet(HORSES[horseAtStart].tabs.protokolle).then(rows => {
-    if (typeof updateBridlePreferencesFromRows === 'function') updateBridlePreferencesFromRows(rows, horseAtStart);
-    const data = rows.slice(1);
-    if (data.length > 0 && horseAtStart === currentHorse) showPrevBanner(data.map(r => ({
+async function loadLatestProtocolBanner(horseKey = currentHorse) {
+  clearPrevBanner();
+  const horse = HORSES[horseKey];
+  if (!horse?.tabs?.protokolle) return;
+  try {
+    const rows = await loadSheet(horse.tabs.protokolle);
+    if (horseKey !== currentHorse) return;
+    if (typeof updateBridlePreferencesFromRows === 'function') updateBridlePreferencesFromRows(rows, horseKey);
+    const data = Array.isArray(rows) ? rows.slice(1) : [];
+    if (data.length) showPrevBanner(data.map(r => ({
       datum: r[1], wer: r[2], art: r[6], stimmung: r[3], verdauung: r[14]
     })));
-  }).catch(() => {});
+    else clearPrevBanner();
+  } catch (error) {
+    if (horseKey === currentHorse) clearPrevBanner();
+  }
+}
+
+function initTrainingForm() {
+  const dateInput = $('t-datum');
+  if (dateInput) dateInput.value = isoDate(new Date());
+  loadLatestProtocolBanner(currentHorse);
 }
 
 function formatDate(value) {
@@ -3284,6 +3314,124 @@ function changeBudgetYear(value) {
   currentBudgetYear = year;
   renderBudget();
 }
+let futterEditorLoadedHorse = null;
+let futterEditorLoadedMonth = null;
+
+function addFutterRow(f = {}) {
+  const body = $('futter-body');
+  if (!body) return;
+  const tr = document.createElement('tr');
+  const categories = ['Grundfutter','Kräuter','Zusätze','Kraftfutter','Sonstiges'];
+  const frequencies = ['täglich','2x täglich','3x täglich','wöchentlich','nach Bedarf'];
+  const categoryOptions = categories.map(value => `<option value="${escapeFutterplan(value)}" ${f.kat === value ? 'selected' : ''}>${escapeFutterplan(value)}</option>`).join('');
+  const frequencyOptions = frequencies.map(value => `<option value="${escapeFutterplan(value)}" ${f.haeuf === value ? 'selected' : ''}>${escapeFutterplan(value)}</option>`).join('');
+  tr.innerHTML = `
+    <td><input type="text" value="${escapeFutterplan(f.name || '')}" placeholder="z. B. Heu" aria-label="Futtermittel"></td>
+    <td><select aria-label="Kategorie">${categoryOptions}</select></td>
+    <td><input type="text" value="${escapeFutterplan(f.dosierung || '')}" placeholder="z. B. 2 kg" aria-label="Dosierung"></td>
+    <td><select aria-label="Häufigkeit">${frequencyOptions}</select></td>
+    <td><input type="text" value="${escapeFutterplan(f.notizen || '')}" placeholder="Notizen…" aria-label="Notizen"></td>
+    <td><button class="delete-btn" type="button" aria-label="Zeile entfernen" onclick="this.closest('tr').remove()">🗑️</button></td>`;
+  body.appendChild(tr);
+}
+window.addFutterRow = addFutterRow;
+
+async function renderFutter() {
+  const body = $('futter-body');
+  if (!body) return;
+  const horseAtStart = currentHorse;
+  const monthAtStart = currentFutterMonth;
+  const tab = HORSES[horseAtStart]?.tabs?.futter;
+  futterEditorLoadedHorse = null;
+  futterEditorLoadedMonth = null;
+  body.innerHTML = '<tr><td colspan="6" class="loader">⏳ Lade…</td></tr>';
+  if (!tab) {
+    body.innerHTML = '<tr><td colspan="6" class="budget-error">Für dieses Pferd ist kein Futterbereich hinterlegt.</td></tr>';
+    return;
+  }
+
+  try {
+    await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
+    const sheetRows = await loadSheet(tab);
+    if (horseAtStart !== currentHorse || monthAtStart !== currentFutterMonth) return;
+    const rows = Array.isArray(sheetRows) ? sheetRows : [];
+    const firstCell = rows[0]?.[0];
+    const firstCellText = String(firstCell ?? '').trim();
+    const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+    const startIndex = hasHeader ? 1 : 0;
+    const monthRows = [];
+    for (let i = startIndex; i < rows.length; i++) {
+      const row = rows[i];
+      if (!Array.isArray(row) || row.length < 2) continue;
+      const monthIndex = parseInt(String(row[0] ?? '').trim(), 10);
+      if (!Number.isNaN(monthIndex) && monthIndex !== monthAtStart) continue;
+      monthRows.push({ name: row[1] || '', kat: row[2] || '', dosierung: row[3] || '', haeuf: row[4] || '', notizen: row[5] || '' });
+    }
+    body.innerHTML = '';
+    if (!monthRows.length) addFutterRow();
+    else monthRows.forEach(row => addFutterRow(row));
+    futterEditorLoadedHorse = horseAtStart;
+    futterEditorLoadedMonth = monthAtStart;
+  } catch (error) {
+    if (horseAtStart !== currentHorse || monthAtStart !== currentFutterMonth) return;
+    body.innerHTML = '<tr><td colspan="6" class="budget-error">Futter konnte nicht geladen werden. Bitte Verbindung prüfen und erneut versuchen.</td></tr>';
+    showToast('⚠️ Futterplan konnte nicht geladen werden.');
+    console.warn('Futterplan konnte nicht geladen werden:', error);
+  }
+}
+window.renderFutter = renderFutter;
+
+async function saveFutter(button) {
+  const btn = button || document.querySelector('#page-futter button[onclick*="saveFutter"]');
+  if (futterEditorLoadedHorse !== currentHorse || futterEditorLoadedMonth !== currentFutterMonth) {
+    showToast('Futter ist noch nicht vollständig geladen. Bitte zuerst erneut laden.');
+    return;
+  }
+  if (btn?.disabled) return;
+  const originalText = btn?.textContent || '💾 Futterplan speichern';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Speichert…'; }
+  const horseAtStart = currentHorse;
+  const monthAtStart = currentFutterMonth;
+  const tab = HORSES[horseAtStart].tabs.futter;
+  const rowsToSave = [...$('futter-body').querySelectorAll('tr')].map(tr => {
+    const fields = tr.querySelectorAll('input, select');
+    return {
+      name: String(fields[0]?.value || '').trim(),
+      kat: String(fields[1]?.value || '').trim(),
+      dosierung: String(fields[2]?.value || '').trim(),
+      haeuf: String(fields[3]?.value || '').trim(),
+      notizen: String(fields[4]?.value || '').trim()
+    };
+  }).filter(row => row.name || row.kat || row.dosierung || row.haeuf || row.notizen);
+
+  try {
+    await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
+    const sheetRows = await loadSheet(tab);
+    const firstCell = sheetRows?.[0]?.[0];
+    const firstCellText = String(firstCell ?? '').trim();
+    const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+    const startIndex = hasHeader ? 1 : 0;
+    const matches = [];
+    for (let i = startIndex; i < (sheetRows || []).length; i++) {
+      const monthIndex = parseInt(String(sheetRows[i]?.[0] ?? '').trim(), 10);
+      if (monthIndex === monthAtStart) matches.push(i + 1);
+    }
+    for (let i = matches.length - 1; i >= 0; i--) await deleteRow(tab, matches[i]);
+    for (const row of rowsToSave) await appendRow(tab, [monthAtStart, row.name, row.kat, row.dosierung, row.haeuf, row.notizen]);
+    if (horseAtStart === currentHorse && monthAtStart === currentFutterMonth) {
+      await renderFutter();
+      if (document.querySelector('.page.active')?.id === 'page-futterplan') await renderFutterplanView();
+    }
+    showToast('✅ Futterplan gespeichert!');
+  } catch (error) {
+    showToast('❌ Futterplan konnte nicht gespeichert werden.');
+    console.error('Futterplan konnte nicht gespeichert werden:', error);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+window.saveFutter = saveFutter;
+
 let currentFutterplanMonth = new Date().getMonth();
 
 function escapeFutterplan(value) {
@@ -6615,5 +6763,152 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
   }
 })();
 </script>
+<script>
+(function(){
+  const defaults={
+    ludwig:{location_label:'Kaarst-Büttgen',latitude:51.215,longitude:6.611,coat_profile:'unclipped',warmth_steps:0},
+    minstrel:{location_label:'Kaarst-Büttgen',latitude:51.215,longitude:6.611,coat_profile:'unclipped',warmth_steps:0},
+    loki:{location_label:'Lohmar',latitude:50.84,longitude:7.21,coat_profile:'unclipped',warmth_steps:1},
+    ushi:{location_label:'Kaarst-Büttgen',latitude:51.215,longitude:6.611,coat_profile:'unclipped',warmth_steps:1}
+  };
+  const guide={
+    unclipped:['Keine Decke','50 g','50–100 g','100–150 g','150–200 g','200–250 g'],
+    clipped:['0–50 g','100 g','150 g','200–250 g','300 g','400 g']
+  };
+  const weatherCache=new Map();
+  let profileCache=null;
+  const el=id=>document.getElementById(id);
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const defaultProfile=key=>({...defaults[key]||defaults.ludwig});
+  const canEdit=()=>typeof supabaseCanManageOwnerArea==='function'&&supabaseCanManageOwnerArea();
+
+  async function loadProfile(key){
+    const fallback=defaultProfile(key);
+    const horseId=window.__LUDWIG_HORSE_ID_BY_KEY?.get(key);
+    const client=window.__LUDWIG_SUPABASE_CLIENT__;
+    if(!horseId||!client)return fallback;
+    try{
+      const {data,error}=await client.from('horse_care_profiles').select('*').eq('horse_id',horseId).maybeSingle();
+      if(error)throw error;
+      return data?{...fallback,...data}:fallback;
+    }catch(error){
+      console.warn('Pferdeprofil nicht verfuegbar; Standardwerte werden verwendet.',error);
+      return fallback;
+    }
+  }
+
+  async function fetchNightForecast(profile,force=false){
+    const key=`${profile.latitude},${profile.longitude}`;
+    const cached=weatherCache.get(key);
+    if(!force&&cached&&Date.now()-cached.at<20*60*1000)return cached.data;
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(profile.latitude)}&longitude=${encodeURIComponent(profile.longitude)}&hourly=temperature_2m,precipitation_probability,wind_speed_10m&forecast_days=3&timezone=Europe%2FBerlin`;
+    const response=await fetch(url,{headers:{Accept:'application/json'}});
+    if(!response.ok)throw new Error('Wetterdienst antwortet nicht.');
+    const data=await response.json();
+    const times=data?.hourly?.time||[];
+    const temps=data?.hourly?.temperature_2m||[];
+    const rain=data?.hourly?.precipitation_probability||[];
+    const wind=data?.hourly?.wind_speed_10m||[];
+    const now=new Date();
+    const start=new Date(now.getFullYear(),now.getMonth(),now.getDate(),18,0,0,0);
+    const end=new Date(start.getTime()+14*60*60*1000);
+    const hours=[];
+    times.forEach((time,index)=>{
+      const date=new Date(time);
+      if(!Number.isNaN(date.getTime())&&date>=start&&date<=end&&Number.isFinite(Number(temps[index])))
+        hours.push({temp:Number(temps[index]),rain:Number(rain[index])||0,wind:Number(wind[index])||0});
+    });
+    if(!hours.length)throw new Error('Keine passende Nachtvorhersage verfuegbar.');
+    const result={minTemp:Math.min(...hours.map(x=>x.temp)),maxWind:Math.max(...hours.map(x=>x.wind)),maxRain:Math.max(...hours.map(x=>x.rain))};
+    weatherCache.set(key,{at:Date.now(),data:result});
+    return result;
+  }
+
+  function suggestRug(temp,profile){
+    let step=temp>=10?0:temp>=5?1:temp>=0?2:temp>=-5?3:temp>=-10?4:5;
+    step=Math.min(5,step+Math.max(0,Math.min(2,Number(profile.warmth_steps)||0)));
+    const coat=profile.coat_profile==='clipped'?'clipped':'unclipped';
+    return {range:guide[coat][step],coat};
+  }
+
+  function updateProfileControls(profile){
+    const editor=el('winter-profile-editor');
+    if(!editor)return;
+    editor.hidden=!canEdit();
+    if(!canEdit())return;
+    if(el('winter-coat-profile'))el('winter-coat-profile').value=profile.coat_profile==='clipped'?'clipped':'unclipped';
+    if(el('winter-warmth-steps'))el('winter-warmth-steps').value=String(Math.max(0,Math.min(2,Number(profile.warmth_steps)||0)));
+  }
+
+  async function renderWinterAdvice(force=false){
+    const host=el('winter-advice-content');
+    if(!host)return;
+    const key=currentHorse;
+    if(!HORSES[key])return;
+    host.innerHTML='<div class="dashboard-loader">Lade Vorhersage fuer die Nacht …</div>';
+    try{
+      const profile=await loadProfile(key);
+      profileCache={key,profile};
+      if(key!==currentHorse)return;
+      const badge=el('winter-location-badge');
+      if(badge)badge.textContent=profile.location_label||'Standort';
+      updateProfileControls(profile);
+      const forecast=await fetchNightForecast(profile,force);
+      if(key!==currentHorse)return;
+      const suggestion=suggestRug(forecast.minTemp,profile);
+      const coatLabel=suggestion.coat==='clipped'?'geschoren':'ungeschoren / teilweise geschoren';
+      const warmth=Number(profile.warmth_steps)||0;
+      const warmthLabel=warmth?`+ ${warmth} Wärmestufe${warmth>1?'n':''}`:'Standard';
+      host.innerHTML=`<div class="winter-advice-main">
+        <div class="winter-weather-fact"><strong>Heute Nacht in ${esc(profile.location_label||'am Stall')}</strong><div class="winter-weather-meta">Tiefstwert etwa ${forecast.minTemp.toLocaleString('de-DE',{maximumFractionDigits:1})} °C<br>Max. Wind ${Math.round(forecast.maxWind)} km/h · Regenwahrscheinlichkeit bis ${Math.round(forecast.maxRain)}%</div></div>
+        <div class="winter-rug-suggestion"><strong>Grobe Deckenorientierung</strong><div class="winter-rug-value">${esc(suggestion.range)}</div><div class="winter-weather-meta">${esc(coatLabel)} · ${esc(warmthLabel)}</div></div>
+      </div><p class="winter-disclaimer">Unverbindliche Orientierung nach der hinterlegten Tabelle und dem individuellen Pferdeprofil. Wind, Nässe, Fell, Haltung und Gesundheitszustand mitbeachten; bitte immer das Wohlbefinden des Pferdes prüfen.</p>`;
+    }catch(error){
+      if(key!==currentHorse)return;
+      const fallback=defaultProfile(key);
+      const badge=el('winter-location-badge');
+      if(badge)badge.textContent=fallback.location_label;
+      updateProfileControls(profileCache?.key===key?profileCache.profile:fallback);
+      host.innerHTML='<div class="budget-warning">Die aktuelle Nachtvorhersage ist gerade nicht verfügbar. Es wird keine veraltete Empfehlung angezeigt.</div><button type="button" class="btn" onclick="renderWinterAdvice(true)">Vorhersage erneut laden</button>';
+      console.warn('Deckenhinweis konnte nicht geladen werden:',error);
+    }
+  }
+  window.renderWinterAdvice=renderWinterAdvice;
+
+  async function saveWinterProfile(){
+    if(!canEdit()){showToast('Nur Besitzer-Admins können das Pferdeprofil anpassen.');return;}
+    try{
+      const key=currentHorse;
+      const old=profileCache?.key===key?profileCache.profile:await loadProfile(key);
+      const horseId=window.__LUDWIG_HORSE_ID_BY_KEY?.get(key);
+      const client=window.__LUDWIG_SUPABASE_CLIENT__;
+      if(!horseId||!client)throw new Error('Keine Supabase-Verbindung.');
+      const coat=el('winter-coat-profile')?.value==='clipped'?'clipped':'unclipped';
+      const warmth=Number(el('winter-warmth-steps')?.value)||0;
+      const {error}=await client.from('horse_care_profiles').upsert({horse_id:horseId,location_label:old.location_label,latitude:old.latitude,longitude:old.longitude,coat_profile:coat,warmth_steps:warmth,updated_by:window.__LUDWIG_PROFILE__?.id},{onConflict:'horse_id'});
+      if(error)throw error;
+      weatherCache.clear();
+      showToast('Winterprofil gespeichert.');
+      await renderWinterAdvice(true);
+    }catch(error){
+      console.error('Winterprofil konnte nicht gespeichert werden:',error);
+      showToast('Winterprofil konnte nicht gespeichert werden. Bitte Erweiterung prüfen.');
+    }
+  }
+  window.saveWinterProfile=saveWinterProfile;
+
+  const originalDashboardRender=window.dashboardRender;
+  if(typeof originalDashboardRender==='function'&&!window.__LUDWIG_WINTER_DASHBOARD_WRAPPED__){
+    window.__LUDWIG_WINTER_DASHBOARD_WRAPPED__=true;
+    window.dashboardRender=function(...args){
+      const result=originalDashboardRender.apply(this,args);
+      Promise.resolve(result).then(()=>renderWinterAdvice(),()=>renderWinterAdvice());
+      return result;
+    };
+  }
+  if(document.querySelector('.page.active')?.id==='page-dashboard')renderWinterAdvice();
+})();
+</script>
+
 </body>
 </html>
