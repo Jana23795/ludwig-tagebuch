@@ -493,6 +493,70 @@ nav button.supabase-hidden { display:none !important; }
   @media (max-width:850px) { .rk-layout { grid-template-columns:1fr; } .rk-editor { order:0; } .rk-analysis { order:1; } }
   @media (max-width:520px) { #page-rueckenkarte { padding:14px 9px 30px; } .rk-panel { padding:12px; } .rk-page-heading { padding:0 3px; } .rk-page-heading h2 { font-size:1.38rem; } .rk-page-heading p { font-size:.76rem; } .rk-fields { grid-template-columns:1fr; gap:0; } .rk-map-body { grid-template-columns:31px minmax(0,355px) 31px; gap:0; } .rk-side-label { font-size:.57rem; } .rk-analysis-head { align-items:flex-start; flex-direction:column; } .rk-period-label { max-width:190px; } .rk-actions .btn { flex:1 1 42%; } .rk-action-spacer { display:none; } .rk-actions #rk-save { flex-basis:100%; } }
 
+
+/* Budget redesign */
+.budget-shell{max-width:1120px;margin:0 auto;padding:8px 14px 40px;display:grid;gap:16px;color:var(--dark)}
+.budget-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;padding:20px 22px;background:var(--sand);border:1px solid var(--border);border-radius:16px}
+.budget-eyebrow{font-size:.68rem;font-weight:800;letter-spacing:.12em;color:var(--accent);margin-bottom:5px}
+.budget-hero h2{font:700 1.6rem 'Playfair Display',serif;color:var(--brown);margin:0}
+.budget-hero p,.budget-section-heading p{margin:5px 0 0;color:#74695f;font-size:.82rem;line-height:1.45}
+.budget-year-control{display:grid;gap:5px;min-width:150px;font-size:.73rem;font-weight:700;color:var(--brown)}
+.budget-year-control select,.budget-recurring-form input,.budget-recurring-form select,.budget-target-input input{font:inherit;color:var(--dark);background:#fff;border:1px solid var(--border);border-radius:9px;padding:9px 10px;min-height:40px}
+.budget-period-panel,.budget-section,.budget-panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 4px 16px rgba(66,48,34,.045)}
+.budget-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.budget-section-heading h3{font:700 1.05rem 'Playfair Display',serif;color:var(--brown);margin:0}
+.budget-period-panel .month-bar{display:flex;gap:7px;overflow-x:auto;padding:4px 1px 8px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.budget-period-panel .month-btn{flex:0 0 auto}
+.budget-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.budget-kpi{min-width:0;background:#fff;border:1px solid var(--border);border-top:3px solid var(--accent);border-radius:12px;padding:13px 14px;display:grid;gap:4px}
+.budget-kpi:nth-child(2){border-top-color:#81906d}.budget-kpi:nth-child(3){border-top-color:#b5914d}.budget-kpi:nth-child(4){border-top-color:#79908c}
+.budget-kpi.is-over{border-top-color:var(--red)}
+.budget-kpi-label{color:#776d63;font-size:.72rem;font-weight:700}
+.budget-kpi strong{font:700 1.16rem 'Playfair Display',serif;color:var(--dark);overflow-wrap:anywhere}
+.budget-kpi small{font-size:.7rem;color:#82796f;line-height:1.35}
+.budget-category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.budget-category-card{padding:13px;border:1px solid var(--border);border-radius:12px;background:#fff;min-width:0}
+.budget-category-card.is-over{border-color:#d3a5a0;background:#fffafa}
+.budget-category-head{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.budget-category-head h4{margin:0;color:var(--brown);font-size:.82rem}
+.budget-category-head span{font-size:.76rem;font-weight:800;white-space:nowrap}
+.budget-progress{height:8px;background:#eee9e2;border-radius:99px;overflow:hidden;margin:11px 0 8px}
+.budget-progress span{display:block;height:100%;background:#829176;border-radius:inherit}
+.budget-category-card.is-over .budget-progress span{background:var(--red)}
+.budget-category-meta{display:flex;justify-content:space-between;gap:8px;font-size:.7rem;color:#70675e}
+.budget-category-meta strong{color:var(--dark);text-align:right}
+.budget-category-card small{display:block;margin-top:7px;color:#82796f;font-size:.67rem}
+.budget-panel summary{cursor:pointer;font:700 1.02rem 'Playfair Display',serif;color:var(--brown)}
+.budget-help{margin:7px 0 12px;color:#7d746b;font-size:.74rem;line-height:1.45}
+.budget-target-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:12px}
+.budget-target-card{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--sand);font-size:.78rem;font-weight:700;color:var(--brown)}
+.budget-target-input{display:grid;grid-template-columns:minmax(80px,1fr) auto;gap:5px;align-items:center}
+.budget-target-input input{width:100%;min-width:78px;padding:7px 8px;min-height:36px}
+.budget-target-input small{font-size:.68rem;color:#82796f}
+.budget-recurring-form{display:grid;grid-template-columns:1fr 1.3fr .8fr .9fr .9fr;gap:9px;align-items:end}
+.budget-recurring-form label{display:grid;gap:5px;font-size:.7rem;font-weight:700;color:var(--brown)}
+.budget-recurring-form label span{font-weight:400;color:#8a8178}
+.budget-recurring-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.budget-recurring-list{display:grid;gap:8px;margin-top:12px}
+.budget-recurring-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:#fcfaf7}
+.budget-recurring-item>div:first-child{display:grid;gap:3px;min-width:0}
+.budget-recurring-item>div:first-child strong{color:var(--dark);font-size:.81rem;overflow-wrap:anywhere}
+.budget-recurring-item>div:first-child span{color:#7e746b;font-size:.69rem}
+.budget-recurring-amount{font-size:.78rem;color:var(--brown);white-space:nowrap}
+.budget-row-actions{display:flex;gap:5px;flex-wrap:wrap}
+.budget-row-actions button{border:1px solid var(--border);background:#fff;border-radius:7px;padding:6px 8px;font:600 .68rem 'DM Sans',sans-serif;color:var(--dark);cursor:pointer}
+.budget-row-actions button:hover{border-color:var(--accent)}
+.budget-row-actions .budget-stop-btn{color:#7f453f}
+.budget-empty,.budget-error{padding:13px;color:#756c63;font-size:.78rem}
+.budget-error{color:var(--red)}
+.budget-table-wrap{overflow-x:auto}
+.budget-table{min-width:760px}
+.budget-table input,.budget-table select{min-width:110px;max-width:220px}
+.budget-table td:nth-child(3) input,.budget-table td:nth-child(5) input{min-width:150px}
+.budget-expense-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:760px){.budget-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-target-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-recurring-form{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-recurring-item{grid-template-columns:minmax(0,1fr) auto}.budget-recurring-item .budget-row-actions{grid-column:1/-1}}
+@media(max-width:480px){.budget-shell{padding-left:9px;padding-right:9px}.budget-hero{align-items:stretch;flex-direction:column;padding:16px}.budget-kpi-grid,.budget-category-grid,.budget-target-grid{grid-template-columns:1fr}.budget-kpi{padding:12px}.budget-target-card{align-items:flex-start;flex-direction:column}.budget-target-input{width:100%}.budget-recurring-form{grid-template-columns:1fr}.budget-recurring-item{grid-template-columns:1fr}.budget-recurring-item .budget-row-actions{grid-column:auto}}
+
 </style>
 
 <style>
@@ -1018,6 +1082,7 @@ nav button.supabase-hidden { display:none !important; }
 <label><input type="checkbox" value="Faszienmassage"/><span>🖐️ Faszienmassage</span></label>
 <label><input type="checkbox" value="Osteopathie"/><span>🦴 Osteopathie</span></label>
 <label><input type="checkbox" value="Physiotherapie"/><span>🏥 Physiotherapie</span></label>
+<label><input type="checkbox" value="Aromatherapie"/><span>🌿 Aromatherapie</span></label>
 <label><input type="checkbox" value="Lymphdrainage"/><span>💧 Lymphdrainage</span></label>
 
 <div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">⚡ Geräte</div>
@@ -1484,19 +1549,82 @@ nav button.supabase-hidden { display:none !important; }
 
 <!-- ═══ PAGE 5: BUDGET ═══ -->
 <div class="page" id="page-budget">
-<div class="card">
-<div class="card-title">💶 Ausgabenübersicht</div>
-<div class="month-bar" id="budget-months"></div>
-<div class="table-container">
-<table>
-<thead><tr><th>Datum</th><th>Kategorie</th><th>Leistung / Produkt</th><th>Betrag (€)</th><th>Notizen</th><th></th></tr></thead>
-<tbody id="budget-body"></tbody>
-<tfoot><tr class="total-row"><td colspan="2">Gesamt</td><td id="budget-total">0,00 €</td><td colspan="2"></td></tr></tfoot>
-</table>
-</div>
-<button class="btn btn-accent" onclick="addBudgetRow()" style="margin-top:12px">➕ Ausgabe hinzufügen</button>
-<button class="btn" onclick="saveBudget()">💾 Budget speichern</button>
-</div>
+  <div class="budget-shell">
+    <div class="budget-hero">
+      <div>
+        <div class="budget-eyebrow">PLANUNG &amp; KOSTEN</div>
+        <h2>Jahresbudget</h2>
+        <p>Ausgaben und laufende Kosten im Blick - nur für die zuständigen Besitzer-Admins.</p>
+      </div>
+      <label class="budget-year-control">Auswertungsjahr
+        <select id="budget-year" onchange="changeBudgetYear(this.value)" aria-label="Auswertungsjahr"></select>
+      </label>
+    </div>
+
+    <section class="budget-period-panel" aria-label="Monat auswählen">
+      <div class="budget-section-heading"><div><h3>Monatsübersicht</h3><p>Einmalige Ausgaben plus aktive monatliche Kosten.</p></div></div>
+      <div class="month-bar" id="budget-months"></div>
+    </section>
+
+    <div class="budget-kpi-grid" id="budget-kpis" aria-live="polite">
+      <div class="budget-kpi"><span>Lade Budgetübersicht ...</span></div>
+    </div>
+
+    <section class="budget-section">
+      <div class="budget-section-heading"><div><h3>Jahresbudgets nach Kategorie</h3><p>Gebuchte und laufende Kosten werden gegen das jeweilige Jahresziel gerechnet.</p></div></div>
+      <div class="budget-category-grid" id="budget-category-cards"></div>
+    </section>
+
+    <details class="budget-panel" open>
+      <summary>Jahresbudgets festlegen</summary>
+      <p class="budget-help">Leere Felder bedeuten: für diese Kategorie ist kein Budgetziel hinterlegt.</p>
+      <div class="budget-target-grid" id="budget-target-editor"></div>
+      <button class="btn btn-accent" type="button" onclick="saveBudgetTargets()">Jahresbudgets speichern</button>
+    </details>
+
+    <section class="budget-panel">
+      <div class="budget-section-heading"><div><h3>Monatlich wiederkehrende Kosten</h3><p>Zum Beispiel die Stallmiete. Die Kosten zählen ab dem Startmonat in jede Monats- und Jahresauswertung.</p></div></div>
+      <form id="budget-recurring-form" class="budget-recurring-form" onsubmit="event.preventDefault();saveRecurringCost()">
+        <input type="hidden" id="budget-recurring-id" />
+        <label>Kategorie
+          <select id="budget-recurring-category" required></select>
+        </label>
+        <label>Bezeichnung
+          <input id="budget-recurring-description" type="text" maxlength="120" placeholder="z. B. Stallmiete" required />
+        </label>
+        <label>Monatsbetrag (€)
+          <input id="budget-recurring-amount" type="number" min="0.01" step="0.01" placeholder="0,00" required />
+        </label>
+        <label>Startmonat
+          <input id="budget-recurring-start" type="month" required />
+        </label>
+        <label>Endmonat <span>(optional)</span>
+          <input id="budget-recurring-end" type="month" />
+        </label>
+        <div class="budget-recurring-actions">
+          <button class="btn btn-accent" type="submit" id="budget-recurring-save">Wiederkehrende Kosten speichern</button>
+          <button class="btn" type="button" id="budget-recurring-cancel" onclick="resetRecurringCostForm()" hidden>Abbrechen</button>
+        </div>
+      </form>
+      <div id="budget-recurring-list" class="budget-recurring-list"></div>
+      <p class="budget-help">Wiederkehrende Kosten werden automatisch mitgezählt. Bitte nicht zusätzlich jeden Monat als Einzelausgabe eintragen, sonst wird der Betrag doppelt gerechnet.</p>
+    </section>
+
+    <section class="budget-panel">
+      <div class="budget-section-heading"><div><h3>Einzelausgaben</h3><p id="budget-expenses-period">Ausgaben des ausgewählten Monats</p></div></div>
+      <div class="table-container budget-table-wrap">
+        <table class="budget-table">
+          <thead><tr><th>Datum</th><th>Kategorie</th><th>Leistung / Produkt</th><th>Betrag (€)</th><th>Notizen</th><th></th></tr></thead>
+          <tbody id="budget-body"></tbody>
+          <tfoot><tr class="total-row"><td colspan="3">Einzelausgaben gesamt</td><td id="budget-total">0,00 €</td><td colspan="2"></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="budget-expense-actions">
+        <button class="btn btn-accent" type="button" onclick="addBudgetRow()">Ausgabe hinzufügen</button>
+        <button class="btn" type="button" onclick="saveBudget()">Einzelausgaben speichern</button>
+      </div>
+    </section>
+  </div>
 </div>
 <!-- ═══ PAGE: KOMMANDOZENTRALE ═══ -->
 <div class="page" id="page-kommandos">
@@ -1619,7 +1747,7 @@ nav button.supabase-hidden { display:none !important; }
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec';
-const APP_BUILD = '2026-10-14-sweat-weekplan-options';
+const APP_BUILD = '2026-10-21-budget-year-categories';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 window.__LUDWIG_SUPABASE_ENABLED__ = true;
 
@@ -1799,6 +1927,8 @@ function setHorse(key) {
   if (!active) return;
   if (active.id === 'page-dashboard') dashboardRender();
   if (active.id === 'page-training') {
+    const banner = $('prev-banner'); if (banner) banner.style.display = 'none';
+    const summary = $('prev-summary'); if (summary) summary.textContent = '';
     loadSheet(h.tabs.protokolle).then(rows => {
       if (typeof updateBridlePreferencesFromRows === 'function') updateBridlePreferencesFromRows(rows, key);
       const data = rows.slice(1);
@@ -2406,11 +2536,13 @@ async function saveTraining() {
 let cachedEntries = [];
 
 async function renderVerlauf() {
+  const requestedHorse = currentHorse;
   const list = $('verlauf-list');
   list.innerHTML = '<div class="loader">🐴 Lade Einträge…</div>';
 
   try {
-    const rows = await loadSheet(HORSES[currentHorse].tabs.protokolle);
+    const rows = await loadSheet(HORSES[requestedHorse].tabs.protokolle);
+    if (requestedHorse !== currentHorse) return;
 
     // DEBUG: expose loaded protokoll rows in console
     window.__lastProtokollRows = rows;
@@ -2438,6 +2570,7 @@ async function renderVerlauf() {
     renderVerlaufList();
     showPrevBanner(data);
   } catch(e) {
+    if (requestedHorse !== currentHorse) return;
     list.innerHTML = '<div class="empty-state"><div class="emoji">⚠️</div><p>Einträge konnten nicht geladen werden. <a href="#" onclick="renderVerlauf();return false;" style="color:var(--accent);font-weight:600">Nochmal versuchen</a></p></div>';
   }
 }
@@ -2548,8 +2681,8 @@ async function confirmDelete(rowIndex, cardIndex) {
 }
 
 function showPrevBanner(data) {
-  if (data.length === 0) return;
-  const last = data[data.length - 1];
+  if (!Array.isArray(data) || data.length === 0) return;
+  const last = data.slice().sort((a,b)=>String(b.datum||'').localeCompare(String(a.datum||'')) || String(b.ts||'').localeCompare(String(a.ts||'')))[0];
   $('prev-banner').style.display = 'block';
   $('prev-summary').textContent =
     `${formatDate(last.datum)} · ${last.wer || 'unbekannt'} · ${last.art || '–'} · ${last.stimmung || ''} ${last.verdauung || ''}`;
@@ -2705,9 +2838,9 @@ function editVerlaufEntry(sheetRowIndex, kommentar) {
 // GESUNDHEIT
 // ═══════════════════════════════════════════════════════
 async function upsertBudgetFromGesundheit(entry) {
-  // entry: {entryId, datum, kategorie, leistung, betrag, notizen}
-  // Writes into current horse's Budget sheet for the month of entry.datum.
-
+  // In Supabase, the database trigger writes the cost atomically with the health entry.
+  // The legacy Apps Script path keeps its previous client-side transfer.
+  if (window.__LUDWIG_SUPABASE_ENABLED__) return;
   if (!entry || !entry.datum) return;
 
   const amount = parseFloat(String(entry.betrag ?? '').replace(',', '.'));
@@ -2930,6 +3063,7 @@ async function renderGesundheit() {
 const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 let currentFutterMonth = new Date().getMonth();
 let currentBudgetMonth = new Date().getMonth();
+let currentBudgetYear = new Date().getFullYear();
 window.editingGesundheitRowIndex = window.editingGesundheitRowIndex ?? null;
 let editingProtokollRowIndex = null;
 let editingGesundheitDoneState = '';
@@ -2944,41 +3078,42 @@ const localStore = {
 
 function renderMonthBar(type) {
   const bar = $(type + '-months');
+  if (!bar) return;
   const current = type === 'futter' ? currentFutterMonth : currentBudgetMonth;
   bar.innerHTML = MONTHS.map((m, i) => `
-    <button class="month-btn ${i === current ? 'active' : ''}" onclick="selectMonth('${type}', ${i}, this)">${m}</button>
+    <button class="month-btn ${i === current ? 'active' : ''}" onclick="selectMonth('${type}', ${i}, this)" aria-pressed="${i === current}">${m}</button>
   `).join('');
+  if (type === 'budget') populateBudgetYearSelect();
 }
 
 async function selectMonth(type, idx, btn) {
-  if (type === 'futter') currentFutterMonth = idx;
-  else currentBudgetMonth = idx;
-  btn.closest('.month-bar').querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-
   if (type === 'futter') {
+    currentFutterMonth = idx;
+    btn?.closest('.month-bar')?.querySelectorAll('.month-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
     await ensureFutterSheet();
-    renderFutter();
-  } else {
-    await ensureBudgetSheet();
-    renderBudget();
+    await renderFutter();
+    return;
   }
+  currentBudgetMonth = idx;
+  btn?.closest('.month-bar')?.querySelectorAll('.month-btn').forEach(b => {
+    b.classList.toggle('active', b === btn);
+    b.setAttribute('aria-pressed', String(b === btn));
+  });
+  await renderBudget();
 }
 
 function ensureSheetHeader(tab, header) {
-  // Best-effort: create header row if sheet is empty.
-  // (Apps Script cannot replace rows via API here, so we only append if empty.)
   return (async () => {
     try {
       const rows = await loadSheet(tab);
-        window.__lastGesundRows = rows;
       if (!rows || rows.length === 0) {
         await appendRow(tab, header);
         await new Promise(r => setTimeout(r, 250));
       }
-    } catch(e) {
-      // ignore
-    }
+    } catch(e) {}
   })();
 }
 
@@ -2992,337 +3127,416 @@ async function ensureBudgetSheet() {
   await ensureSheetHeader(tab, ['MonatIdx','Datum','Kategorie','Leistung','Betrag','Notizen']);
 }
 
-function addFutterRow(f = {}) {
-  const body = $('futter-body');
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" value="${f.name||''}" placeholder="z.B. Heu" /></td>
-    <td><select>
-      <option ${f.kat==='Grundfutter'?'selected':''}>Grundfutter</option>
-      <option ${f.kat==='Kräuter'?'selected':''}>Kräuter</option>
-      <option ${f.kat==='Zusätze'?'selected':''}>Zusätze</option>
-      <option ${f.kat==='Kraftfutter'?'selected':''}>Kraftfutter</option>
-      <option ${f.kat==='Sonstiges'?'selected':''}>Sonstiges</option>
-    </select></td>
-    <td><input type="text" value="${f.dosierung||''}" placeholder="z.B. 2 kg" /></td>
-    <td><select>
-      <option ${f.haeuf==='täglich'?'selected':''}>täglich</option>
-      <option ${f.haeuf==='2x täglich'?'selected':''}>2x täglich</option>
-      <option ${f.haeuf==='3x täglich'?'selected':''}>3x täglich</option>
-      <option ${f.haeuf==='wöchentlich'?'selected':''}>wöchentlich</option>
-      <option ${f.haeuf==='nach Bedarf'?'selected':''}>nach Bedarf</option>
-    </select></td>
-    <td><input type="text" value="${f.notizen||''}" placeholder="Notizen…" /></td>
-    <td><button class="delete-btn" onclick="this.closest('tr').remove()">🗑️</button></td>
-  `;
-  body.appendChild(tr);
+const BUDGET_PLAN_CATEGORIES = [
+  { key:'Tierarzt & Gesundheit', label:'Tierarzt & Gesundheit' },
+  { key:'Stallmiete', label:'Stallmiete' },
+  { key:'Futter', label:'Futter' },
+  { key:'Equipment & Spaß', label:'Equipment & Spaß' },
+  { key:'Weiterbildung / Reitunterricht', label:'Weiterbildung / Reitunterricht' },
+  { key:'Sonstige Kosten', label:'Sonstige Kosten' }
+];
+const BUDGET_ENTRY_CATEGORIES = [
+  'Tierarzt','Hufschmied','Osteopath','Zahnarzt','Wurmkur/Impfung','Futter',
+  'Ausrüstung','Equipment & Spaß','Unterricht/Training','Weiterbildung / Reitunterricht',
+  'Stall/Box','Stallmiete','Turnier/Transport','Sonstiges','Sonstige Kosten'
+];
+let budgetEntries = [];
+let budgetTargets = [];
+let budgetRecurringCosts = [];
+
+function budgetEscape(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
-
-async function saveFutter() {
-  const btn = event?.target;
-  if (btn && btn.disabled) return;
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Speichert…'; }
-
-  const rows = [...$('futter-body').querySelectorAll('tr')].map(tr => {
-    const inputs = tr.querySelectorAll('input, select');
-    return {
-      name: (inputs[0].value || '').trim(),
-      kat: (inputs[1].value || '').trim(),
-      dosierung: (inputs[2].value || '').trim(),
-      haeuf: (inputs[3].value || '').trim(),
-      notizen: (inputs[4].value || '').trim(),
-    };
-  }).filter(r => r.name || r.kat || r.dosierung || r.haeuf || r.notizen);
-
-  const tab = HORSES[currentHorse].tabs.futter;
-  const monthIdx = currentFutterMonth;
-
-  try {
-    // 1) delete all rows for this month
-    const sheetRows = await loadSheet(tab);
-    const matches = [];
-
-    // If row 1 is the header, we must start at i=1.
-    // But if the sheet has NO header, row 1 contains data.
-    // So: treat row 1 as header ONLY if A1 is not a number.
-    const a1 = sheetRows?.[0]?.[0];
-    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
-    const startIdx = hasHeader ? 1 : 0;
-
-    for (let i = startIdx; i < sheetRows.length; i++) {
-      const mi = parseInt(String(sheetRows[i][0] ?? '').trim(), 10);
-      if (mi === monthIdx) matches.push(i + 1);
-    }
-    for (let i = matches.length - 1; i >= 0; i--) {
-      await deleteRow(tab, matches[i]);
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    // 2) write rows for this month
-    for (const r of rows) {
-      await appendRow(tab, [monthIdx, r.name, r.kat, r.dosierung, r.haeuf, r.notizen]);
-      await new Promise(r => setTimeout(r, 120));
-    }
-
-    await new Promise(r => setTimeout(r, 500));
-    await renderFutter();
-    showToast('✅ Futterplan gespeichert!');
-  } catch(e) {
-    showToast('❌ Fehler beim Speichern (Futter).');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Futterplan speichern'; }
+function budgetMoney(value) {
+  const n = Number(value || 0);
+  return new Intl.NumberFormat('de-DE', { style:'currency', currency:'EUR' }).format(Number.isFinite(n) ? n : 0);
+}
+function budgetNumber(value) {
+  const n = Number(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+function budgetGetHorseId() {
+  const map = window.__LUDWIG_HORSE_ID_BY_KEY;
+  return map?.get(currentHorse) || map?.get(supabaseHorseKey(HORSES[currentHorse]?.key?.toLowerCase() || currentHorse));
+}
+function budgetClient() {
+  const client = window.__LUDWIG_SUPABASE_CLIENT__;
+  const horseId = budgetGetHorseId();
+  if (!client || !horseId) throw new Error('Bitte anmelden und erneut versuchen.');
+  if (typeof supabaseCanManageOwnerArea === 'function' && !supabaseCanManageOwnerArea()) {
+    throw new Error('Das Budget ist nur für die Besitzer-Admins freigegeben.');
   }
+  return { client, horseId };
 }
-
-async function renderFutter() {
-  const body = $('futter-body');
-  if (!body) return;
-  body.innerHTML = '<tr><td colspan="6" class="loader">⏳ Lade…</td></tr>';
-
-  const tab = HORSES[currentHorse].tabs.futter;
-  const monthIdx = currentFutterMonth;
-
-  try {
-    const sheetRows = await loadSheet(tab);
-    const rows = [];
-
-    const a1 = sheetRows?.[0]?.[0];
-    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
-    const startIdx = hasHeader ? 1 : 0;
-
-    // Start index depends on whether the first row is a header.
-    for (let i = startIdx; i < sheetRows.length; i++) {
-      const r = sheetRows[i];
-      if (!r || r.length < 2) continue;
-      const mi = parseInt(String(r[0] ?? '').trim(), 10);
-      if (!isNaN(mi) && mi !== monthIdx) continue; // filter by month
-      rows.push({
-        name: r[1] || '',
-        kat: r[2] || '',
-        dosierung: r[3] || '',
-        haeuf: r[4] || '',
-        notizen: r[5] || ''
-      });
+function budgetDateKey(value) {
+  const raw = extractDateKey_(value) || normalizeDateKey(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(raw || '')) ? String(raw) : '';
+}
+function budgetPeriodParts(value) {
+  const key = budgetDateKey(value);
+  const m = key.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? { year:Number(m[1]), month:Number(m[2])-1, key } : null;
+}
+function budgetCategoryGroup(value) {
+  const c = String(value || '').trim().toLowerCase();
+  if (['tierarzt','hufschmied','osteopath','zahnarzt','wurmk/impfung','wurmkur/impfung'].includes(c)) return 'Tierarzt & Gesundheit';
+  if (['stall/box','stallmiete'].includes(c)) return 'Stallmiete';
+  if (c === 'futter') return 'Futter';
+  if (['ausrüstung','equipment & spaß','turnier/transport'].includes(c)) return 'Equipment & Spaß';
+  if (['unterricht/training','weiterbildung / reitunterricht','weiterbildung/reitunterricht'].includes(c)) return 'Weiterbildung / Reitunterricht';
+  return 'Sonstige Kosten';
+}
+function budgetMonthKey(year, month) {
+  return `${year}-${String(month + 1).padStart(2,'0')}`;
+}
+function budgetRecurringApplies(cost, year, month) {
+  if (cost.is_active === false) return false;
+  const key = budgetMonthKey(year, month);
+  const start = String(cost.start_month || '').slice(0,7);
+  const end = String(cost.end_month || '').slice(0,7);
+  return Boolean(start && key >= start && (!end || key <= end));
+}
+function budgetOneOffAmount(year, month=null, category=null) {
+  return budgetEntries.reduce((sum, entry) => {
+    const date = budgetPeriodParts(entry.datum);
+    if (!date || date.year !== year || (month !== null && date.month !== month)) return sum;
+    if (category && budgetCategoryGroup(entry.kategorie) !== category) return sum;
+    return sum + budgetNumber(entry.betrag);
+  }, 0);
+}
+function budgetRecurringAmount(year, month=null, category=null) {
+  let sum = 0;
+  for (const cost of budgetRecurringCosts) {
+    if (category && budgetCategoryGroup(cost.category) !== category) continue;
+    const amount = budgetNumber(cost.amount);
+    if (month !== null) {
+      if (budgetRecurringApplies(cost, year, month)) sum += amount;
+      continue;
     }
-
-    body.innerHTML = '';
-    if (rows.length === 0) addFutterRow();
-    else rows.forEach(r => addFutterRow(r));
-  } catch(e) {
-    body.innerHTML = '';
-    addFutterRow();
-    showToast('⚠️ Konnte Futterplan nicht laden.');
+    for (let m=0; m<12; m++) if (budgetRecurringApplies(cost, year, m)) sum += amount;
   }
+  return sum;
 }
-
-let currentFutterplanMonth = new Date().getMonth();
-
-async function renderFutterplanView() {
-  const view = document.getElementById('futterplan-view');
-  if (!view) return;
-  view.innerHTML = '<div class="loader">⏳ Lade Futterplan…</div>';
-
-  try {
-    const tab = HORSES[currentHorse].tabs.futter;
-    const rows = await loadSheet(tab);
-        window.__lastGesundRows = rows;
-
-    const a1 = rows?.[0]?.[0];
-    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
-    const startIdx = hasHeader ? 1 : 0;
-    
-    // Filter by selected month
-    const allData = rows.slice(startIdx).filter(r => r && r.length > 1);
-    const data = allData.filter(r => {
-      const mi = parseInt(String(r[0] ?? '').trim(), 10);
-      return isNaN(mi) || mi === currentFutterplanMonth;
-    });
-    
-    // Month navigation bar
-    const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-    const monthBar = `<div class="month-bar" style="margin-bottom:14px">${MONTHS.map((mn,idx) =>
-      `<button class="month-btn${idx===currentFutterplanMonth?' active':''}" onclick="currentFutterplanMonth=${idx};renderFutterplanView()">${mn}</button>`
-    ).join('')}</div>`;
-
-    if (data.length === 0) {
-      view.innerHTML = monthBar + '<div class="empty-state"><div class="emoji">🌾</div><p>Kein Futterplan für diesen Monat.</p></div>';
-      return;
-    }
-
-    view.innerHTML = monthBar + data.map(r => {
-      const name     = r[1] || '';
-      const kat      = r[2] || '';
-      const dosierung= r[3] || '';
-      const haeuf    = r[4] || '';
-      const notizen  = r[5] || '';
-
-      if (!name && !kat) return '';
-
-      return `
-        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px var(--shadow)">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <span style="font-size:1.5rem">🌾</span>
-            <div>
-              <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--dark)">${name}</div>
-              ${kat ? `<div style="font-size:0.78rem;color:var(--brown);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">${kat}</div>` : ''}
-            </div>
-          </div>
-          ${dosierung ? `<div style="display:flex;align-items:center;gap:8px;font-size:0.88rem;margin-bottom:4px">⚖️ <strong>Menge:</strong> ${dosierung}</div>` : ''}
-          ${haeuf ? `<div style="display:flex;align-items:center;gap:8px;font-size:0.88rem;margin-bottom:4px">🔁 <strong>Häufigkeit:</strong> ${haeuf}</div>` : ''}
-          ${notizen ? `<div style="font-size:0.82rem;color:#777;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">💬 ${notizen}</div>` : ''}
-        </div>
-      `;
-    }).join('');
-
-  } catch(e) {
-    view.innerHTML = '<div class="empty-state"><p>Fehler beim Laden des Futterplans.</p></div>';
+function budgetDefaultDate() {
+  const now = new Date();
+  if (currentBudgetYear === now.getFullYear() && currentBudgetMonth === now.getMonth()) return isoDate(now);
+  return `${currentBudgetYear}-${String(currentBudgetMonth+1).padStart(2,'0')}-01`;
+}
+function populateBudgetYearSelect(extraYears=[]) {
+  const select = $('budget-year');
+  if (!select) return;
+  const current = new Date().getFullYear();
+  const years = new Set();
+  for (let y=current-4; y<=current+2; y++) years.add(y);
+  for (const y of extraYears) if (Number.isInteger(Number(y))) years.add(Number(y));
+  for (const entry of budgetEntries || []) {
+    const parts = budgetPeriodParts(entry.datum);
+    if (parts) years.add(parts.year);
   }
+  for (const target of budgetTargets || []) years.add(Number(target.budget_year));
+  const ordered = [...years].filter(Number.isFinite).sort((a,b)=>a-b);
+  select.innerHTML = ordered.map(y=>`<option value="${y}" ${y===currentBudgetYear?'selected':''}>${y}</option>`).join('');
+  if (!ordered.includes(currentBudgetYear)) {
+    select.insertAdjacentHTML('beforeend', `<option value="${currentBudgetYear}" selected>${currentBudgetYear}</option>`);
+  }
+  select.value = String(currentBudgetYear);
 }
-
-
-function addBudgetRow(b = {}) {
+function changeBudgetYear(value) {
+  const year = Number.parseInt(value, 10);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return;
+  currentBudgetYear = year;
+  renderBudget();
+}
+function addBudgetRow(entry={}) {
   const body = $('budget-body');
+  if (!body) return;
   const tr = document.createElement('tr');
-  const today = isoDate(new Date());
+  const date = budgetDateKey(entry.datum) || budgetDefaultDate();
+  const category = String(entry.kategorie || '');
+  const options = ['<option value="">Kategorie wählen</option>'].concat(BUDGET_ENTRY_CATEGORIES.map(c=>`<option value="${budgetEscape(c)}" ${category===c?'selected':''}>${budgetEscape(c)}</option>`));
+  tr.dataset.rowIndex = entry._rowIndex ? String(entry._rowIndex) : '';
   tr.innerHTML = `
-    <td><input type="date" value="${extractDateKey_(b.datum)||b.datum||today}" /></td>
-    <td>
-      <select>
-        <option value="">– Kategorie –</option>
-        <option ${b.kategorie==='Tierarzt'?'selected':''}>Tierarzt</option>
-        <option ${b.kategorie==='Hufschmied'?'selected':''}>Hufschmied</option>
-        <option ${b.kategorie==='Osteopath'?'selected':''}>Osteopath</option>
-        <option ${b.kategorie==='Zahnarzt'?'selected':''}>Zahnarzt</option>
-        <option ${b.kategorie==='Wurmkur/Impfung'?'selected':''}>Wurmkur/Impfung</option>
-        <option ${b.kategorie==='Futter'?'selected':''}>Futter</option>
-        <option ${b.kategorie==='Ausrüstung'?'selected':''}>Ausrüstung</option>
-        <option ${b.kategorie==='Unterricht/Training'?'selected':''}>Unterricht/Training</option>
-        <option ${b.kategorie==='Stall/Box'?'selected':''}>Stall/Box</option>
-        <option ${b.kategorie==='Turnier/Transport'?'selected':''}>Turnier/Transport</option>
-        <option ${b.kategorie==='Sonstiges'?'selected':''}>Sonstiges</option>
-      </select>
-    </td>
-    <td><input type="text" value="${b.leistung||''}" placeholder="z.B. Hufschmied" /></td>
-    <td><input type="number" value="${b.betrag||''}" placeholder="0.00" step="0.01" oninput="updateTotal()" /></td>
-    <td><input type="text" value="${b.notizen||''}" placeholder="Notizen…" /></td>
-    <td><button class="delete-btn" onclick="this.closest('tr').remove();updateTotal()">🗑️</button></td>
-  `;
+    <td><input aria-label="Datum" type="date" value="${budgetEscape(date)}"></td>
+    <td><select aria-label="Kategorie">${options.join('')}</select></td>
+    <td><input aria-label="Leistung oder Produkt" type="text" maxlength="140" value="${budgetEscape(entry.leistung || '')}" placeholder="z. B. Hufschmied"></td>
+    <td><input aria-label="Betrag in Euro" type="number" min="0" step="0.01" value="${budgetEscape(entry.betrag || '')}" placeholder="0,00" oninput="updateTotal()"></td>
+    <td><input aria-label="Notizen" type="text" maxlength="240" value="${budgetEscape(entry.notizen || '')}" placeholder="Notizen"></td>
+    <td><button class="delete-btn" type="button" aria-label="Ausgabe entfernen" onclick="this.closest('tr').remove();updateTotal()">🗑️</button></td>`;
   body.appendChild(tr);
   updateTotal();
 }
-
 function updateTotal() {
-  const nums = [...$('budget-body').querySelectorAll('tr')].map(tr => {
-    const tds = tr.querySelectorAll('td');
-    const v = tds[3]?.querySelector('input[type="number"]')?.value;
-    return parseFloat(String(v ?? '').replace(',', '.')) || 0;
-  });
-  const sum = nums.reduce((a, n) => a + n, 0);
-  $('budget-total').textContent = sum.toFixed(2).replace('.', ',') + ' €';
+  const body = $('budget-body');
+  if (!body) return;
+  const sum = [...body.querySelectorAll('tr')].reduce((total,tr)=>total + budgetNumber(tr.querySelector('td:nth-child(4) input')?.value),0);
+  const total = $('budget-total');
+  if (total) total.textContent = budgetMoney(sum);
 }
-
-async function saveBudget() {
-  const btn = event?.target;
-  if (btn && btn.disabled) return;
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Speichert…'; }
-
-  const rows = [...$('budget-body').querySelectorAll('tr')].map(tr => {
-    const tds = tr.querySelectorAll('td');
-    const dateVal = tds[0]?.querySelector('input')?.value || '';
-    const katVal  = tds[1]?.querySelector('select')?.value || '';
-    const leist   = tds[2]?.querySelector('input')?.value || '';
-    const betrag  = tds[3]?.querySelector('input')?.value || '';
-    const notiz   = tds[4]?.querySelector('input')?.value || '';
-
-    return {
-      datum: extractDateKey_(dateVal) || normalizeDateKey(dateVal),
-      kategorie: String(katVal || '').trim(),
-      leistung: String(leist || '').trim(),
-      betrag: String(betrag || '').trim(),
-      notizen: String(notiz || '').trim()
-    };
-  }).filter(r => r.datum || r.kategorie || r.leistung || r.betrag || r.notizen);
-
-  const tab = HORSES[currentHorse].tabs.budget;
-  const monthIdx = currentBudgetMonth;
-
+function renderBudgetTargetEditor() {
+  const host = $('budget-target-editor');
+  if (!host) return;
+  const map = new Map((budgetTargets || []).filter(x=>Number(x.budget_year)===currentBudgetYear).map(x=>[x.category,x.amount]));
+  host.innerHTML = BUDGET_PLAN_CATEGORIES.map(cat=>`
+    <label class="budget-target-card"><span>${budgetEscape(cat.label)}</span><span class="budget-target-input"><input type="number" min="0" step="50" inputmode="decimal" data-budget-category="${budgetEscape(cat.key)}" value="${map.has(cat.key)?budgetEscape(map.get(cat.key)):''}" placeholder="Betrag in €"><small>€ / Jahr</small></span></label>
+  `).join('');
+}
+function renderBudgetKpis() {
+  const host = $('budget-kpis');
+  if (!host) return;
+  const prevDate = new Date(currentBudgetYear, currentBudgetMonth-1, 1);
+  const prevYear = prevDate.getFullYear();
+  const prevMonth = prevDate.getMonth();
+  const monthOneOff = budgetOneOffAmount(currentBudgetYear, currentBudgetMonth);
+  const monthRecurring = budgetRecurringAmount(currentBudgetYear, currentBudgetMonth);
+  const prevTotal = budgetOneOffAmount(prevYear, prevMonth) + budgetRecurringAmount(prevYear, prevMonth);
+  const yearTotal = budgetOneOffAmount(currentBudgetYear) + budgetRecurringAmount(currentBudgetYear);
+  const targetTotal = (budgetTargets || []).filter(x=>Number(x.budget_year)===currentBudgetYear).reduce((s,x)=>s+budgetNumber(x.amount),0);
+  const remain = targetTotal-yearTotal;
+  const previousLabel = MONTHS[prevMonth] + ' ' + prevYear;
+  host.innerHTML = `
+    <article class="budget-kpi"><span class="budget-kpi-label">${MONTHS[currentBudgetMonth]}: Gesamtkosten</span><strong>${budgetMoney(monthOneOff+monthRecurring)}</strong><small>${budgetMoney(monthOneOff)} Einzelausgaben · ${budgetMoney(monthRecurring)} laufend</small></article>
+    <article class="budget-kpi"><span class="budget-kpi-label">Vormonat · ${budgetEscape(previousLabel)}</span><strong>${budgetMoney(prevTotal)}</strong><small>Einzelausgaben plus laufende Kosten</small></article>
+    <article class="budget-kpi"><span class="budget-kpi-label">Jahresbudget ${currentBudgetYear}</span><strong>${targetTotal ? budgetMoney(targetTotal) : 'Noch nicht festgelegt'}</strong><small>${budgetMoney(yearTotal)} ausgegeben / eingeplant</small></article>
+    <article class="budget-kpi ${remain<0?'is-over':''}"><span class="budget-kpi-label">Im Jahrestopf übrig</span><strong>${targetTotal ? budgetMoney(remain) : '–'}</strong><small>${targetTotal ? (remain<0?'Budget überschritten':'Noch verfügbar') : 'Lege zuerst Jahresziele fest'}</small></article>`;
+}
+function renderBudgetCategoryCards() {
+  const host = $('budget-category-cards');
+  if (!host) return;
+  const targets = new Map((budgetTargets || []).filter(x=>Number(x.budget_year)===currentBudgetYear).map(x=>[x.category,budgetNumber(x.amount)]));
+  host.innerHTML = BUDGET_PLAN_CATEGORIES.map(cat=>{
+    const target = targets.get(cat.key) || 0;
+    const actual = budgetOneOffAmount(currentBudgetYear,null,cat.key);
+    const recurring = budgetRecurringAmount(currentBudgetYear,null,cat.key);
+    const spent = actual+recurring;
+    const left = target-spent;
+    const pct = target>0 ? Math.min(100,Math.max(0,spent/target*100)) : 0;
+    return `<article class="budget-category-card ${left<0?'is-over':''}">
+      <div class="budget-category-head"><h4>${budgetEscape(cat.label)}</h4><span>${target?budgetMoney(target):'Kein Ziel'}</span></div>
+      <div class="budget-progress"><span style="width:${pct.toFixed(1)}%"></span></div>
+      <div class="budget-category-meta"><span>${budgetMoney(spent)} ${target?'von '+budgetMoney(target):'im Jahr'}</span><strong>${target?(left<0?'Drüber: '+budgetMoney(Math.abs(left)):'Noch: '+budgetMoney(left)):'Zielwert fehlt'}</strong></div>
+      <small>${budgetMoney(actual)} einzeln · ${budgetMoney(recurring)} laufend</small>
+    </article>`;
+  }).join('');
+}
+function monthInputValue(value) {
+  const m = String(value || '').match(/^(\d{4})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}` : '';
+}
+function renderBudgetRecurringList() {
+  const host = $('budget-recurring-list');
+  if (!host) return;
+  if (!budgetRecurringCosts.length) {
+    host.innerHTML = '<div class="budget-empty">Noch keine wiederkehrenden Kosten hinterlegt.</div>';
+    return;
+  }
+  host.innerHTML = budgetRecurringCosts.slice().sort((a,b)=>String(a.start_month).localeCompare(String(b.start_month))).map(cost=>{
+    const ending = cost.end_month ? `bis ${budgetEscape(monthInputValue(cost.end_month))}` : 'ohne Enddatum';
+    const starts = monthInputValue(cost.start_month);
+    return `<article class="budget-recurring-item">
+      <div><strong>${budgetEscape(cost.description)}</strong><span>${budgetEscape(cost.category)} · ab ${budgetEscape(starts)} · ${budgetEscape(ending)}</span></div>
+      <strong class="budget-recurring-amount">${budgetMoney(cost.amount)} / Monat</strong>
+      <div class="budget-row-actions"><button type="button" onclick="editRecurringCost('${budgetEscape(cost.id)}')">Bearbeiten</button><button type="button" class="budget-stop-btn" onclick="endRecurringCost('${budgetEscape(cost.id)}')">Diesen Monat beenden</button></div>
+    </article>`;
+  }).join('');
+}
+function resetRecurringCostForm() {
+  const form = $('budget-recurring-form');
+  if (form) form.reset();
+  $('budget-recurring-id').value = '';
+  $('budget-recurring-start').value = budgetMonthKey(currentBudgetYear,currentBudgetMonth);
+  $('budget-recurring-save').textContent = 'Wiederkehrende Kosten speichern';
+  $('budget-recurring-cancel').hidden = true;
+}
+function editRecurringCost(id) {
+  const cost = budgetRecurringCosts.find(x=>String(x.id)===String(id));
+  if (!cost) return;
+  $('budget-recurring-id').value = cost.id;
+  $('budget-recurring-category').value = cost.category;
+  $('budget-recurring-description').value = cost.description || '';
+  $('budget-recurring-amount').value = cost.amount;
+  $('budget-recurring-start').value = monthInputValue(cost.start_month);
+  $('budget-recurring-end').value = monthInputValue(cost.end_month);
+  $('budget-recurring-save').textContent = 'Kosten aktualisieren';
+  $('budget-recurring-cancel').hidden = false;
+  $('budget-recurring-form').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function saveBudgetTargets() {
+  const button = document.querySelector('#budget-target-editor + button');
+  if (button) { button.disabled=true; button.textContent='Speichert ...'; }
   try {
-    // 1) delete all rows for this month
-    const sheetRows = await loadSheet(tab);
-    const matches = [];
-
-    // If row 1 is the header, we must start at i=1.
-    // But if the sheet has NO header, row 1 contains data.
-    // So: treat row 1 as header ONLY if A1 is not a number.
-    const a1 = sheetRows?.[0]?.[0];
-    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
-    const startIdx = hasHeader ? 1 : 0;
-
-    for (let i = startIdx; i < sheetRows.length; i++) {
-      const mi = parseInt(String(sheetRows[i][0] ?? '').trim(), 10);
-      if (mi === monthIdx) matches.push(i + 1);
+    const {client,horseId} = budgetClient();
+    const inputs = [...document.querySelectorAll('[data-budget-category]')];
+    for (const input of inputs) {
+      const category = input.dataset.budgetCategory;
+      const amount = budgetNumber(input.value);
+      if (String(input.value).trim() && amount > 0) {
+        const {error} = await client.from('horse_budget_targets').upsert({
+          horse_id:horseId,budget_year:currentBudgetYear,category,amount,
+          created_by:window.__LUDWIG_PROFILE__?.id,updated_by:window.__LUDWIG_PROFILE__?.id
+        },{onConflict:'horse_id,budget_year,category'});
+        if (error) throw error;
+      } else {
+        const {error} = await client.from('horse_budget_targets').delete().eq('horse_id',horseId).eq('budget_year',currentBudgetYear).eq('category',category);
+        if (error) throw error;
+      }
     }
-    for (let i = matches.length - 1; i >= 0; i--) {
-      await deleteRow(tab, matches[i]);
-      await new Promise(r => setTimeout(r, 200));
-    }
-
-    // 2) write rows for this month
-    for (const r of rows) {
-      await appendRow(tab, [monthIdx, r.datum, r.kategorie, r.leistung, r.betrag, r.notizen]);
-      await new Promise(r => setTimeout(r, 120));
-    }
-
-    await new Promise(r => setTimeout(r, 500));
+    showToast('Jahresbudgets gespeichert.');
     await renderBudget();
-    showToast('✅ Budget gespeichert!');
-  } catch(e) {
-    showToast('❌ Fehler beim Speichern (Budget).');
+  } catch(error) {
+    console.error('Budgetziele konnten nicht gespeichert werden:',error);
+    showToast(error?.message || 'Speichern der Jahresbudgets fehlgeschlagen. Bitte SQL-Migration prüfen.');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Budget speichern'; }
+    if (button) { button.disabled=false; button.textContent='Jahresbudgets speichern'; }
   }
 }
-
+async function saveRecurringCost() {
+  const button = $('budget-recurring-save');
+  if (button) { button.disabled=true; }
+  try {
+    const {client,horseId} = budgetClient();
+    const id = $('budget-recurring-id').value.trim();
+    const category = $('budget-recurring-category').value;
+    const description = $('budget-recurring-description').value.trim();
+    const amount = budgetNumber($('budget-recurring-amount').value);
+    const startMonth = $('budget-recurring-start').value;
+    const endMonth = $('budget-recurring-end').value;
+    if (!category || !description || !(amount>0) || !/^\d{4}-\d{2}$/.test(startMonth)) throw new Error('Bitte Kategorie, Bezeichnung, Betrag und Startmonat prüfen.');
+    if (endMonth && (!/^\d{4}-\d{2}$/.test(endMonth) || endMonth < startMonth)) throw new Error('Der Endmonat darf nicht vor dem Startmonat liegen.');
+    const payload = {
+      horse_id:horseId,category,description,amount,
+      start_month:`${startMonth}-01`,end_month:endMonth?`${endMonth}-01`:null,
+      is_active:true,updated_by:window.__LUDWIG_PROFILE__?.id
+    };
+    let result;
+    if (id) result = await client.from('horse_recurring_costs').update(payload).eq('horse_id',horseId).eq('id',id);
+    else result = await client.from('horse_recurring_costs').insert({...payload,created_by:window.__LUDWIG_PROFILE__?.id});
+    if (result.error) throw result.error;
+    resetRecurringCostForm();
+    showToast('Wiederkehrende Kosten gespeichert.');
+    await renderBudget();
+  } catch(error) {
+    console.error('Wiederkehrende Kosten konnten nicht gespeichert werden:',error);
+    showToast(error?.message || 'Speichern fehlgeschlagen. Bitte SQL-Migration prüfen.');
+  } finally {
+    if (button) button.disabled=false;
+  }
+}
+async function endRecurringCost(id) {
+  const cost = budgetRecurringCosts.find(x=>String(x.id)===String(id));
+  if (!cost) return;
+  const thisMonth = budgetMonthKey(currentBudgetYear,currentBudgetMonth);
+  const start = String(cost.start_month || '').slice(0,7);
+  const endMonth = thisMonth < start ? start : thisMonth;
+  if (!confirm(`Die monatliche Kostenreihe ab ${endMonth} beenden? Vergangene Monate bleiben in der Auswertung erhalten.`)) return;
+  try {
+    const {client,horseId} = budgetClient();
+    const {error} = await client.from('horse_recurring_costs').update({end_month:`${endMonth}-01`,is_active:true,updated_by:window.__LUDWIG_PROFILE__?.id}).eq('horse_id',horseId).eq('id',id);
+    if (error) throw error;
+    showToast('Kostenreihe beendet.');
+    await renderBudget();
+  } catch(error) {
+    console.error('Kostenreihe konnte nicht beendet werden:',error);
+    showToast(error?.message || 'Beenden fehlgeschlagen.');
+  }
+}
+async function saveBudget() {
+  const button = document.querySelector('#page-budget .budget-expense-actions button:last-child');
+  if (button) { button.disabled=true; button.textContent='Speichert ...'; }
+  try {
+    const tab = HORSES[currentHorse].tabs.budget;
+    const selectedRows = [...$('budget-body').querySelectorAll('tr')].map(tr=>{
+      const cells = tr.querySelectorAll('td');
+      const datum = budgetDateKey(cells[0]?.querySelector('input')?.value);
+      const kategorie = String(cells[1]?.querySelector('select')?.value || '').trim();
+      const leistung = String(cells[2]?.querySelector('input')?.value || '').trim();
+      const betrag = String(cells[3]?.querySelector('input')?.value || '').trim();
+      const notizen = String(cells[4]?.querySelector('input')?.value || '').trim();
+      return {datum,kategorie,leistung,betrag,notizen};
+    }).filter(r=>r.datum || r.kategorie || r.leistung || r.betrag || r.notizen);
+    const rows = selectedRows.filter(r=>r.datum || r.kategorie || r.leistung || r.betrag || r.notizen);
+    for (const row of rows) {
+      if (!row.datum || !row.kategorie || !(budgetNumber(row.betrag)>0)) throw new Error('Bitte füge für jede Ausgabe Datum, Kategorie und einen Betrag größer als 0 ein.');
+    }
+    const sheetRows = await loadSheet(tab);
+    const headerCell = String(sheetRows?.[0]?.[0] ?? '').trim().toLowerCase();
+    const startIdx = (!headerCell || /^\d+$/.test(headerCell)) ? 0 : 1;
+    const matches=[];
+    for (let i=startIdx;i<sheetRows.length;i++) {
+      const r=sheetRows[i];
+      const date=budgetPeriodParts(r?.[1]);
+      if (date && date.year===currentBudgetYear && date.month===currentBudgetMonth) matches.push(i+1);
+    }
+    matches.sort((a,b)=>b-a);
+    for (const rowIndex of matches) await deleteRow(tab,rowIndex);
+    for (const r of rows) {
+      const parts=budgetPeriodParts(r.datum);
+      await appendRow(tab,[parts.month,r.datum,r.kategorie,r.leistung,String(budgetNumber(r.betrag).toFixed(2)),r.notizen]);
+    }
+    showToast('Einzelausgaben gespeichert.');
+    await renderBudget();
+  } catch(error) {
+    console.error('Budgetausgaben konnten nicht gespeichert werden:',error);
+    showToast(error?.message || 'Speichern der Einzelausgaben fehlgeschlagen.');
+  } finally {
+    if (button) { button.disabled=false; button.textContent='Einzelausgaben speichern'; }
+  }
+}
 async function renderBudget() {
   const body = $('budget-body');
   if (!body) return;
-  body.innerHTML = '<tr><td colspan="6" class="loader">⏳ Lade…</td></tr>';
-
-  const tab = HORSES[currentHorse].tabs.budget;
-  const monthIdx = currentBudgetMonth;
-
+  const requestedHorse = currentHorse;
+  body.innerHTML = '<tr><td colspan="6" class="loader">Lade Ausgaben ...</td></tr>';
   try {
-    const sheetRows = await loadSheet(tab);
-    const rows = [];
-
-    const a1 = sheetRows?.[0]?.[0];
-    const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
-    const startIdx = hasHeader ? 1 : 0;
-
-    // Start index depends on whether the first row is a header.
-    for (let i = startIdx; i < sheetRows.length; i++) {
-      const r = sheetRows[i];
-      const mi = parseInt(String(r[0] ?? '').trim(), 10);
-      if (mi !== monthIdx) continue;
-      rows.push({
-        datum: extractDateKey_(r[1] || '') || normalizeDateKey(r[1] || ''),
-        kategorie: r[2] || '',
-        leistung: r[3] || '',
-        betrag: r[4] || '',
-        notizen: r[5] || ''
-      });
+    const {client,horseId} = budgetClient();
+    const tab = HORSES[requestedHorse].tabs.budget;
+    const [sheetRows,targetResult,recurringResult] = await Promise.all([
+      loadSheet(tab),
+      client.from('horse_budget_targets').select('category,budget_year,amount').eq('horse_id',horseId),
+      client.from('horse_recurring_costs').select('id,category,description,amount,start_month,end_month,is_active').eq('horse_id',horseId)
+    ]);
+    if (requestedHorse !== currentHorse) return;
+    if (targetResult.error) throw targetResult.error;
+    if (recurringResult.error) throw recurringResult.error;
+    const headerCell = String(sheetRows?.[0]?.[0] ?? '').trim().toLowerCase();
+    const startIdx = (!headerCell || /^\d+$/.test(headerCell)) ? 0 : 1;
+    const entries=[];
+    for (let i=startIdx;i<(sheetRows||[]).length;i++) {
+      const r=sheetRows[i];
+      if (!Array.isArray(r) || !r.length) continue;
+      const date=budgetDateKey(r[1]);
+      if (!date) continue;
+      entries.push({datum:date,kategorie:r[2]||'',leistung:r[3]||'',betrag:r[4]||'',notizen:r[5]||'',_rowIndex:i+1});
     }
-
-    body.innerHTML = '';
-    if (rows.length === 0) addBudgetRow();
-    else rows.forEach(r => addBudgetRow(r));
-
+    budgetEntries=entries;
+    budgetTargets=targetResult.data||[];
+    budgetRecurringCosts=recurringResult.data||[];
+    const years=[...entries.map(e=>budgetPeriodParts(e.datum)?.year),...budgetTargets.map(x=>Number(x.budget_year))].filter(Number.isInteger);
+    populateBudgetYearSelect(years);
+    const periodRows=entries.filter(e=>{
+      const p=budgetPeriodParts(e.datum);
+      return p && p.year===currentBudgetYear && p.month===currentBudgetMonth;
+    });
+    body.innerHTML='';
+    if (periodRows.length) periodRows.forEach(r=>addBudgetRow(r));
+    else addBudgetRow();
+    const yearLabel=$('budget-expenses-period');
+    if (yearLabel) yearLabel.textContent=`Einzelausgaben im ${MONTHS[currentBudgetMonth]} ${currentBudgetYear}`;
+    renderBudgetTargetEditor();
+    renderBudgetKpis();
+    renderBudgetCategoryCards();
+    renderBudgetRecurringList();
+    const recurringCategory=$('budget-recurring-category');
+    if (recurringCategory && !recurringCategory.options.length) recurringCategory.innerHTML=BUDGET_PLAN_CATEGORIES.map(c=>`<option value="${budgetEscape(c.key)}">${budgetEscape(c.label)}</option>`).join('');
+    if (!$('budget-recurring-start').value) $('budget-recurring-start').value=budgetMonthKey(currentBudgetYear,currentBudgetMonth);
     updateTotal();
-  } catch(e) {
-    body.innerHTML = '';
-    addBudgetRow();
-    updateTotal();
-    showToast('⚠️ Konnte Budget nicht laden.');
+  } catch(error) {
+    if (requestedHorse !== currentHorse) return;
+    console.error('Budget konnte nicht geladen werden:',error);
+    body.innerHTML='<tr><td colspan="6" class="budget-error">Budgetdaten konnten nicht geladen werden. Bitte Verbindung und die Budget-Supabase-Migration prüfen.</td></tr>';
+    const cards=$('budget-category-cards'); if(cards) cards.innerHTML='<div class="budget-empty">Die Budgetauswertung benötigt die neue SQL-Migration.</div>';
+    const kpis=$('budget-kpis'); if(kpis) kpis.innerHTML='<div class="budget-kpi"><span>Budgetauswertung gerade nicht verfügbar</span></div>';
+    const recurring=$('budget-recurring-list'); if(recurring) recurring.innerHTML='<div class="budget-empty">Bitte zuerst die Budget-Supabase-Migration ausführen.</div>';
+    showToast('Budget konnte nicht geladen werden. SQL-Migration und Verbindung prüfen.');
   }
 }
 
@@ -5923,8 +6137,15 @@ function obsOpenDialog(mode='new', id=null) {
   const isUpdate = mode === 'update';
   const caseFields = document.getElementById('obs-case-fields');
   const updateFields = document.getElementById('obs-update-fields');
-  if (caseFields) caseFields.style.display = isUpdate ? 'none' : 'block';
-  if (updateFields) updateFields.style.display = isUpdate ? 'block' : 'none';
+  if (caseFields) {
+    caseFields.style.display = isUpdate ? 'none' : 'block';
+    // Hidden required controls still block native form submission on mobile browsers.
+    caseFields.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = isUpdate; });
+  }
+  if (updateFields) {
+    updateFields.style.display = isUpdate ? 'block' : 'none';
+    updateFields.querySelectorAll('input, select, textarea, button').forEach(control => { control.disabled = !isUpdate; });
+  }
   const title = document.getElementById('obs-dialog-title');
   const submit = document.querySelector('#obs-form .obs-submit');
   if (mode === 'new') {
@@ -6283,5 +6504,18 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
 
 </script>
 
+
+<script>
+(function initBudgetEnhancements(){
+  const select = document.getElementById('budget-recurring-category');
+  if (select && !select.options.length) {
+    select.innerHTML = BUDGET_PLAN_CATEGORIES.map(c=>`<option value="${budgetEscape(c.key)}">${budgetEscape(c.label)}</option>`).join('');
+  }
+  if (typeof currentBudgetYear === 'number') populateBudgetYearSelect();
+  if (document.getElementById('budget-recurring-start') && !document.getElementById('budget-recurring-start').value) {
+    document.getElementById('budget-recurring-start').value = budgetMonthKey(currentBudgetYear,currentBudgetMonth);
+  }
+})();
+</script>
 </body>
 </html>
