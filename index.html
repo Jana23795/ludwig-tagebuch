@@ -557,6 +557,22 @@ nav button.supabase-hidden { display:none !important; }
 @media(max-width:760px){.budget-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-target-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-recurring-form{grid-template-columns:repeat(2,minmax(0,1fr))}.budget-recurring-item{grid-template-columns:minmax(0,1fr) auto}.budget-recurring-item .budget-row-actions{grid-column:1/-1}}
 @media(max-width:480px){.budget-shell{padding-left:9px;padding-right:9px}.budget-hero{align-items:stretch;flex-direction:column;padding:16px}.budget-kpi-grid,.budget-category-grid,.budget-target-grid{grid-template-columns:1fr}.budget-kpi{padding:12px}.budget-target-card{align-items:flex-start;flex-direction:column}.budget-target-input{width:100%}.budget-recurring-form{grid-template-columns:1fr}.budget-recurring-item{grid-template-columns:1fr}.budget-recurring-item .budget-row-actions{grid-column:auto}}
 
+#page-budget{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+#page-budget .budget-shell{box-sizing:border-box;width:100%;max-width:1120px;min-width:0}
+#page-budget .budget-hero,#page-budget .budget-period-panel,#page-budget .budget-section,#page-budget .budget-panel{box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+#page-budget .budget-section-heading,#page-budget .budget-section-heading>*{min-width:0}
+#page-budget .budget-table-wrap{box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+#page-budget .budget-recurring-form label{min-width:0}
+#page-budget .budget-recurring-form input,#page-budget .budget-recurring-form select{box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+@media(max-width:480px){
+  #page-budget .budget-section-heading{flex-direction:column;align-items:stretch}
+  #page-budget .budget-section-heading .btn,#page-budget .budget-recurring-actions .btn{box-sizing:border-box;width:100%;max-width:100%;white-space:normal}
+  #page-budget .budget-recurring-item{min-width:0}
+  #page-budget .budget-row-actions button{flex:1 1 auto;white-space:normal}
+  #page-budget .budget-expense-actions .btn{flex:1 1 100%}
+}
+
+
 </style>
 
 <style>
@@ -1948,6 +1964,7 @@ function setHorse(key) {
   if (active.id === 'page-verlauf') renderVerlauf();
   if (active.id === 'page-pat') renderPAT();
   if (active.id === 'page-gesundheit') renderGesundheit();
+  if (active.id === 'page-futterplan') renderFutterplanView();
   if (active.id === 'page-woche') { weekData = {}; renderWoche(); }
   if (active.id === 'page-rueckenkarte') loadRueckenkarte();
   if (active.id === 'page-auffaelligkeiten') loadAuffaelligkeiten();
@@ -3267,6 +3284,67 @@ function changeBudgetYear(value) {
   currentBudgetYear = year;
   renderBudget();
 }
+let currentFutterplanMonth = new Date().getMonth();
+
+function escapeFutterplan(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+async function renderFutterplanView() {
+  const view = document.getElementById('futterplan-view');
+  if (!view) return;
+  const horseAtStart = currentHorse;
+  view.innerHTML = '<div class="loader">⏳ Lade Futterplan…</div>';
+
+  try {
+    const horse = HORSES[horseAtStart];
+    if (!horse?.tabs?.futter) throw new Error('Für dieses Pferd ist kein Futterplan hinterlegt.');
+    const rows = await loadSheet(horse.tabs.futter);
+    if (horseAtStart !== currentHorse) return;
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const firstCell = safeRows[0]?.[0];
+    const hasHeader = !(typeof firstCell === 'number' || /^\d+$/.test(String(firstCell ?? '').trim()));
+    const startIdx = hasHeader ? 1 : 0;
+    const allData = safeRows.slice(startIdx).filter(row => Array.isArray(row) && row.length > 1);
+    const data = allData.filter(row => {
+      const monthIndex = parseInt(String(row[0] ?? '').trim(), 10);
+      return Number.isNaN(monthIndex) || monthIndex === currentFutterplanMonth;
+    });
+    const months = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    const monthBar = `<div class="month-bar" style="margin-bottom:14px">${months.map((month,index) =>
+      `<button class="month-btn${index === currentFutterplanMonth ? ' active' : ''}" onclick="currentFutterplanMonth=${index};renderFutterplanView()">${month}</button>`
+    ).join('')}</div>`;
+
+    if (!data.length) {
+      view.innerHTML = monthBar + '<div class="empty-state"><div class="emoji">🌾</div><p>Kein Futterplan für diesen Monat.</p></div>';
+      return;
+    }
+
+    view.innerHTML = monthBar + data.map(row => {
+      const name = escapeFutterplan(row[1]);
+      const category = escapeFutterplan(row[2]);
+      const quantity = escapeFutterplan(row[3]);
+      const frequency = escapeFutterplan(row[4]);
+      const notes = escapeFutterplan(row[5]);
+      if (!name && !category) return '';
+      return `<article class="feed-view-card" style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px var(--shadow)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="font-size:1.5rem">🌾</span><div>
+          <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--dark)">${name}</div>
+          ${category ? `<div style="font-size:.78rem;color:var(--brown);font-weight:600;text-transform:uppercase;letter-spacing:.04em">${category}</div>` : ''}
+        </div></div>
+        ${quantity ? `<div style="font-size:.88rem;margin-bottom:4px">⚖️ <strong>Menge:</strong> ${quantity}</div>` : ''}
+        ${frequency ? `<div style="font-size:.88rem;margin-bottom:4px">🔁 <strong>Häufigkeit:</strong> ${frequency}</div>` : ''}
+        ${notes ? `<div style="font-size:.82rem;color:#777;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">💬 ${notes}</div>` : ''}
+      </article>`;
+    }).join('');
+  } catch (error) {
+    if (horseAtStart !== currentHorse) return;
+    view.innerHTML = '<div class="empty-state"><p>Der Futterplan konnte nicht geladen werden. Bitte Verbindung prüfen und erneut öffnen.</p></div>';
+  }
+}
+
 function addBudgetRow(entry={}) {
   const body = $('budget-body');
   if (!body) return;
