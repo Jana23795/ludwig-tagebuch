@@ -103,6 +103,14 @@
   .yn-group label.checked-yes { background: var(--green); border-color: var(--green); color: white; }
   .yn-group label.checked-no { background: var(--red); border-color: var(--red); color: white; }
 
+  .sweat-details { margin-top: 10px; padding: 12px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--sand); }
+  .sweat-details-label { margin-bottom: 8px; color: var(--brown); font-size: 0.82rem; font-weight: 700; }
+  .sweat-intensity-choice { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sweat-choice { flex: 1 1 90px; min-height: 40px; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 9px; background: white; color: var(--dark); font: inherit; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+  .sweat-choice:hover { border-color: var(--accent); }
+  .sweat-choice:focus-visible { outline: 3px solid rgba(90, 122, 82, .35); outline-offset: 2px; }
+  .sweat-choice.active { background: var(--accent); border-color: var(--accent); color: white; }
+
   /* BUTTONS */
   .btn { display: block; width: 100%; padding: 14px; background: var(--dark); color: var(--sand); border: none; border-radius: 11px; font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 18px; transition: background 0.18s; }
   .btn:hover { background: var(--brown); }
@@ -1116,58 +1124,6 @@ nav button.supabase-hidden { display:none !important; }
 
 </div>
 
-<label class="field-label" style="margin-top:16px">THERAPIE</label>
-<div class="check-group" id="t-therapie">
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:6px 0 4px 0;width:100%">🩹 Taping</div>
-<label><input type="checkbox" value="Kinesiotaping"/><span>🩹 Kinesiotaping</span></label>
-<label><input type="checkbox" value="Crosstaping"/><span>➕ Crosstaping</span></label>
-<label><input type="checkbox" value="Trainingstaping"/><span>🎯 Trainingstaping</span></label>
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🤲 Manuelle Therapie</div>
-<label><input type="checkbox" value="Massage"/><span>💆 Massage</span></label>
-<label><input type="checkbox" value="Faszienmassage"/><span>🖐️ Faszienmassage</span></label>
-<label><input type="checkbox" value="Osteopathie"/><span>🦴 Osteopathie</span></label>
-<label><input type="checkbox" value="Physiotherapie"/><span>🏥 Physiotherapie</span></label>
-<label><input type="checkbox" value="Aromatherapie"/><span>🌿 Aromatherapie</span></label>
-<label><input type="checkbox" value="Lymphdrainage"/><span>💧 Lymphdrainage</span></label>
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">⚡ Geräte</div>
-<label><input type="checkbox" value="TENS-Gerät"/><span>⚡ TENS-Gerät</span></label>
-<label><input type="checkbox" value="LED-Therapie"/><span>💡 LED-Therapie</span></label>
-<label><input type="checkbox" value="Novafon"/><span>📳 Novafon</span></label>
-<label><input type="checkbox" value="Massagedecke"/><span>🔲 Massagedecke</span></label>
-<label><input type="checkbox" value="Massagegamaschen"/><span>🦵 Massagegamaschen</span></label>
-<label><input type="checkbox" value="Massagegerät"/><span>🔧 Massagegerät</span></label>
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🌡️ Wärme/Kälte Therapie</div>
-<label><input type="checkbox" value="Infrarot/Keramik Gamaschen"/><span>🟦 Infrarot/Keramik Gamaschen</span></label>
-<label><input type="checkbox" value="Infrarot/Keramik Decke"/><span>🟦 Infrarot/Keramik Decke</span></label>
-<label><input type="checkbox" value="Infrarot/Keramik Fliegenhaube"/><span>🟦 Infrarot/Keramik Fliegenhaube</span></label>
-<label><input type="checkbox" value="Infrarot/Keramik Schabracke"/><span>🟦 Infrarot/Keramik Schabracke</span></label>
-<label><input type="checkbox" value="Infrarot/Keramik Genickschoner"/><span>🟦 Infrarot/Keramik Genickschoner</span></label>
-<label><input type="checkbox" value="Kältedecke"/><span>❄️ Kältedecke</span></label>
-<label><input type="checkbox" value="Heizdecke"/><span>🔥 Heizdecke</span></label>
-<label><input type="checkbox" value="Kühlgamasche"/><span>🧊 Kühlgamasche</span></label>
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🟡 Faszien/Muskeltraining</div>
-<label><input type="checkbox" value="Balancepads"/><span>🟡 Balancepads</span></label>
-<label><input type="checkbox" value="Faszienrad"/><span>⚙️ Faszienrad</span></label>
-<label><input type="checkbox" value="Tensegrales Training"/><span>🧩 Tensegrales Training</span></label>
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">📍 TCM</div>
-<label><input type="checkbox" value="Akupunktur"/><span>📍 Akupunktur</span></label>
-<label><input type="checkbox" value="Akupressur"/><span>👆 Akupressur</span></label>
-<label><input type="checkbox" value="Ohrakupunktur"/><span>👂 Ohrakupunktur</span></label>
-<label><input type="checkbox" value="Energetisches Putzen"/><span>✨ Energetisches Putzen</span></label>
-
-<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🌀 Angewandte Techniken</div>
-<label><input type="checkbox" value="Masterson"/><span>🤲 Masterson</span></label>
-<label><input type="checkbox" value="Tellington-Therapie"/><span>🌀 Tellington-Therapie</span></label>
-<label><input type="checkbox" value="Tellington Wraps"/><span>🎀 Tellington Wraps</span></label>
-</div>
-<textarea id="t-therapie-notiz" placeholder="Therapie-Notizen (z.B. welche Akupunkturpunkte, wo Tape…)" style="margin-top:8px;width:100%;min-height:60px;padding:10px;border:1.5px solid var(--border);border-radius:9px;background:var(--sand);font-family:'DM Sans',sans-serif;font-size:0.88rem;resize:vertical;color:var(--dark);outline:none"></textarea>
-
 <label class="field-label" style="margin-top:20px">TAGESFORM (Schieber 1–10)</label>
 <div id="t-sliders" style="display:flex;flex-direction:column;gap:18px;margin-top:8px">
 
@@ -1318,6 +1274,61 @@ nav button.supabase-hidden { display:none !important; }
 <input id="t-schutz-kommentar" placeholder="z. B. Gramm-Zahl der Decke, Besonderheiten…" style="margin-top:8px" type="text"/>
 </div>
 <div class="card">
+<div class="card-title">👐 Therapie</div>
+<div class="check-group" id="t-therapie">
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:6px 0 4px 0;width:100%">🩹 Taping</div>
+<label><input type="checkbox" value="Kinesiotaping"/><span>🩹 Kinesiotaping</span></label>
+<label><input type="checkbox" value="Crosstaping"/><span>➕ Crosstaping</span></label>
+<label><input type="checkbox" value="Trainingstaping"/><span>🎯 Trainingstaping</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🤲 Manuelle Therapie</div>
+<label><input type="checkbox" value="Massage"/><span>💆 Massage</span></label>
+<label><input type="checkbox" value="Faszienmassage"/><span>🖐️ Faszienmassage</span></label>
+<label><input type="checkbox" value="Osteopathie"/><span>🦴 Osteopathie</span></label>
+<label><input type="checkbox" value="Physiotherapie"/><span>🏥 Physiotherapie</span></label>
+<label><input type="checkbox" value="Aromatherapie"/><span>🌿 Aromatherapie</span></label>
+<label><input type="checkbox" value="Lymphdrainage"/><span>💧 Lymphdrainage</span></label>
+<label><input type="checkbox" value="Stimmgabel-Therapie"/><span>🎵 Stimmgabel-Therapie</span></label>
+<label><input type="checkbox" value="DILBA Therapie"/><span>🌀 DILBA Therapie</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">⚡ Geräte</div>
+<label><input type="checkbox" value="TENS-Gerät"/><span>⚡ TENS-Gerät</span></label>
+<label><input type="checkbox" value="LED-Therapie"/><span>💡 LED-Therapie</span></label>
+<label><input type="checkbox" value="Novafon"/><span>📳 Novafon</span></label>
+<label><input type="checkbox" value="Massagedecke"/><span>🔲 Massagedecke</span></label>
+<label><input type="checkbox" value="Massagegamaschen"/><span>🦵 Massagegamaschen</span></label>
+<label><input type="checkbox" value="Massagegerät"/><span>🔧 Massagegerät</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🌡️ Wärme/Kälte Therapie</div>
+<label><input type="checkbox" value="Infrarot/Keramik Gamaschen"/><span>🟦 Infrarot/Keramik Gamaschen</span></label>
+<label><input type="checkbox" value="Infrarot/Keramik Decke"/><span>🟦 Infrarot/Keramik Decke</span></label>
+<label><input type="checkbox" value="Infrarot/Keramik Fliegenhaube"/><span>🟦 Infrarot/Keramik Fliegenhaube</span></label>
+<label><input type="checkbox" value="Infrarot/Keramik Schabracke"/><span>🟦 Infrarot/Keramik Schabracke</span></label>
+<label><input type="checkbox" value="Infrarot/Keramik Genickschoner"/><span>🟦 Infrarot/Keramik Genickschoner</span></label>
+<label><input type="checkbox" value="Kältedecke"/><span>❄️ Kältedecke</span></label>
+<label><input type="checkbox" value="Heizdecke"/><span>🔥 Heizdecke</span></label>
+<label><input type="checkbox" value="Kühlgamasche"/><span>🧊 Kühlgamasche</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🟡 Faszien/Muskeltraining</div>
+<label><input type="checkbox" value="Balancepads"/><span>🟡 Balancepads</span></label>
+<label><input type="checkbox" value="Faszienrad"/><span>⚙️ Faszienrad</span></label>
+<label><input type="checkbox" value="Tensegrales Training"/><span>🧩 Tensegrales Training</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">📍 TCM</div>
+<label><input type="checkbox" value="Akupunktur"/><span>📍 Akupunktur</span></label>
+<label><input type="checkbox" value="Akupressur"/><span>👆 Akupressur</span></label>
+<label><input type="checkbox" value="Ohrakupunktur"/><span>👂 Ohrakupunktur</span></label>
+<label><input type="checkbox" value="Energetisches Putzen"/><span>✨ Energetisches Putzen</span></label>
+
+<div style="font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em;margin:10px 0 4px 0;width:100%">🌀 Angewandte Techniken</div>
+<label><input type="checkbox" value="Masterson"/><span>🤲 Masterson</span></label>
+<label><input type="checkbox" value="Tellington-Therapie"/><span>🌀 Tellington-Therapie</span></label>
+<label><input type="checkbox" value="Tellington Wraps"/><span>🎀 Tellington Wraps</span></label>
+</div>
+<textarea id="t-therapie-notiz" placeholder="Therapie-Notizen (z.B. welche Akupunkturpunkte, wo Tape…)" style="margin-top:8px;width:100%;min-height:60px;padding:10px;border:1.5px solid var(--border);border-radius:9px;background:var(--sand);font-family:'DM Sans',sans-serif;font-size:0.88rem;resize:vertical;color:var(--dark);outline:none"></textarea>
+</div>
+<div class="card">
 <div class="card-title">🌿 Gesundheit &amp; Futter</div>
 <label class="field-label">Futter gemäß Plan?</label>
 <div class="yn-group" id="t-futter-plan">
@@ -1381,6 +1392,15 @@ nav button.supabase-hidden { display:none !important; }
 <div class="yn-group" id="t-geschwitzt">
 <label onclick="ynSelect('t-geschwitzt','yes')"><input name="geschwitzt" type="radio" value="Ja"/> ✅ Ja</label>
 <label onclick="ynSelect('t-geschwitzt','no')"><input name="geschwitzt" type="radio" value="Nein"/> ❌ Nein</label>
+</div>
+<div id="t-geschwitzt-details" class="sweat-details" style="display:none">
+  <div class="sweat-details-label">Wie stark hat das Pferd geschwitzt?</div>
+  <div class="sweat-intensity-choice" role="group" aria-label="Stärke des Schwitzens">
+    <button type="button" class="sweat-choice" aria-pressed="false" onclick="selectSweatIntensity(this, 'Leicht')">Leicht</button>
+    <button type="button" class="sweat-choice" aria-pressed="false" onclick="selectSweatIntensity(this, 'Mittel')">Mittel</button>
+    <button type="button" class="sweat-choice" aria-pressed="false" onclick="selectSweatIntensity(this, 'Stark')">Stark</button>
+  </div>
+  <input type="hidden" id="t-geschwitzt-intensitaet" value=""/>
 </div>
 <label class="field-label" style="margin-top:16px">🚿 ABGEDUSCHT / GEWASCHEN</label>
 <div class="check-group" id="t-abgeduscht" style="gap:8px">
@@ -2381,6 +2401,28 @@ function ynSelect(groupId, type) {
     const details = document.getElementById('t-eingedeckt-details');
     if (details) details.style.display = (type === 'yes') ? 'block' : 'none';
   }
+  if (groupId === 't-geschwitzt') {
+    const details = document.getElementById('t-geschwitzt-details');
+    const intensity = document.getElementById('t-geschwitzt-intensitaet');
+    if (details) details.style.display = (type === 'yes') ? 'block' : 'none';
+    if (type === 'no') {
+      if (intensity) intensity.value = '';
+      document.querySelectorAll('.sweat-choice').forEach(button => {
+        button.classList.remove('active');
+        button.setAttribute('aria-pressed', 'false');
+      });
+    }
+  }
+}
+
+function selectSweatIntensity(button, value) {
+  const input = document.getElementById('t-geschwitzt-intensitaet');
+  if (input) input.value = value;
+  document.querySelectorAll('.sweat-choice').forEach(choice => {
+    const selected = choice === button;
+    choice.classList.toggle('active', selected);
+    choice.setAttribute('aria-pressed', String(selected));
+  });
 }
 
 function getChecked(groupId) {
@@ -2481,6 +2523,14 @@ function clearForm() {
   ['t-trense-gebiss','t-kandare-art','t-kandarengebiss','t-unterleggebiss'].forEach(id => { const el=$(id); if (el) el.value=''; });
   ['bridle-details','trense-details','kandare-details','klassische-kandare-details'].forEach(id => { const el=$(id); if (el) el.style.display='none'; });
   const bridleStatus=$('bridle-pref-status'); if (bridleStatus) bridleStatus.textContent='';
+  const sweatDetails = document.getElementById('t-geschwitzt-details');
+  if (sweatDetails) sweatDetails.style.display = 'none';
+  const sweatIntensity = document.getElementById('t-geschwitzt-intensitaet');
+  if (sweatIntensity) sweatIntensity.value = '';
+  document.querySelectorAll('.sweat-choice').forEach(button => {
+    button.classList.remove('active');
+    button.setAttribute('aria-pressed', 'false');
+  });
   const eingedecktDetails = document.getElementById('t-eingedeckt-details');
   if (eingedecktDetails) eingedecktDetails.style.display = 'none';
   ['t-wer','t-temp','t-dauer','t-zaeum-sonstige','t-sattel-sonstige','t-geschirr-sonstige','t-schutz-kommentar','t-futter-abweich','t-verletzung-welche','t-decke-gramm','t-decke-kommentar','t-kommentar'].forEach(id => {
@@ -2553,7 +2603,8 @@ async function saveTraining() {
     $('t-rueckenbeweglichkeit').value,   // Rückenbeweglichkeit / -spannung
     getChecked('t-abgeduscht'),          // Abgeduscht / Gewaschen
     getRadio('geschwitzt'),                // Geschwitzt? (column 40)
-    ...getBridleSubfieldValues()            // Bit selections (columns 41-44)
+    ...getBridleSubfieldValues(),           // Bit selections (columns 41-44)
+    $('t-geschwitzt-intensitaet').value      // Geschwitzt-Stärke (column 45)
   ];
 
   try {
@@ -2606,7 +2657,7 @@ async function renderVerlauf() {
       schutz: r[31], schutz_kommentar: r[32], eingedeckt: r[33],
       deckentyp: r[34], decke_gramm: r[35], decke_kommentar: r[36],
       rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38], abgeduscht: r[39], geschwitzt: r[40] || '',
-      trense_gebiss: r[41] || '', kandare_art: r[42] || '', kandarengebiss: r[43] || '', unterleggebiss: r[44] || '', 
+      trense_gebiss: r[41] || '', kandare_art: r[42] || '', kandarengebiss: r[43] || '', unterleggebiss: r[44] || '', geschwitzt_stufe: r[45] || '', 
     }));
 
     cachedEntries = data.slice().reverse();
@@ -2675,7 +2726,7 @@ function renderVerlaufList() {
         ${detailRow('Aufgegessen', e.aufgegessen || '')}
         ${e.inhaliert ? detailRow('Inhaliert', e.inhaliert) : ''}
         ${e.therapie ? detailRow('Therapie', e.therapie + (e.therapie_notiz ? ' · ' + e.therapie_notiz : '')) : ''}
-        ${e.geschwitzt ? detailRow('Geschwitzt', e.geschwitzt) : ''}
+        ${e.geschwitzt ? detailRow('Geschwitzt', e.geschwitzt + (e.geschwitzt_stufe ? ' · ' + e.geschwitzt_stufe : '')) : ''}
         ${e.abgeduscht ? detailRow('Abgeduscht / Gewaschen', e.abgeduscht) : ''}
 
         ${(e.energie || e.losgelassenheit || e.durchlaessigkeit || e.verlauf_einheit || e.verfassung || e.kooperation) ? `
@@ -5455,7 +5506,7 @@ async function appendRowToSupabase(tab, row) {
   if (!client || !horseId || !info.module) throw new Error('Supabase-Ziel für diesen Bereich nicht gefunden.');
   const headers = (window.__LUDWIG_HEADERS_BY_TAB[tab] || []).slice();
   if (info.module === 'protokoll' && Array.isArray(row)) {
-    const protocolHeaders = {40:'Geschwitzt?',41:'Gebiss zur Trense',42:'Kandarenart',43:'Kandarengebiss',44:'Unterleggebiss'};
+    const protocolHeaders = {40:'Geschwitzt?',41:'Gebiss zur Trense',42:'Kandarenart',43:'Kandarengebiss',44:'Unterleggebiss',45:'Geschwitzt Stärke'};
     while (headers.length < row.length) headers.push(protocolHeaders[headers.length] || '');
     window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
   }
