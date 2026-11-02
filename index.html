@@ -459,6 +459,7 @@ nav button.supabase-hidden { display:none !important; }
   #rk-editor-svg,#rk-heat-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
   #rk-editor-svg { touch-action:pan-y; cursor:crosshair; outline:none; }
   #rk-editor-svg.rk-drawing-area { touch-action:none; }
+  .rk-map-frame.rk-drawing-area { touch-action:none; overscroll-behavior:contain; }
   #rk-editor-svg:focus-visible { outline:3px solid #3d7fa6; outline-offset:2px; }
   .rk-mark-shape { pointer-events:none; }
   .rk-mark-number { font:700 10px 'DM Sans',sans-serif; fill:white; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
@@ -1603,6 +1604,8 @@ nav button.supabase-hidden { display:none !important; }
 <tbody id="futter-body"></tbody></table>
 </div>
 <button class="btn btn-accent" onclick="addFutterRow()" style="margin-top:12px">➕ Zeile hinzufügen</button>
+<button class="btn" type="button" onclick="copyFutterToNextMonth(this)" style="margin-top:8px;background:var(--warm);color:var(--dark)">➡️ In Folgemonat kopieren</button>
+<p style="font-size:.78rem;color:var(--brown);margin:8px 2px 0">Kopiert die aktuell angezeigten Positionen. Ein Folgemonat mit vorhandenen Einträgen bleibt unverändert.</p>
 <button class="btn" type="button" onclick="saveFutter(this)">💾 Futterplan speichern</button>
 </div>
 </div>
@@ -3482,6 +3485,107 @@ async function saveFutter(button) {
   }
 }
 window.saveFutter = saveFutter;
+
+function futterRowsForMonth(sheetRows, monthIndex) {
+  const firstCell = sheetRows?.[0]?.[0];
+  const firstCellText = String(firstCell ?? '').trim();
+  const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+  const startIndex = hasHeader ? 1 : 0;
+  return (Array.isArray(sheetRows) ? sheetRows : []).slice(startIndex).filter(row => {
+    if (!Array.isArray(row) || row.length < 2) return false;
+    return parseInt(String(row[0] ?? '').trim(), 10) === monthIndex;
+  });
+}
+
+async function copyFutterToNextMonth(button) {
+  const btn = button || document.querySelector('#page-futter button[onclick*="copyFutterToNextMonth"]');
+  if (btn?.disabled) return;
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && !supabaseCanManageOwnerArea()) {
+    showToast('Für diese Änderung fehlen dir die Besitzerrechte.');
+    return;
+  }
+  if (futterEditorLoadedHorse !== currentHorse || futterEditorLoadedMonth !== currentFutterMonth) {
+    showToast('Futter ist noch nicht vollständig geladen. Bitte zuerst erneut laden.');
+    return;
+  }
+
+  const horseAtStart = currentHorse;
+  const sourceMonth = currentFutterMonth;
+  const targetMonth = (sourceMonth + 1) % 12;
+  const tab = HORSES[horseAtStart]?.tabs?.futter;
+  const rowsToCopy = [...document.querySelectorAll('#futter-body tr')].map(tr => {
+    const fields = tr.querySelectorAll('input, select');
+    return {
+      name: String(fields[0]?.value || '').trim(),
+      kat: String(fields[1]?.value || '').trim(),
+      dosierung: String(fields[2]?.value || '').trim(),
+      haeuf: String(fields[3]?.value || '').trim(),
+      notizen: String(fields[4]?.value || '').trim()
+    };
+  }).filter(row => row.name || row.dosierung || row.haeuf || row.notizen);
+
+  if (!tab || !rowsToCopy.length) {
+    showToast('Keine Futterpositionen zum Kopieren vorhanden.');
+    return;
+  }
+
+  const originalText = btn?.textContent || '➡️ In Folgemonat kopieren';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Prüfe Folgemonat…'; }
+  const header = ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen'];
+  const isStillOnSource = () => horseAtStart === currentHorse
+    && sourceMonth === currentFutterMonth
+    && futterEditorLoadedHorse === horseAtStart
+    && futterEditorLoadedMonth === sourceMonth;
+
+  try {
+    await ensureSheetHeader(tab, header);
+    let sheetRows = await loadSheet(tab);
+    if (!isStillOnSource()) {
+      showToast('Pferd oder Monat wurde gewechselt. Bitte die Übernahme erneut starten.');
+      return;
+    }
+    if (futterRowsForMonth(sheetRows, targetMonth).length) {
+      showToast(`${MONTHS[targetMonth]} enthält bereits Futterdaten. Es wurde nichts verändert.`);
+      return;
+    }
+    if (!confirm(`Die ${rowsToCopy.length} aktuell angezeigten Positionen von ${MONTHS[sourceMonth]} nach ${MONTHS[targetMonth]} kopieren? Ein belegter Zielmonat wird nicht überschrieben.`)) return;
+
+    // Nach der Rückfrage erneut prüfen, damit zwischenzeitlich gespeicherte Daten geschützt bleiben.
+    sheetRows = await loadSheet(tab);
+    if (!isStillOnSource()) {
+      showToast('Pferd oder Monat wurde gewechselt. Es wurde nichts kopiert.');
+      return;
+    }
+    if (futterRowsForMonth(sheetRows, targetMonth).length) {
+      showToast(`${MONTHS[targetMonth]} enthält inzwischen Futterdaten. Es wurde nichts verändert.`);
+      return;
+    }
+
+    if (btn) btn.textContent = '⏳ Kopiere…';
+    for (const row of rowsToCopy) {
+      await appendRow(tab, [targetMonth, row.name, row.kat, row.dosierung, row.haeuf, row.notizen]);
+    }
+
+    const savedTargetRows = futterRowsForMonth(await loadSheet(tab), targetMonth);
+    const unmatched = rowsToCopy.map(row => JSON.stringify([row.name, row.kat, row.dosierung, row.haeuf, row.notizen]));
+    for (const row of savedTargetRows) {
+      const signature = JSON.stringify(row.slice(1, 6).map(value => String(value ?? '').trim()));
+      const index = unmatched.indexOf(signature);
+      if (index >= 0) unmatched.splice(index, 1);
+    }
+    if (unmatched.length) {
+      showToast('Übernahme nicht vollständig bestätigt. Bitte den Folgemonat prüfen, bevor du erneut kopierst.');
+      return;
+    }
+    showToast(`✅ ${rowsToCopy.length} Positionen nach ${MONTHS[targetMonth]} kopiert.`);
+  } catch (error) {
+    showToast('❌ Futterplan konnte nicht übernommen werden. Bitte Folgemonat prüfen.');
+    console.error('Monatsübernahme des Futterplans fehlgeschlagen:', error);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+  }
+}
+window.copyFutterToNextMonth = copyFutterToNextMonth;
 
 let currentFutterplanMonth = new Date().getMonth();
 
@@ -5922,6 +6026,7 @@ let rkDraftMarks = [];
 let rkSelectedId = null;
 let rkMode = 'point';
 let rkDrawingPoints = null;
+let rkDrawingPointerId = null;
 let rkDrawingInvalid = false;
 let rkLoadToken = 0;
 const RK_BODY_INSET = 9;
@@ -6125,7 +6230,10 @@ function rkSetMode(mode) {
     ? 'Punkte mit einem Tippen im Pferdebereich setzen. In diesem Modus kannst du über die Karte scrollen.'
     : 'Ziehe mit Finger oder Maus eine geschlossene Fläche innerhalb der Pferdesilhouette.';
   const svg = document.getElementById('rk-editor-svg');
+  const frame = svg?.closest('.rk-map-frame');
   svg?.classList.toggle('rk-drawing-area', mode==='area');
+  frame?.classList.toggle('rk-drawing-area', mode==='area');
+  if (rkDrawingPoints && mode !== 'area') rkCancelDraw(null, false);
 }
 function rkPlacePoint(event) {
   if (rkMode !== 'point' || event.detail === 0) return;
@@ -6140,7 +6248,7 @@ function rkPlacePoint(event) {
 }
 function rkStartDraw(event) {
   if (event.button !== undefined && event.button !== 0) return;
-  if (rkMode === 'point') return;
+  if (rkMode === 'point' || rkDrawingPoints || event.pointerId === undefined) return;
   const svg = document.getElementById('rk-editor-svg');
   const p = rkGetSvgPoint(event);
   if (!rkIsInsideBack(p)) {
@@ -6148,20 +6256,31 @@ function rkStartDraw(event) {
     return;
   }
   rkDrawingInvalid = false;
+  rkDrawingPointerId = event.pointerId;
   rkDrawingPoints = [p];
   try { svg.setPointerCapture(event.pointerId); } catch(e) {}
   rkRenderEditor(); event.preventDefault();
 }
 function rkMoveDraw(event) {
-  if (!rkDrawingPoints) return;
+  if (!rkDrawingPoints || event.pointerId !== rkDrawingPointerId) return;
   const p = rkGetSvgPoint(event), last = rkDrawingPoints[rkDrawingPoints.length-1];
   if (!rkIsInsideBack(p)) rkDrawingInvalid = true;
   if (Math.hypot(p.x-last.x,p.y-last.y) >= 3 && rkIsInsideBack(p)) rkDrawingPoints.push(p);
   rkRenderEditor(); event.preventDefault();
 }
-function rkFinishDraw() {
-  if (!rkDrawingPoints) return;
-  const points = rkDrawingPoints; rkDrawingPoints = null;
+function rkCancelDraw(event, showStatus=true) {
+  if (!rkDrawingPoints || (event && event.pointerId !== rkDrawingPointerId)) return;
+  rkDrawingPoints = null;
+  rkDrawingPointerId = null;
+  rkDrawingInvalid = false;
+  rkRenderEditor();
+  if (showStatus) rkSetStatus('Zeichnung abgebrochen und verworfen.','error');
+}
+function rkFinishDraw(event) {
+  if (!rkDrawingPoints || !event || event.pointerId !== rkDrawingPointerId) return;
+  const points = rkDrawingPoints;
+  rkDrawingPoints = null;
+  rkDrawingPointerId = null;
   if (rkDrawingInvalid || !rkAreaInsideBack(points)) {
     rkDrawingInvalid = false;
     rkSetStatus('Fläche verworfen: Bitte komplett innerhalb der Rücken-Silhouette zeichnen.','error');
@@ -6300,7 +6419,8 @@ function rkRenderHistory(sessions) {
   svg.addEventListener('click',rkPlacePoint);
   svg.addEventListener('pointermove',rkMoveDraw);
   svg.addEventListener('pointerup',rkFinishDraw);
-  svg.addEventListener('pointercancel',rkFinishDraw);
+  svg.addEventListener('pointercancel',rkCancelDraw);
+  svg.addEventListener('lostpointercapture',event=>rkCancelDraw(event));
   svg.addEventListener('keydown',event=>{
     if(event.key==='Enter'||event.key===' '){event.preventDefault();const p={x:RK_WIDTH/2,y:RK_HEIGHT/2};if(!rkIsInsideBack(p)){rkSetStatus('Punkt liegt außerhalb der Rücken-Silhouette.');return;}rkDraftMarks.push({type:'point',x:p.x,y:p.y,intensity:Number(document.getElementById('rk-intensity').value||0)});rkRenderEditor();rkSetStatus('Punkt in der Kartenmitte hinzugefügt.');}
   });
