@@ -2487,7 +2487,8 @@ function validateTrainingRequiredFields() {
   // Trainingsart ist optional – aber wenn eine gewählt wurde, muss Dauer angegeben werden
   const trainingArt = getChecked('t-art');
   if (trainingArt) {
-    required.push(['t-dauer', $('t-dauer')?.value]);
+    const duration = Number.parseFloat($('t-dauer')?.value || '');
+    required.push(['t-dauer', Number.isFinite(duration) && duration > 0 ? String(duration) : '']);
   }
   const zaeumSelection = getChecked('t-zaeum').split(',').map(value=>value.trim());
   if (zaeumSelection.includes('Trense')) required.push(['t-trense-gebiss', $('t-trense-gebiss')?.value]);
@@ -2548,6 +2549,8 @@ async function saveTraining() {
   if (!validateTrainingRequiredFields()) return;
   const datum = $('t-datum').value;
   if (!datum) { alert('Bitte Datum eingeben!'); return; }
+  const durationValue = Number.parseFloat($('t-dauer')?.value || '');
+  const hasTrainingDuration = Number.isFinite(durationValue) && durationValue > 0;
 
   const btn = $('save-btn');
   btn.textContent = '⏳ Wird gespeichert…';
@@ -2587,12 +2590,12 @@ async function saveTraining() {
     $('t-kommentar').value,           // Kommentar
     getChecked('t-therapie'),         // Therapie
     $('t-therapie-notiz').value,      // Therapie Notizen
-    $('t-energie').value,             // Schieber: Energie
-    $('t-losgelassenheit').value,     // Schieber: Losgelassenheit
-    $('t-durchlaessigkeit').value,    // Schieber: Durchlässigkeit
-    $('t-verlauf-einheit').value,     // Schieber: Verlauf
-    $('t-verfassung').value,          // Schieber: Verfassung
-    $('t-kooperation').value,         // Schieber: Kooperation
+    (hasTrainingDuration ? $('t-energie').value : ''),             // Schieber: Energie
+    (hasTrainingDuration ? $('t-losgelassenheit').value : ''),     // Schieber: Losgelassenheit
+    (hasTrainingDuration ? $('t-durchlaessigkeit').value : ''),    // Schieber: Durchlässigkeit
+    (hasTrainingDuration ? $('t-verlauf-einheit').value : ''),     // Schieber: Verlauf
+    (hasTrainingDuration ? $('t-verfassung').value : ''),          // Schieber: Verfassung
+    (hasTrainingDuration ? $('t-kooperation').value : ''),         // Schieber: Kooperation
     getChecked('t-geschirr'),          // Geschirr/Kutsche – neue Spalte
     $('t-geschirr-sonstige').value,    // Geschirr/Kutsche sonstige – neue Spalte
     getRadio('aufgegessen'),           // Aufgegessen – neue Spalte
@@ -2602,8 +2605,8 @@ async function saveTraining() {
     getChecked('t-deckentyp'),         // Deckentyp
     $('t-decke-gramm').value,          // Decke Gramm-Zahl
     $('t-decke-kommentar').value,       // Decke Kommentar
-    $('t-rueckenempfindlichkeit').value, // Rückenempfindlichkeit
-    $('t-rueckenbeweglichkeit').value,   // Rückenbeweglichkeit / -spannung
+    (hasTrainingDuration ? $('t-rueckenempfindlichkeit').value : ''), // Rückenempfindlichkeit
+    (hasTrainingDuration ? $('t-rueckenbeweglichkeit').value : ''),   // Rückenbeweglichkeit / -spannung
     getChecked('t-abgeduscht'),          // Abgeduscht / Gewaschen
     getRadio('geschwitzt'),                // Geschwitzt? (column 40)
     ...getBridleSubfieldValues(),           // Bit selections (columns 41-44)
@@ -2672,13 +2675,19 @@ async function renderVerlauf() {
   }
 }
 
+function sliderValueColor(value) {
+  const val = Number.parseFloat(value);
+  if (!Number.isFinite(val)) return '#888888';
+  const deviation = Math.abs(val - 5);
+  if (deviation <= 0.5) return '#5A7A52';
+  if (deviation <= 1.5) return '#B8864E';
+  return '#A03030';
+}
+
 function sliderBadge(label, v) {
   const val = parseFloat(v);
   if (isNaN(val)) return '';
-  const pct = Math.round(((val - 1) / 9) * 100);
-  let color = '#5A7A52';
-  if (pct < 34) color = '#A03030';
-  else if (pct < 67) color = '#B8864E';
+  const color = sliderValueColor(val);
   return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--sand);border:1px solid var(--border);border-radius:8px;padding:3px 9px;font-size:0.75rem;font-weight:600;color:${color}">${label} ${val}/10</span>`;
 }
 
@@ -2732,7 +2741,7 @@ function renderVerlaufList() {
         ${e.geschwitzt ? detailRow('Geschwitzt', e.geschwitzt + (e.geschwitzt_stufe ? ' · ' + e.geschwitzt_stufe : '')) : ''}
         ${e.abgeduscht ? detailRow('Abgeduscht / Gewaschen', e.abgeduscht) : ''}
 
-        ${(e.energie || e.losgelassenheit || e.durchlaessigkeit || e.verlauf_einheit || e.verfassung || e.kooperation) ? `
+        ${(Number(e.dauer) > 0 && (e.energie || e.losgelassenheit || e.durchlaessigkeit || e.verlauf_einheit || e.verfassung || e.kooperation || e.rueckenempfindlichkeit || e.rueckenbeweglichkeit)) ? `
         <div style="margin-top:12px;margin-bottom:4px;font-size:0.72rem;font-weight:700;color:var(--brown);text-transform:uppercase;letter-spacing:0.06em">Tagesform</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
           ${e.energie ? sliderBadge('⚡ Energie', e.energie) : ''}
@@ -4617,32 +4626,36 @@ function dashboardParseProtokolls(rows) {
   const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
   return rows.slice(hasHeader ? 1 : 0)
     .filter(r => Array.isArray(r) && r.some(x => String(x ?? '').trim()))
-    .map(r => ({
-      datum: r[1] || '',
-      wer: r[2] || '',
-      stimmung: r[3] || '',
-      wetter: r[4] || '',
-      temp: parseFloat(r[5]) || null,
-      art: r[6] || '',
-      dauer: parseFloat(r[7]) || 0,
-      futter_plan: r[12] || '',
-      verdauung: r[14] || '',
-      atmung: r[15] || '',
-      inhaliert: r[16] || '',
-      verletzung: r[17] || '',
-      therapie: r[20] || '',
-      energie: parseFloat(r[22]) || null,
-      losgelassenheit: parseFloat(r[23]) || null,
-      durchlaessigkeit: parseFloat(r[24]) || null,
-      verlauf_einheit: parseFloat(r[25]) || null,
-      verfassung: parseFloat(r[26]) || null,
-      kooperation: parseFloat(r[27]) || null,
-      rueckenempfindlichkeit: parseFloat(r[37]) || null,
-      rueckenbeweglichkeit: parseFloat(r[38]) || null,
-      aufgegessen: r[30] || '',
-      eingedeckt: r[33] || '',
-      decke_gramm: parseFloat(r[35]) || null,
-    }));
+    .map(r => {
+      const dauer = parseFloat(r[7]) || 0;
+      const sliderValue = index => dauer > 0 ? (parseFloat(r[index]) || null) : null;
+      return {
+        datum: r[1] || '',
+        wer: r[2] || '',
+        stimmung: r[3] || '',
+        wetter: r[4] || '',
+        temp: parseFloat(r[5]) || null,
+        art: r[6] || '',
+        dauer,
+        futter_plan: r[12] || '',
+        verdauung: r[14] || '',
+        atmung: r[15] || '',
+        inhaliert: r[16] || '',
+        verletzung: r[17] || '',
+        therapie: r[20] || '',
+        energie: sliderValue(22),
+        losgelassenheit: sliderValue(23),
+        durchlaessigkeit: sliderValue(24),
+        verlauf_einheit: sliderValue(25),
+        verfassung: sliderValue(26),
+        kooperation: sliderValue(27),
+        rueckenempfindlichkeit: sliderValue(37),
+        rueckenbeweglichkeit: sliderValue(38),
+        aufgegessen: r[30] || '',
+        eingedeckt: r[33] || '',
+        decke_gramm: parseFloat(r[35]) || null,
+      };
+    });
 }
 
 function dashboardFilterByRange(entries, days, offsetDays=0) {
@@ -4877,14 +4890,14 @@ function dashboardRenderGoal(entries, days) {
   const current = dashboardUniqueTrainingDays(dashboardFilterByRange(entries, days, 0));
   const previous = dashboardUniqueTrainingDays(dashboardFilterByRange(entries, days, days));
   const sliders = [
-    {key:'energie',label:'Energie', risk:v=>Math.abs(v-5.5), goal:'Energie im Blick behalten: die nächsten Einheiten ruhig dosieren und auf fleißige, aber nicht überdrehte Arbeit achten.'},
-    {key:'losgelassenheit',label:'Losgelassenheit', risk:v=>Math.abs(v-5.5), goal:'Losgelassenheit fördern: mit ruhigem Aufwärmen, einfachen Übergängen und kurzen Pausen arbeiten.'},
-    {key:'durchlaessigkeit',label:'Durchlässigkeit', risk:v=>Math.abs(v-5.5), goal:'Durchlässigkeit im Blick behalten: klare, leichte Hilfen geben und gute Reaktionen ruhig bestätigen.'},
-    {key:'verlauf_einheit',label:'Verlauf der Einheit', risk:v=>Math.abs(v-5.5), goal:'Den Einheitenverlauf unterstützen: sanft beginnen, Belastung schrittweise steigern und rechtzeitig lockern.'},
-    {key:'verfassung',label:'Eigene Verfassung', risk:v=>Math.abs(v-5.5), goal:'Die eigene Tagesform berücksichtigen: ein realistisches Ziel setzen und bei Bedarf Pausen einplanen.'},
-    {key:'kooperation',label:'Kooperation', risk:v=>Math.abs(v-5.5), goal:'Kooperation stärken: kurze, verständliche Aufgaben stellen und gutes Mitmachen mit Pausen belohnen.'},
-    {key:'rueckenempfindlichkeit',label:'Rückenempfindlichkeit', risk:v=>Math.max(0,5.5-v), goal:'Rückenreaktionen aufmerksam beobachten und die Arbeit vorerst locker halten. Bei anhaltender oder deutlicher Empfindlichkeit bitte fachlich abklären lassen.'},
-    {key:'rueckenbeweglichkeit',label:'Rückenbeweglichkeit / -spannung', risk:v=>Math.abs(v-5.5), goal:'Rückenbeweglichkeit und Spannung behutsam beobachten, gut aufwärmen und die Reaktion auf die Arbeit dokumentieren.'}
+    {key:'energie',label:'Energie', risk:v=>Math.abs(v-5), goal:'Energie im Blick behalten: die nächsten Einheiten ruhig dosieren und auf fleißige, aber nicht überdrehte Arbeit achten.'},
+    {key:'losgelassenheit',label:'Losgelassenheit', risk:v=>Math.abs(v-5), goal:'Losgelassenheit fördern: mit ruhigem Aufwärmen, einfachen Übergängen und kurzen Pausen arbeiten.'},
+    {key:'durchlaessigkeit',label:'Durchlässigkeit', risk:v=>Math.abs(v-5), goal:'Durchlässigkeit im Blick behalten: klare, leichte Hilfen geben und gute Reaktionen ruhig bestätigen.'},
+    {key:'verlauf_einheit',label:'Verlauf der Einheit', risk:v=>Math.abs(v-5), goal:'Den Einheitenverlauf unterstützen: sanft beginnen, Belastung schrittweise steigern und rechtzeitig lockern.'},
+    {key:'verfassung',label:'Eigene Verfassung', risk:v=>Math.abs(v-5), goal:'Die eigene Tagesform berücksichtigen: ein realistisches Ziel setzen und bei Bedarf Pausen einplanen.'},
+    {key:'kooperation',label:'Kooperation', risk:v=>Math.abs(v-5), goal:'Kooperation stärken: kurze, verständliche Aufgaben stellen und gutes Mitmachen mit Pausen belohnen.'},
+    {key:'rueckenempfindlichkeit',label:'Rückenempfindlichkeit', risk:v=>Math.abs(v-5), goal:'Rückenreaktionen aufmerksam beobachten und die Arbeit vorerst locker halten. Bei anhaltender oder deutlicher Empfindlichkeit bitte fachlich abklären lassen.'},
+    {key:'rueckenbeweglichkeit',label:'Rückenbeweglichkeit / -spannung', risk:v=>Math.abs(v-5), goal:'Rückenbeweglichkeit und Spannung behutsam beobachten, gut aufwärmen und die Reaktion auf die Arbeit dokumentieren.'}
   ];
   if (current.length < 2 || previous.length < 2) {
     section.innerHTML = '<div class="dashboard-empty-state">Für ein verlässliches Trainingsziel brauche ich mindestens 2 Trainingstage im gewählten Zeitraum und 2 im direkt vorherigen Vergleichszeitraum.</div>';
@@ -4994,8 +5007,7 @@ function dashboardRenderSliders(entries, days) {
     const mean = dashboardAvg(vals);
     if (mean == null) return '';
     const pctVal = (mean / 10) * 100;
-    const deviation = Math.abs(mean - 5);
-    const color = deviation <= 0.75 ? '#5A7A52' : deviation <= 2 ? '#B8864E' : '#A03030';
+    const color = sliderValueColor(mean);
     return `
       <div class="dashboard-slider-row">
         <span class="dashboard-slider-label">${label}</span>
@@ -5146,41 +5158,40 @@ function dashboardRenderObservations(entries, days) {
 
   // ── 6. Rückenempfindlichkeit vs. Wetter ────────────────────────────────────
   const rueckWetterGruppen = {};
-  period.filter(e => e.wetter && e.rueckenempfindlichkeit !== null).forEach(e => {
+  trainings.filter(e => e.wetter && e.rueckenempfindlichkeit !== null).forEach(e => {
     if (!rueckWetterGruppen[e.wetter]) rueckWetterGruppen[e.wetter] = [];
-    rueckWetterGruppen[e.wetter].push(e.rueckenempfindlichkeit);
+    rueckWetterGruppen[e.wetter].push(Math.abs(e.rueckenempfindlichkeit - 5));
   });
-  // Hoher Wert = weniger empfindlich (Skala 1–10, 10 = unempfindlich)
   let bestRueckWetter = null, worstRueckWetter = null;
   Object.entries(rueckWetterGruppen).forEach(([w, scores]) => {
     if (scores.length < MIN) return;
     const m = dashboardAvg(scores);
-    if (!bestRueckWetter  || m > bestRueckWetter.score)  bestRueckWetter  = { wetter: w, score: m, n: scores.length };
-    if (!worstRueckWetter || m < worstRueckWetter.score) worstRueckWetter = { wetter: w, score: m, n: scores.length };
+    if (!bestRueckWetter  || m < bestRueckWetter.score) bestRueckWetter = { wetter:w, score:m, n:scores.length };
+    if (!worstRueckWetter || m > worstRueckWetter.score) worstRueckWetter = { wetter:w, score:m, n:scores.length };
   });
   if (bestRueckWetter && worstRueckWetter && bestRueckWetter.wetter !== worstRueckWetter.wetter) {
-    const diff = bestRueckWetter.score - worstRueckWetter.score;
+    const diff = worstRueckWetter.score - bestRueckWetter.score;
     if (diff >= 1) {
-      obs.push({ type: 'neutral', text: `🐴 Rücken & Wetter: Weniger empfindlich bei ${bestRueckWetter.wetter} (Ø ${bestRueckWetter.score.toFixed(1)}/10, ${bestRueckWetter.n} Tage), empfindlicher bei ${worstRueckWetter.wetter} (Ø ${worstRueckWetter.score.toFixed(1)}/10, ${worstRueckWetter.n} Tage).` });
+      obs.push({ type:'neutral', text:`🐴 Rücken & Wetter: Die Tagesform lag näher am günstigen Mittelwert 5 bei ${bestRueckWetter.wetter} (Ø Abweichung ${bestRueckWetter.score.toFixed(1)}, ${bestRueckWetter.n} Trainingstage) als bei ${worstRueckWetter.wetter} (Ø Abweichung ${worstRueckWetter.score.toFixed(1)}, ${worstRueckWetter.n} Trainingstage).` });
     }
   }
 
   // ── 7. Rückenempfindlichkeit vs. Temperatur ─────────────────────────────────
-  const rueckTempGruppen = { kalt: [], mild: [], warm: [] };
-  period.filter(e => e.temp !== null && e.rueckenempfindlichkeit !== null).forEach(e => {
-    if (e.temp < 5)       rueckTempGruppen.kalt.push(e.rueckenempfindlichkeit);
-    else if (e.temp < 18) rueckTempGruppen.mild.push(e.rueckenempfindlichkeit);
-    else                  rueckTempGruppen.warm.push(e.rueckenempfindlichkeit);
+  const rueckTempGruppen = { kalt:[], mild:[], warm:[] };
+  trainings.filter(e => e.temp !== null && e.rueckenempfindlichkeit !== null).forEach(e => {
+    const deviation = Math.abs(e.rueckenempfindlichkeit - 5);
+    if (e.temp < 5) rueckTempGruppen.kalt.push(deviation);
+    else if (e.temp < 18) rueckTempGruppen.mild.push(deviation);
+    else rueckTempGruppen.warm.push(deviation);
   });
   const rueckTempAvg = {};
-  Object.entries(rueckTempGruppen).forEach(([k, v]) => { if (v.length >= MIN) rueckTempAvg[k] = { avg: dashboardAvg(v), n: v.length }; });
+  Object.entries(rueckTempGruppen).forEach(([k,v]) => { if (v.length >= MIN) rueckTempAvg[k] = {avg:dashboardAvg(v),n:v.length}; });
   if (Object.keys(rueckTempAvg).length >= 2) {
-    const sorted = Object.entries(rueckTempAvg).sort((a,b) => b[1].avg - a[1].avg);
-    const best  = sorted[0];
-    const worst = sorted[sorted.length - 1];
-    const label = { kalt: 'Kälte (<5 °C)', mild: 'milden Temperaturen (5–18 °C)', warm: 'Wärme (>18 °C)' };
-    if (best[1].avg - worst[1].avg >= 1) {
-      obs.push({ type: 'neutral', text: `🌡️ Rücken & Temperatur: Weniger empfindlich bei ${label[best[0]]} (Ø ${best[1].avg.toFixed(1)}/10, ${best[1].n} Tage), empfindlicher bei ${label[worst[0]]} (Ø ${worst[1].avg.toFixed(1)}/10, ${worst[1].n} Tage).` });
+    const sorted = Object.entries(rueckTempAvg).sort((a,b) => a[1].avg - b[1].avg);
+    const best = sorted[0], worst = sorted[sorted.length-1];
+    const label = {kalt:'Kälte (<5 °C)',mild:'milden Temperaturen (5–18 °C)',warm:'Wärme (>18 °C)'};
+    if (worst[1].avg - best[1].avg >= 1) {
+      obs.push({type:'neutral',text:`🌡️ Rücken & Temperatur: Die Tagesform lag näher am günstigen Mittelwert 5 bei ${label[best[0]]} (Ø Abweichung ${best[1].avg.toFixed(1)}, ${best[1].n} Trainingstage) als bei ${label[worst[0]]} (Ø Abweichung ${worst[1].avg.toFixed(1)}, ${worst[1].n} Trainingstage).`});
     }
   }
 
@@ -5193,22 +5204,21 @@ function dashboardRenderObservations(entries, days) {
     if (!d) return;
     const next = new Date(d); next.setDate(next.getDate() + 1);
     const nextEntry = byDate[dashboardIsoDate(next)];
-    if (!nextEntry || nextEntry.rueckenempfindlichkeit === null) return;
-    const val = nextEntry.rueckenempfindlichkeit;
-    if (e.decke_gramm < 100)       deckeLeicht.push(val);
-    else if (e.decke_gramm < 300)  deckeMittel.push(val);
-    else                           deckeSchwer.push(val);
+    if (!nextEntry || !dashboardIsTrainingDay(nextEntry) || nextEntry.rueckenempfindlichkeit === null) return;
+    const deviation = Math.abs(nextEntry.rueckenempfindlichkeit - 5);
+    if (e.decke_gramm < 100) deckeLeicht.push(deviation);
+    else if (e.decke_gramm < 300) deckeMittel.push(deviation);
+    else deckeSchwer.push(deviation);
   });
   const deckeAvg = {};
-  if (deckeLeicht.length >= MIN) deckeAvg.leicht = { avg: dashboardAvg(deckeLeicht), n: deckeLeicht.length, label: 'leichte Decke (<100 g)' };
-  if (deckeMittel.length >= MIN) deckeAvg.mittel = { avg: dashboardAvg(deckeMittel), n: deckeMittel.length, label: 'mittlere Decke (100–300 g)' };
-  if (deckeSchwer.length >= MIN) deckeAvg.schwer = { avg: dashboardAvg(deckeSchwer), n: deckeSchwer.length, label: 'schwere Decke (>300 g)' };
+  if (deckeLeicht.length >= MIN) deckeAvg.leicht = {avg:dashboardAvg(deckeLeicht),n:deckeLeicht.length,label:'leichte Decke (<100 g)'};
+  if (deckeMittel.length >= MIN) deckeAvg.mittel = {avg:dashboardAvg(deckeMittel),n:deckeMittel.length,label:'mittlere Decke (100–300 g)'};
+  if (deckeSchwer.length >= MIN) deckeAvg.schwer = {avg:dashboardAvg(deckeSchwer),n:deckeSchwer.length,label:'schwere Decke (>300 g)'};
   if (Object.keys(deckeAvg).length >= 2) {
-    const sorted = Object.values(deckeAvg).sort((a,b) => b.avg - a.avg);
-    const best  = sorted[0];
-    const worst = sorted[sorted.length - 1];
-    if (best.avg - worst.avg >= 1) {
-      obs.push({ type: 'neutral', text: `🧥 Decke & Rücken: Nach ${best.label} am Folgetag weniger empfindlich (Ø ${best.avg.toFixed(1)}/10, ${best.n}×), nach ${worst.label} empfindlicher (Ø ${worst.avg.toFixed(1)}/10, ${worst.n}×).` });
+    const sorted = Object.values(deckeAvg).sort((a,b) => a.avg-b.avg);
+    const best = sorted[0], worst = sorted[sorted.length-1];
+    if (worst.avg - best.avg >= 1) {
+      obs.push({type:'neutral',text:`🧥 Decke & Rücken: Am Folgetag lag die Tagesform näher am günstigen Mittelwert 5 nach ${best.label} (Ø Abweichung ${best.avg.toFixed(1)}, ${best.n} Trainingstage) als nach ${worst.label} (Ø Abweichung ${worst.avg.toFixed(1)}, ${worst.n} Trainingstage).`});
     }
   }
 
@@ -5222,14 +5232,16 @@ function dashboardRenderObservations(entries, days) {
     if (prevEntry && prevEntry.therapie) withTherapyPrev.push(e.losgelassenheit);
     else withoutTherapyPrev.push(e.losgelassenheit);
   });
-  const avgWith    = dashboardAvg(withTherapyPrev.filter(Boolean));
-  const avgWithout = dashboardAvg(withoutTherapyPrev.filter(Boolean));
-  if (withTherapyPrev.length >= MIN && withoutTherapyPrev.length >= MIN && avgWith != null && avgWithout != null) {
-    const diff = avgWith - avgWithout;
+  const withTherapyDeviation = withTherapyPrev.filter(Number.isFinite).map(value => Math.abs(value - 5));
+  const withoutTherapyDeviation = withoutTherapyPrev.filter(Number.isFinite).map(value => Math.abs(value - 5));
+  const avgWith = dashboardAvg(withTherapyDeviation);
+  const avgWithout = dashboardAvg(withoutTherapyDeviation);
+  if (withTherapyDeviation.length >= MIN && withoutTherapyDeviation.length >= MIN && avgWith != null && avgWithout != null) {
+    const diff = avgWithout - avgWith;
     if (Math.abs(diff) >= 0.5) {
       obs.push({
         type: diff > 0 ? 'positive' : 'neutral',
-        text: `🌀 Therapie am Vortag: Losgelassenheit Ø ${avgWith.toFixed(1)} (mit Therapie, ${withTherapyPrev.length}×) vs. ${avgWithout.toFixed(1)} (ohne, ${withoutTherapyPrev.length}×). Tendenz: ${diff > 0 ? 'besser nach Therapie' : 'kein klarer Vorteil'}.`
+        text: `🌀 Therapie am Vortag: mittlere Abweichung der Losgelassenheit vom günstigen Wert 5: ${avgWith.toFixed(1)} (mit Therapie, ${withTherapyDeviation.length}×) vs. ${avgWithout.toFixed(1)} (ohne, ${withoutTherapyDeviation.length}×). ${diff > 0 ? 'Mit Therapie näher am Mittelwert 5.' : 'Kein klarer Vorteil erkennbar.'}`
       });
     }
   }
@@ -5245,18 +5257,18 @@ function dashboardRenderObservations(entries, days) {
     obs.push({ type: 'caution', text: `⚠️ ${verletzungen.length} Verletzung${verletzungen.length > 1 ? 'en' : ''} in ${periodLabel} dokumentiert.` });
   }
 
-  // ── 12. Bester Schieber ─────────────────────────────────────────────────────
-  const sliderKeys   = ['energie', 'losgelassenheit', 'durchlaessigkeit', 'verlauf_einheit', 'verfassung', 'kooperation'];
-  const sliderLabels = { energie: 'Energie', losgelassenheit: 'Losgelassenheit', durchlaessigkeit: 'Durchlässigkeit', verlauf_einheit: 'Verlauf', verfassung: 'Verfassung', kooperation: 'Kooperation' };
+  // ── 12. Schieber nahe am günstigen Mittelwert ───────────────────────────────
+  const sliderKeys = ['energie','losgelassenheit','durchlaessigkeit','verlauf_einheit','verfassung','kooperation','rueckenempfindlichkeit','rueckenbeweglichkeit'];
+  const sliderLabels = {energie:'Energie',losgelassenheit:'Losgelassenheit',durchlaessigkeit:'Durchlässigkeit',verlauf_einheit:'Verlauf',verfassung:'Verfassung',kooperation:'Kooperation',rueckenempfindlichkeit:'Rückenempfindlichkeit',rueckenbeweglichkeit:'Rückenbeweglichkeit'};
   let bestSlider = null;
-  sliderKeys.forEach(k => {
-    const vals = trainings.map(e => e[k]).filter(v => v != null);
-    if (vals.length < MIN) return;
-    const m = dashboardAvg(vals);
-    if (!bestSlider || m > bestSlider.score) bestSlider = { key: k, score: m, n: vals.length };
+  sliderKeys.forEach(key => {
+    const values = trainings.map(entry => entry[key]).filter(Number.isFinite);
+    if (values.length < MIN) return;
+    const deviation = dashboardAvg(values.map(value => Math.abs(value - 5)));
+    if (!bestSlider || deviation < bestSlider.deviation) bestSlider = {key,deviation,n:values.length};
   });
-  if (bestSlider && bestSlider.score >= 7) {
-    obs.push({ type: 'positive', text: `🏆 Stärke: ${sliderLabels[bestSlider.key]} ist mit Ø ${bestSlider.score.toFixed(1)} / 10 der stärkste Wert (${bestSlider.n} Trainingstage).` });
+  if (bestSlider && bestSlider.deviation <= 1.5) {
+    obs.push({type:'positive',text:`🏆 ${sliderLabels[bestSlider.key]} lag mit einer Ø-Abweichung von ${bestSlider.deviation.toFixed(1)} Punkten am nächsten am günstigen Mittelwert 5 (${bestSlider.n} Trainingstage).`});
   }
 
   if (!obs.length) {
