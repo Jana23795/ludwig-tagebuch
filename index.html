@@ -3468,7 +3468,7 @@ async function saveFutter(button) {
       haeuf: String(fields[3]?.value || '').trim(),
       notizen: String(fields[4]?.value || '').trim()
     };
-  }).filter(row => row.name || row.kat || row.dosierung || row.haeuf || row.notizen);
+  }).filter(futterRowHasContent);
 
   try {
     await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
@@ -3525,15 +3525,38 @@ async function deleteFutterEntriesFromSupabase(horseKey, entryIds) {
   if ((remaining || []).length) throw new Error('Nicht alle Futtereinträge konnten gelöscht werden.');
 }
 
+function futterRowHasContent(row) {
+  const values = Array.isArray(row)
+    ? [row[1], row[3], row[5]]
+    : [row?.name, row?.dosierung, row?.notizen];
+  return values.some(value => String(value ?? '').trim() !== '');
+}
+
 function futterRowsForMonth(sheetRows, monthIndex) {
   const firstCell = sheetRows?.[0]?.[0];
   const firstCellText = String(firstCell ?? '').trim();
-  const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+  const hasHeader = window.__LUDWIG_SUPABASE_ENABLED__ || !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
   const startIndex = hasHeader ? 1 : 0;
   return (Array.isArray(sheetRows) ? sheetRows : []).slice(startIndex).filter(row => {
     if (!Array.isArray(row) || row.length < 2) return false;
-    return parseInt(String(row[0] ?? '').trim(), 10) === monthIndex;
+    return parseInt(String(row[0] ?? '').trim(), 10) === monthIndex && futterRowHasContent(row);
   });
+}
+
+function futterEmptyRowsForMonth(sheetRows, monthIndex, tab) {
+  const firstCell = sheetRows?.[0]?.[0];
+  const firstCellText = String(firstCell ?? '').trim();
+  const hasHeader = window.__LUDWIG_SUPABASE_ENABLED__ || !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+  const startIndex = hasHeader ? 1 : 0;
+  const ids = window.__LUDWIG_FUTTER_ENTRY_IDS_BY_TAB?.[tab] || [];
+  const emptyRows = [];
+  for (let i = startIndex; i < (sheetRows || []).length; i++) {
+    const row = sheetRows[i];
+    if (!Array.isArray(row) || row.length < 2) continue;
+    if (parseInt(String(row[0] ?? '').trim(), 10) !== monthIndex || futterRowHasContent(row)) continue;
+    emptyRows.push({ rowIndex:i+1, entryId:window.__LUDWIG_SUPABASE_ENABLED__ ? (ids[i-1] || null) : null });
+  }
+  return emptyRows;
 }
 
 async function copyFutterToNextMonth(button) {
@@ -3561,7 +3584,7 @@ async function copyFutterToNextMonth(button) {
       haeuf: String(fields[3]?.value || '').trim(),
       notizen: String(fields[4]?.value || '').trim()
     };
-  }).filter(row => row.name || row.dosierung || row.haeuf || row.notizen);
+  }).filter(futterRowHasContent);
 
   if (!tab || !rowsToCopy.length) {
     showToast('Keine Futterpositionen zum Kopieren vorhanden.');
@@ -3598,6 +3621,17 @@ async function copyFutterToNextMonth(button) {
     if (futterRowsForMonth(sheetRows, targetMonth).length) {
       showToast(`${MONTHS[targetMonth]} enthält inzwischen Futterdaten. Es wurde nichts verändert.`);
       return;
+    }
+
+    const emptyTargetRows = futterEmptyRowsForMonth(sheetRows, targetMonth, tab);
+    if (emptyTargetRows.length) {
+      if (window.__LUDWIG_SUPABASE_ENABLED__) {
+        const emptyIds = emptyTargetRows.map(row => row.entryId);
+        if (emptyIds.some(id => !id)) throw new Error('Leere Futterzeilen konnten nicht eindeutig zugeordnet werden.');
+        await deleteFutterEntriesFromSupabase(horseAtStart, emptyIds);
+      } else {
+        for (const row of emptyTargetRows.slice().sort((a,b) => b.rowIndex-a.rowIndex)) await deleteRow(tab, row.rowIndex);
+      }
     }
 
     if (btn) btn.textContent = '⏳ Kopiere…';
