@@ -1708,7 +1708,9 @@ nav button.supabase-hidden { display:none !important; }
 
     <div class="divider"></div>
 
-    <div style="font-weight:700;color:var(--brown);margin-bottom:8px">Neues Kommando</div>
+    <div id="cmd-form-title" style="font-weight:700;color:var(--brown);margin-bottom:8px">Neues Kommando</div>
+    <button id="cmd-audio-edit-cancel" type="button" class="btn btn-toggle" onclick="cancelCommandAudioEdit()" hidden>Abbrechen</button>
+    <div id="cmd-command-fields">
     <label class="field-label">Aktion / Bedeutung</label>
     <input id="cmd-action" placeholder="z.B. Schritt vorwärts" />
 
@@ -1736,6 +1738,7 @@ nav button.supabase-hidden { display:none !important; }
 
     <label class="field-label">Fehlerbild</label>
     <textarea id="cmd-fehler" placeholder="Wenn es nicht klappt: …"></textarea>
+    </div>
 <label class="field-label">Audio-Link (Drive/URL)</label>
     <input id="cmd-audio-link" type="url" placeholder="https://..." />
 
@@ -2162,7 +2165,7 @@ document.addEventListener('input', (e) => {
 });
 
 
-// ===== Kommandozentrale (Link-only, no recording) =====
+// ===== Kommandozentrale mit Audioaufnahme =====
 function getKommandosTab_() {
   return HORSES[currentHorse].tabs.kommandos;
 }
@@ -2194,6 +2197,7 @@ function commandExternalAudioUrl_(value) {
     return ['https:', 'http:'].includes(url.protocol) ? url.href : '';
   } catch (e) { return ''; }
 }
+let commandAudioEditState_ = null;
 function commandCanManageAudio_() {
   return Boolean(window.__LUDWIG_SUPABASE_CLIENT__ && window.__LUDWIG_PROFILE__ &&
     typeof supabaseCanManageOwnerArea === 'function' && supabaseCanManageOwnerArea());
@@ -2212,6 +2216,7 @@ function updateCommandAudioControls_() {
   discard.disabled = !state;
   if (recording) status.textContent = 'Aufnahme laeuft ...';
   else if (state?.blob) status.textContent = 'Aufnahme bereit';
+  else if (commandAudioEditState_) status.textContent = 'Neue URL eingeben oder Aufnahme starten.';
   else if (!window.__LUDWIG_SUPABASE_CLIENT__) status.textContent = 'Bitte anmelden, um Audio aufzunehmen.';
   else if (!canManage) status.textContent = 'Aufnahmen sind nur fuer Besitzer/Admins freigeschaltet.';
   else status.textContent = 'Noch keine Aufnahme';
@@ -2265,6 +2270,8 @@ async function renderKommandos() {
       Boolean(window.__LUDWIG_SUPABASE_CLIENT__ && supabaseCanManageOwnerArea());
     window.__LUDWIG_COMMAND_AUDIO_BY_ROW__ = window.__LUDWIG_COMMAND_AUDIO_BY_ROW__ || Object.create(null);
     window.__LUDWIG_COMMAND_AUDIO_BY_ROW__[tab] = Object.fromEntries(data.map(c => [String(c._rowIndex), c.audioLink]));
+    window.__LUDWIG_COMMAND_ACTION_BY_ROW__ = window.__LUDWIG_COMMAND_ACTION_BY_ROW__ || Object.create(null);
+    window.__LUDWIG_COMMAND_ACTION_BY_ROW__[tab] = Object.fromEntries(data.map(c => [String(c._rowIndex), c.action]));
 
     const cats = Array.from(new Set(data.map(d => d.category).filter(Boolean))).sort();
     const catBar = document.getElementById('cmd-categories');
@@ -2294,7 +2301,7 @@ async function renderKommandos() {
             <div style="font-size:0.85rem;color:#777;margin-top:2px"><strong>Signal:</strong> ${commandEscapeHtml_(c.signal || '-')}</div>
             <div style="font-size:0.78rem;color:var(--brown);margin-top:6px">${[c.contexts,c.category].filter(Boolean).map(commandEscapeHtml_).join(' &middot; ')}</div>
           </div>
-          ${canDeleteCommands ? `<button class="btn-delete" aria-label="Kommando loeschen" onclick="deleteCommand(${c._rowIndex})">&#128465;</button>` : ''}
+          ${canDeleteCommands ? `<div style="display:flex;align-items:center;gap:8px"><button class="btn-toggle" type="button" onclick="editCommandAudio(${c._rowIndex})">${c.audioLink ? 'Audio ändern' : 'Audio hinzufügen'}</button><button class="btn-delete" aria-label="Kommando loeschen" onclick="deleteCommand(${c._rowIndex})">&#128465;</button></div>` : ''}
         </div>
         ${c.fehler ? `<div style="margin-top:10px;font-size:0.82rem"><strong>Fehlerbild:</strong> ${commandEscapeHtml_(c.fehler)}</div>` : ''}
         ${audioHtml}
@@ -2406,6 +2413,7 @@ async function uploadCommandAudio_(blob, horseKey) {
   return { path, ref:commandAudioRef_(path), client };
 }
 async function saveCommand() {
+  if (commandAudioEditState_) return saveCommandAudioEdit_();
   const saveButton = document.getElementById('cmd-save-button');
   const horseAtStart = currentHorse;
   const tab = HORSES[horseAtStart]?.tabs?.kommandos;
@@ -2449,6 +2457,138 @@ async function saveCommand() {
     showToast('Speichern fehlgeschlagen: ' + (error.message || 'Bitte erneut versuchen.'));
   } finally {
     if (saveButton) { saveButton.disabled = false; saveButton.textContent = 'Kommando speichern'; }
+  }
+}
+
+function editCommandAudio(rowIndex) {
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && !commandCanManageAudio_()) {
+    showToast('Nur Besitzer/Admins duerfen Kommando-Audio aendern.');
+    return;
+  }
+  const horseKey = currentHorse;
+  const tab = HORSES[horseKey]?.tabs?.kommandos;
+  const rowKey = String(rowIndex);
+  const audioRows = window.__LUDWIG_COMMAND_AUDIO_BY_ROW__?.[tab];
+  if (!tab || !audioRows || !Object.prototype.hasOwnProperty.call(audioRows, rowKey)) {
+    showToast('Das Kommando wurde nicht gefunden. Bitte die Liste neu laden.');
+    return;
+  }
+  commandClearRecording_();
+  const oldAudioLink = String(audioRows[rowKey] || '');
+  const action = window.__LUDWIG_COMMAND_ACTION_BY_ROW__?.[tab]?.[rowKey] || 'Kommando';
+  commandAudioEditState_ = { horseKey, tab, rowIndex:Number(rowIndex), oldAudioLink };
+  const fields = document.getElementById('cmd-command-fields');
+  const title = document.getElementById('cmd-form-title');
+  const cancel = document.getElementById('cmd-audio-edit-cancel');
+  const link = document.getElementById('cmd-audio-link');
+  const save = document.getElementById('cmd-save-button');
+  if (fields) fields.hidden = true;
+  if (title) title.textContent = `${oldAudioLink ? 'Audio ändern' : 'Audio hinzufügen'}: ${action}`;
+  if (cancel) cancel.hidden = false;
+  if (link) { link.value = ''; link.placeholder = 'Neue Audio-URL eingeben (optional, wenn Aufnahme)'; }
+  if (save) save.textContent = 'Audio speichern';
+  updateCommandAudioControls_();
+  document.getElementById('cmd-audio-recorder')?.scrollIntoView({ behavior:'smooth', block:'center' });
+  link?.focus({ preventScroll:true });
+}
+
+function cancelCommandAudioEdit() {
+  if (!commandAudioEditState_) return;
+  commandAudioEditState_ = null;
+  commandClearRecording_();
+  const fields = document.getElementById('cmd-command-fields');
+  const title = document.getElementById('cmd-form-title');
+  const cancel = document.getElementById('cmd-audio-edit-cancel');
+  const link = document.getElementById('cmd-audio-link');
+  const save = document.getElementById('cmd-save-button');
+  if (fields) fields.hidden = false;
+  if (title) title.textContent = 'Neues Kommando';
+  if (cancel) cancel.hidden = true;
+  if (link) { link.value = ''; link.placeholder = 'https://...'; }
+  if (save) save.textContent = 'Kommando speichern';
+  updateCommandAudioControls_();
+}
+
+async function saveCommandAudioEdit_() {
+  const state = commandAudioEditState_;
+  const saveButton = document.getElementById('cmd-save-button');
+  const cancelButton = document.getElementById('cmd-audio-edit-cancel');
+  const enteredLink = (document.getElementById('cmd-audio-link')?.value || '').trim();
+  const recording = window.__LUDWIG_COMMAND_RECORDING__;
+  if (!state) return;
+  if (state.horseKey !== currentHorse) {
+    showToast('Das ausgewaehlte Pferd hat sich geaendert. Bitte erneut starten.');
+    cancelCommandAudioEdit();
+    return;
+  }
+  if (recording?.blob && enteredLink) {
+    showToast('Bitte entweder eine Aufnahme oder einen externen Audio-Link verwenden.');
+    return;
+  }
+  if (!recording?.blob && !enteredLink) {
+    showToast('Bitte eine neue Audio-URL eingeben oder eine Sprachaufnahme erstellen.');
+    return;
+  }
+  if (enteredLink && !commandExternalAudioUrl_(enteredLink)) {
+    showToast('Bitte einen gueltigen HTTP- oder HTTPS-Audio-Link eingeben.');
+    return;
+  }
+  if (recording?.blob && recording.horseKey !== state.horseKey) {
+    showToast('Die Aufnahme gehoert zu einem anderen Pferd. Bitte neu aufnehmen.');
+    return;
+  }
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && !commandCanManageAudio_()) {
+    showToast('Nur Besitzer/Admins duerfen Kommando-Audio aendern.');
+    return;
+  }
+
+  let uploaded = null;
+  let audioLink = enteredLink ? commandExternalAudioUrl_(enteredLink) : '';
+  if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Speichern ...'; }
+  if (cancelButton) cancelButton.disabled = true;
+  try {
+    if (recording?.blob) {
+      uploaded = await uploadCommandAudio_(recording.blob, state.horseKey);
+      audioLink = uploaded.ref;
+    }
+    if (state.horseKey !== currentHorse) throw new Error('Das ausgewaehlte Pferd hat sich waehrend des Speicherns geaendert.');
+    await updateRow(state.tab, state.rowIndex, { audioLink });
+
+    let oldAudioRemoved = true;
+    const oldPath = commandAudioPath_(state.oldAudioLink);
+    const horseId = window.__LUDWIG_HORSE_ID_BY_KEY?.get(state.horseKey);
+    const storageClient = uploaded?.client || window.__LUDWIG_SUPABASE_CLIENT__;
+    if (oldPath && oldPath !== commandAudioPath_(audioLink) && storageClient && horseId && oldPath.startsWith(horseId + '/')) {
+      try {
+        const { error } = await storageClient.storage.from(commandAudioBucket_()).remove([oldPath]);
+        oldAudioRemoved = !error;
+      } catch (cleanupError) {
+        oldAudioRemoved = false;
+        console.warn('Old command audio cleanup failed after successful update.', cleanupError);
+      }
+    }
+    commandAudioEditState_ = null;
+    commandClearRecording_();
+    const fields = document.getElementById('cmd-command-fields');
+    const title = document.getElementById('cmd-form-title');
+    const link = document.getElementById('cmd-audio-link');
+    if (fields) fields.hidden = false;
+    if (title) title.textContent = 'Neues Kommando';
+    if (cancelButton) { cancelButton.hidden = true; cancelButton.disabled = false; }
+    if (link) { link.value = ''; link.placeholder = 'https://...'; }
+    if (saveButton) saveButton.textContent = 'Kommando speichern';
+    updateCommandAudioControls_();
+    showToast(oldAudioRemoved ? 'Kommando-Audio aktualisiert.' : 'Audio aktualisiert; die alte private Datei konnte nicht entfernt werden.');
+    if (state.horseKey === currentHorse) await renderKommandos();
+  } catch (error) {
+    if (uploaded) {
+      try { await uploaded.client.storage.from(commandAudioBucket_()).remove([uploaded.path]); }
+      catch (cleanupError) { console.warn('Audio cleanup failed after command update error.', cleanupError); }
+    }
+    showToast('Audio-Aktualisierung fehlgeschlagen: ' + (error.message || 'Bitte erneut versuchen.'));
+  } finally {
+    if (saveButton) { saveButton.disabled = false; if (commandAudioEditState_) saveButton.textContent = 'Audio speichern'; }
+    if (cancelButton) cancelButton.disabled = false;
   }
 }
 
@@ -5884,6 +6024,7 @@ function supabaseUpdateIndex(module, key, headers) {
   const normalizedKey = normalizedSupabaseHeader(key);
   const aliases = {
     kommentar:['kommentar'],
+    audioLink:['audiolink','audio','audiourl'],
     person:['person','behandelndepersonpraxis'],
     befund:['befund','diagnose'],
     behandlung:['behandlung','massnahmen','maßnahmen'],
@@ -5902,7 +6043,8 @@ function supabaseUpdateIndex(module, key, headers) {
   if (index >= 0) return index;
   const fallback = {
     protokoll:{ kommentar:19, geschwitzt:40 },
-    gesundheit:{ person:3, befund:4, behandlung:5, naechsterTermin:6, kosten:7, notizen:8, abgeduscht:9, abgeduschtKommentar:10, terminVereinbart:11, vereinbarterTermin:12, terminUhrzeit:13, terminErledigt:14 }
+    gesundheit:{ person:3, befund:4, behandlung:5, naechsterTermin:6, kosten:7, notizen:8, abgeduscht:9, abgeduschtKommentar:10, terminVereinbart:11, vereinbarterTermin:12, terminUhrzeit:13, terminErledigt:14 },
+    kommandozentrale:{ audioLink:6 }
   };
   return fallback[module]?.[key] ?? -1;
 }
