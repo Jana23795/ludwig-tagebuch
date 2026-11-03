@@ -3370,6 +3370,8 @@ function changeBudgetYear(value) {
 }
 let futterEditorLoadedHorse = null;
 let futterEditorLoadedMonth = null;
+let futterEditorLoadedEntryIds = [];
+let futterEditorLoadedEntryCount = 0;
 
 function addFutterRow(f = {}) {
   const body = $('futter-body');
@@ -3386,6 +3388,7 @@ function addFutterRow(f = {}) {
     <td><select aria-label="Häufigkeit">${frequencyOptions}</select></td>
     <td><input type="text" value="${escapeFutterplan(f.notizen || '')}" placeholder="Notizen…" aria-label="Notizen"></td>
     <td><button class="delete-btn" type="button" aria-label="Zeile entfernen" onclick="this.closest('tr').remove()">🗑️</button></td>`;
+  if (f.entryId) tr.dataset.supabaseEntryId = String(f.entryId);
   body.appendChild(tr);
 }
 window.addFutterRow = addFutterRow;
@@ -3398,6 +3401,8 @@ async function renderFutter() {
   const tab = HORSES[horseAtStart]?.tabs?.futter;
   futterEditorLoadedHorse = null;
   futterEditorLoadedMonth = null;
+  futterEditorLoadedEntryIds = [];
+  futterEditorLoadedEntryCount = 0;
   body.innerHTML = '<tr><td colspan="6" class="loader">⏳ Lade…</td></tr>';
   if (!tab) {
     body.innerHTML = '<tr><td colspan="6" class="budget-error">Für dieses Pferd ist kein Futterbereich hinterlegt.</td></tr>';
@@ -3408,10 +3413,11 @@ async function renderFutter() {
     await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
     const sheetRows = await loadSheet(tab);
     if (horseAtStart !== currentHorse || monthAtStart !== currentFutterMonth) return;
+    const entryIds = window.__LUDWIG_FUTTER_ENTRY_IDS_BY_TAB?.[tab] || [];
     const rows = Array.isArray(sheetRows) ? sheetRows : [];
     const firstCell = rows[0]?.[0];
     const firstCellText = String(firstCell ?? '').trim();
-    const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+    const hasHeader = window.__LUDWIG_SUPABASE_ENABLED__ || !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
     const startIndex = hasHeader ? 1 : 0;
     const monthRows = [];
     for (let i = startIndex; i < rows.length; i++) {
@@ -3419,11 +3425,13 @@ async function renderFutter() {
       if (!Array.isArray(row) || row.length < 2) continue;
       const monthIndex = parseInt(String(row[0] ?? '').trim(), 10);
       if (!Number.isNaN(monthIndex) && monthIndex !== monthAtStart) continue;
-      monthRows.push({ name: row[1] || '', kat: row[2] || '', dosierung: row[3] || '', haeuf: row[4] || '', notizen: row[5] || '' });
+      monthRows.push({ name: row[1] || '', kat: row[2] || '', dosierung: row[3] || '', haeuf: row[4] || '', notizen: row[5] || '', entryId: window.__LUDWIG_SUPABASE_ENABLED__ ? (entryIds[i - 1] || null) : null });
     }
     body.innerHTML = '';
     if (!monthRows.length) addFutterRow();
     else monthRows.forEach(row => addFutterRow(row));
+    futterEditorLoadedEntryIds = monthRows.map(row => row.entryId).filter(Boolean);
+    futterEditorLoadedEntryCount = window.__LUDWIG_SUPABASE_ENABLED__ ? monthRows.length : 0;
     futterEditorLoadedHorse = horseAtStart;
     futterEditorLoadedMonth = monthAtStart;
   } catch (error) {
@@ -3439,6 +3447,10 @@ async function saveFutter(button) {
   const btn = button || document.querySelector('#page-futter button[onclick*="saveFutter"]');
   if (futterEditorLoadedHorse !== currentHorse || futterEditorLoadedMonth !== currentFutterMonth) {
     showToast('Futter ist noch nicht vollständig geladen. Bitte zuerst erneut laden.');
+    return;
+  }
+  if (window.__LUDWIG_SUPABASE_ENABLED__ && futterEditorLoadedEntryIds.length !== futterEditorLoadedEntryCount) {
+    showToast('Einige Futtereinträge konnten nicht eindeutig zugeordnet werden. Bitte neu laden.');
     return;
   }
   if (btn?.disabled) return;
@@ -3461,7 +3473,7 @@ async function saveFutter(button) {
   try {
     await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
     if (window.__LUDWIG_SUPABASE_ENABLED__) {
-      await deleteFutterRowsForMonthFromSupabase(horseAtStart, monthAtStart);
+      await deleteFutterEntriesFromSupabase(horseAtStart, futterEditorLoadedEntryIds);
     } else {
       const sheetRows = await loadSheet(tab);
       const firstCell = sheetRows?.[0]?.[0];
@@ -3490,33 +3502,13 @@ async function saveFutter(button) {
 }
 window.saveFutter = saveFutter;
 
-async function deleteFutterRowsForMonthFromSupabase(horseKey, monthIndex) {
+async function deleteFutterEntriesFromSupabase(horseKey, entryIds) {
+  const ids = [...new Set((entryIds || []).filter(Boolean))];
+  if (!ids.length) return;
+
   const client = window.__LUDWIG_SUPABASE_CLIENT__;
   const horseId = window.__LUDWIG_HORSE_ID_BY_KEY?.get(horseKey);
   if (!client || !horseId) throw new Error('Supabase-Ziel für den Futterplan nicht gefunden.');
-
-  const { data: entries, error: readError } = await client.from('app_entries')
-    .select('id,data,legacy_source')
-    .eq('horse_id', horseId)
-    .eq('module', 'futter')
-    .range(0, 9999);
-  if (readError) throw readError;
-
-  const ids = (entries || []).filter(entry => {
-    const row = entry?.data?.row;
-    if (!Array.isArray(row)) return false;
-    const storedMonth = Number.parseInt(String(row[0] ?? '').trim(), 10);
-    if (!Number.isInteger(storedMonth)) return false;
-
-    const isLegacyFutterImport = !String(entry?.legacy_source || '').startsWith('supabase-app')
-      && entry?.data?.month_index_normalized !== true;
-    const normalizedMonth = isLegacyFutterImport && storedMonth >= 1 && storedMonth <= 12
-      ? storedMonth - 1
-      : storedMonth;
-    return normalizedMonth === monthIndex;
-  }).map(entry => entry.id).filter(Boolean);
-
-  if (!ids.length) return;
 
   const { error: deleteError } = await client.from('app_entries').delete()
     .eq('horse_id', horseId)
@@ -3530,7 +3522,7 @@ async function deleteFutterRowsForMonthFromSupabase(horseKey, monthIndex) {
     .eq('module', 'futter')
     .in('id', ids);
   if (verifyError) throw verifyError;
-  if ((remaining || []).length) throw new Error('Nicht alle Futtereinträge des Monats konnten gelöscht werden.');
+  if ((remaining || []).length) throw new Error('Nicht alle Futtereinträge konnten gelöscht werden.');
 }
 
 function futterRowsForMonth(sheetRows, monthIndex) {
@@ -5508,6 +5500,7 @@ window.__LUDWIG_OWNER_ACCESS_BY_HORSE = new Map();
 window.__LUDWIG_HORSE_ID_BY_KEY = new Map();
 window.__LUDWIG_HEADERS_BY_TAB = Object.create(null);
 window.__LUDWIG_ROW_MAP_BY_TAB = Object.create(null);
+window.__LUDWIG_FUTTER_ENTRY_IDS_BY_TAB = Object.create(null);
 
 function supabaseInternalEmail(username) {
   return String(username || '').trim().toLowerCase() + '@ludwig-intern.local';
@@ -5568,6 +5561,7 @@ async function loadSheetFromSupabase(tab) {
   if (!entries || !entries.length) {
     window.__LUDWIG_HEADERS_BY_TAB[tab] = [];
     window.__LUDWIG_ROW_MAP_BY_TAB[tab] = [];
+    if (info.module === 'futter') window.__LUDWIG_FUTTER_ENTRY_IDS_BY_TAB[tab] = [];
     return [];
   }
   const headers = Array.isArray(entries[0]?.data?.headers) ? entries[0].data.headers : [];
@@ -5602,6 +5596,7 @@ async function loadSheetFromSupabase(tab) {
     return row;
   });
   window.__LUDWIG_HEADERS_BY_TAB[tab] = headers;
+  if (info.module === 'futter') window.__LUDWIG_FUTTER_ENTRY_IDS_BY_TAB[tab] = visibleEntries.map(entry => entry.id || null);
   const rowMap = [];
   visibleEntries.forEach((entry, index) => { rowMap[index + 2] = entry.id; });
   window.__LUDWIG_ROW_MAP_BY_TAB[tab] = rowMap;
