@@ -2007,6 +2007,7 @@ function setHorse(key) {
   if (active.id === 'page-futter') { renderMonthBar('futter'); renderFutter(); }
   if (active.id === 'page-futterplan') renderFutterplanView();
   if (active.id === 'page-woche') { weekData = {}; renderWoche(); }
+  if (active.id === 'page-kommandos') renderKommandos();
   if (active.id === 'page-rueckenkarte') loadRueckenkarte();
   if (active.id === 'page-auffaelligkeiten') loadAuffaelligkeiten();
 
@@ -2166,11 +2167,17 @@ function selectCmdCat(cat, btn) {
 async function renderKommandos() {
   const list = document.getElementById('cmd-list');
   if (!list) return;
+  const horseAtStart = currentHorse;
   list.innerHTML = '<div class="loader">⏳ Lade…</div>';
 
-  const tab = getKommandosTab_();
+  const tab = HORSES[horseAtStart]?.tabs?.kommandos;
+  if (!tab) {
+    list.innerHTML = '<div class="empty-state"><p>Für dieses Pferd ist keine Kommando-Zentrale hinterlegt.</p></div>';
+    return;
+  }
   try {
     const rows = await loadSheet(tab);
+    if (horseAtStart !== currentHorse) return;
     const a1 = rows?.[0]?.[0];
     const hasHeader = !(typeof a1 === 'number' || /^\d+$/.test(String(a1 ?? '').trim()));
     const startIdx = hasHeader ? 1 : 0;
@@ -2188,7 +2195,8 @@ async function renderKommandos() {
     }));
 
     const q = (document.getElementById('cmd-search')?.value || '').toLowerCase().trim();
-    const activeCat = document.querySelector('#cmd-categories .month-btn.active')?.dataset?.cat || '';
+    const requestedCat = document.querySelector('#cmd-categories .month-btn.active')?.dataset?.cat || '';
+    const activeCat = data.some(command => command.category === requestedCat) ? requestedCat : '';
 
     const filtered = data.filter(c => {
       const hay = `${c.action} ${c.signal} ${c.contexts} ${c.category} ${c.fehler} ${c.audioLink}`.toLowerCase();
@@ -2227,6 +2235,7 @@ async function renderKommandos() {
     `).join('');
 
   } catch(e) {
+    if (horseAtStart !== currentHorse) return;
     list.innerHTML = '<div class="empty-state"><p>Fehler beim Laden.</p></div>';
   }
 }
