@@ -1739,9 +1739,6 @@ nav button.supabase-hidden { display:none !important; }
     <label class="field-label">Fehlerbild</label>
     <textarea id="cmd-fehler" placeholder="Wenn es nicht klappt: …"></textarea>
     </div>
-<label class="field-label">Audio-Link (Drive/URL)</label>
-    <input id="cmd-audio-link" type="url" placeholder="https://..." />
-
     <label class="field-label" style="margin-top:12px">Sprachaufnahme (max. 60 Sekunden)</label>
     <div id="cmd-audio-recorder" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px;border:1px solid rgba(120,90,55,.2);border-radius:12px;background:#fbf8f2">
       <button id="cmd-audio-start" type="button" class="btn btn-toggle" onclick="startCommandRecording()" disabled>Aufnahme starten</button>
@@ -1750,7 +1747,7 @@ nav button.supabase-hidden { display:none !important; }
       <span id="cmd-audio-status" role="status" aria-live="polite" style="font-size:.82rem;color:#6f604c">Anmeldung wird geprueft</span>
       <audio id="cmd-audio-preview" controls preload="none" hidden style="width:100%;max-width:420px"></audio>
     </div>
-    <div style="font-size:.76rem;color:#777;margin-top:5px">Mikrofonzugriff erfordert HTTPS. Aufnahmen werden privat beim ausgewaehlten Pferd gespeichert; externe Audio-Links bleiben ebenfalls moeglich.</div>
+    <div style="font-size:.76rem;color:#777;margin-top:5px">Mikrofonzugriff erfordert HTTPS. Sprachaufnahmen werden privat beim ausgewaehlten Pferd gespeichert.</div>
 
     <button id="cmd-save-button" class="btn btn-accent" onclick="saveCommand()">Kommando speichern</button>
   </div>
@@ -2422,12 +2419,10 @@ async function saveCommand() {
   const contexts = getChecked('cmd-context');
   const category = (document.getElementById('cmd-category')?.value || '').trim();
   const fehler = (document.getElementById('cmd-fehler')?.value || '').trim();
-  let audioLink = (document.getElementById('cmd-audio-link')?.value || '').trim();
+  let audioLink = '';
   const recording = window.__LUDWIG_COMMAND_RECORDING__;
   if (!tab) { showToast('Fuer dieses Pferd ist kein Kommando-Bereich hinterlegt.'); return; }
   if (!action || !signal) { showToast('Bitte Aktion und Signal ausfuellen.'); return; }
-  if (recording?.blob && audioLink) { showToast('Bitte entweder eine Aufnahme oder einen externen Audio-Link verwenden.'); return; }
-  if (audioLink && !commandExternalAudioUrl_(audioLink)) { showToast('Bitte einen gueltigen HTTP- oder HTTPS-Audio-Link eingeben.'); return; }
   if (recording?.blob && recording.horseKey !== horseAtStart) { showToast('Die Aufnahme gehoert zu einem anderen Pferd. Bitte neu aufnehmen.'); return; }
 
   let uploaded = null;
@@ -2439,7 +2434,7 @@ async function saveCommand() {
     }
     await appendRow(tab, [new Date().toISOString(), action, signal, contexts, category, fehler, audioLink]);
     if (currentHorse === horseAtStart) {
-      ['cmd-action','cmd-signal','cmd-fehler','cmd-audio-link'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      ['cmd-action','cmd-signal','cmd-fehler'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
       document.getElementById('cmd-category').value = '';
       document.querySelectorAll('#cmd-context input[type="checkbox"]').forEach(cb => cb.checked = false);
       document.querySelectorAll('#cmd-context label').forEach(label => label.classList.remove('checked'));
@@ -2480,16 +2475,14 @@ function editCommandAudio(rowIndex) {
   const fields = document.getElementById('cmd-command-fields');
   const title = document.getElementById('cmd-form-title');
   const cancel = document.getElementById('cmd-audio-edit-cancel');
-  const link = document.getElementById('cmd-audio-link');
   const save = document.getElementById('cmd-save-button');
   if (fields) fields.hidden = true;
   if (title) title.textContent = `${oldAudioLink ? 'Audio ändern' : 'Audio hinzufügen'}: ${action}`;
   if (cancel) cancel.hidden = false;
-  if (link) { link.value = ''; link.placeholder = 'Neue Audio-URL eingeben (optional, wenn Aufnahme)'; }
   if (save) save.textContent = 'Audio speichern';
   updateCommandAudioControls_();
   document.getElementById('cmd-audio-recorder')?.scrollIntoView({ behavior:'smooth', block:'center' });
-  link?.focus({ preventScroll:true });
+  document.getElementById('cmd-audio-start')?.focus({ preventScroll:true });
 }
 
 function cancelCommandAudioEdit() {
@@ -2499,12 +2492,10 @@ function cancelCommandAudioEdit() {
   const fields = document.getElementById('cmd-command-fields');
   const title = document.getElementById('cmd-form-title');
   const cancel = document.getElementById('cmd-audio-edit-cancel');
-  const link = document.getElementById('cmd-audio-link');
   const save = document.getElementById('cmd-save-button');
   if (fields) fields.hidden = false;
   if (title) title.textContent = 'Neues Kommando';
   if (cancel) cancel.hidden = true;
-  if (link) { link.value = ''; link.placeholder = 'https://...'; }
   if (save) save.textContent = 'Kommando speichern';
   updateCommandAudioControls_();
 }
@@ -2513,7 +2504,6 @@ async function saveCommandAudioEdit_() {
   const state = commandAudioEditState_;
   const saveButton = document.getElementById('cmd-save-button');
   const cancelButton = document.getElementById('cmd-audio-edit-cancel');
-  const enteredLink = (document.getElementById('cmd-audio-link')?.value || '').trim();
   const recording = window.__LUDWIG_COMMAND_RECORDING__;
   if (!state) return;
   if (state.horseKey !== currentHorse) {
@@ -2521,19 +2511,11 @@ async function saveCommandAudioEdit_() {
     cancelCommandAudioEdit();
     return;
   }
-  if (recording?.blob && enteredLink) {
-    showToast('Bitte entweder eine Aufnahme oder einen externen Audio-Link verwenden.');
+  if (!recording?.blob) {
+    showToast('Bitte zuerst eine neue Sprachaufnahme erstellen.');
     return;
   }
-  if (!recording?.blob && !enteredLink) {
-    showToast('Bitte eine neue Audio-URL eingeben oder eine Sprachaufnahme erstellen.');
-    return;
-  }
-  if (enteredLink && !commandExternalAudioUrl_(enteredLink)) {
-    showToast('Bitte einen gueltigen HTTP- oder HTTPS-Audio-Link eingeben.');
-    return;
-  }
-  if (recording?.blob && recording.horseKey !== state.horseKey) {
+  if (recording.horseKey !== state.horseKey) {
     showToast('Die Aufnahme gehoert zu einem anderen Pferd. Bitte neu aufnehmen.');
     return;
   }
@@ -2543,7 +2525,7 @@ async function saveCommandAudioEdit_() {
   }
 
   let uploaded = null;
-  let audioLink = enteredLink ? commandExternalAudioUrl_(enteredLink) : '';
+  let audioLink = '';
   if (saveButton) { saveButton.disabled = true; saveButton.textContent = 'Speichern ...'; }
   if (cancelButton) cancelButton.disabled = true;
   try {
@@ -2571,11 +2553,9 @@ async function saveCommandAudioEdit_() {
     commandClearRecording_();
     const fields = document.getElementById('cmd-command-fields');
     const title = document.getElementById('cmd-form-title');
-    const link = document.getElementById('cmd-audio-link');
     if (fields) fields.hidden = false;
     if (title) title.textContent = 'Neues Kommando';
     if (cancelButton) { cancelButton.hidden = true; cancelButton.disabled = false; }
-    if (link) { link.value = ''; link.placeholder = 'https://...'; }
     if (saveButton) saveButton.textContent = 'Kommando speichern';
     updateCommandAudioControls_();
     showToast(oldAudioRemoved ? 'Kommando-Audio aktualisiert.' : 'Audio aktualisiert; die alte private Datei konnte nicht entfernt werden.');
