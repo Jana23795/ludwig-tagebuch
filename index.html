@@ -3460,17 +3460,21 @@ async function saveFutter(button) {
 
   try {
     await ensureSheetHeader(tab, ['MonatIdx','Futtermittel','Kategorie','Dosierung','Häufigkeit','Notizen']);
-    const sheetRows = await loadSheet(tab);
-    const firstCell = sheetRows?.[0]?.[0];
-    const firstCellText = String(firstCell ?? '').trim();
-    const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
-    const startIndex = hasHeader ? 1 : 0;
-    const matches = [];
-    for (let i = startIndex; i < (sheetRows || []).length; i++) {
-      const monthIndex = parseInt(String(sheetRows[i]?.[0] ?? '').trim(), 10);
-      if (monthIndex === monthAtStart) matches.push(i + 1);
+    if (window.__LUDWIG_SUPABASE_ENABLED__) {
+      await deleteFutterRowsForMonthFromSupabase(horseAtStart, monthAtStart);
+    } else {
+      const sheetRows = await loadSheet(tab);
+      const firstCell = sheetRows?.[0]?.[0];
+      const firstCellText = String(firstCell ?? '').trim();
+      const hasHeader = !(typeof firstCell === 'number' || (firstCellText !== '' && Number.isFinite(Number(firstCellText))));
+      const startIndex = hasHeader ? 1 : 0;
+      const matches = [];
+      for (let i = startIndex; i < (sheetRows || []).length; i++) {
+        const monthIndex = parseInt(String(sheetRows[i]?.[0] ?? '').trim(), 10);
+        if (monthIndex === monthAtStart) matches.push(i + 1);
+      }
+      for (let i = matches.length - 1; i >= 0; i--) await deleteRow(tab, matches[i]);
     }
-    for (let i = matches.length - 1; i >= 0; i--) await deleteRow(tab, matches[i]);
     for (const row of rowsToSave) await appendRow(tab, [monthAtStart, row.name, row.kat, row.dosierung, row.haeuf, row.notizen]);
     if (horseAtStart === currentHorse && monthAtStart === currentFutterMonth) {
       await renderFutter();
@@ -3485,6 +3489,49 @@ async function saveFutter(button) {
   }
 }
 window.saveFutter = saveFutter;
+
+async function deleteFutterRowsForMonthFromSupabase(horseKey, monthIndex) {
+  const client = window.__LUDWIG_SUPABASE_CLIENT__;
+  const horseId = window.__LUDWIG_HORSE_ID_BY_KEY?.get(horseKey);
+  if (!client || !horseId) throw new Error('Supabase-Ziel für den Futterplan nicht gefunden.');
+
+  const { data: entries, error: readError } = await client.from('app_entries')
+    .select('id,data,legacy_source')
+    .eq('horse_id', horseId)
+    .eq('module', 'futter')
+    .range(0, 9999);
+  if (readError) throw readError;
+
+  const ids = (entries || []).filter(entry => {
+    const row = entry?.data?.row;
+    if (!Array.isArray(row)) return false;
+    const storedMonth = Number.parseInt(String(row[0] ?? '').trim(), 10);
+    if (!Number.isInteger(storedMonth)) return false;
+
+    const isLegacyFutterImport = !String(entry?.legacy_source || '').startsWith('supabase-app')
+      && entry?.data?.month_index_normalized !== true;
+    const normalizedMonth = isLegacyFutterImport && storedMonth >= 1 && storedMonth <= 12
+      ? storedMonth - 1
+      : storedMonth;
+    return normalizedMonth === monthIndex;
+  }).map(entry => entry.id).filter(Boolean);
+
+  if (!ids.length) return;
+
+  const { error: deleteError } = await client.from('app_entries').delete()
+    .eq('horse_id', horseId)
+    .eq('module', 'futter')
+    .in('id', ids);
+  if (deleteError) throw deleteError;
+
+  const { data: remaining, error: verifyError } = await client.from('app_entries')
+    .select('id')
+    .eq('horse_id', horseId)
+    .eq('module', 'futter')
+    .in('id', ids);
+  if (verifyError) throw verifyError;
+  if ((remaining || []).length) throw new Error('Nicht alle Futtereinträge des Monats konnten gelöscht werden.');
+}
 
 function futterRowsForMonth(sheetRows, monthIndex) {
   const firstCell = sheetRows?.[0]?.[0];
