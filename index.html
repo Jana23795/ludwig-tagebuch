@@ -140,7 +140,8 @@
   .detail-row span:first-child { color: var(--brown); font-weight: 600; flex-shrink: 0; }
   .detail-row span:last-child { text-align: right; }
 
-  .entry-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .entry-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  #archive-edit-banner:not([hidden]) { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-left: 4px solid var(--accent); }
   .btn-delete { background: none; border: 1.5px solid var(--red); color: var(--red); border-radius: 8px; padding: 6px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .btn-delete:hover { background: var(--red); color: white; }
   .btn-toggle { background: none; border: 1.5px solid var(--border); color: var(--brown); border-radius: 8px; padding: 6px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
@@ -1035,6 +1036,10 @@ nav button.supabase-hidden { display:none !important; }
 </div>
 <!-- ═══ PAGE 1: PROTOKOLL ═══ -->
 <div class="page active" id="page-training">
+<div id="archive-edit-banner" class="card" hidden>
+  <div><strong>Archiv-Eintrag bearbeiten</strong><div id="archive-edit-summary" style="font-size:.85rem;color:var(--muted);margin-top:3px"></div></div>
+  <button type="button" class="btn btn-toggle" onclick="cancelArchiveEntryEdit()">Bearbeitung abbrechen</button>
+</div>
 <div class="prev-entry-banner" id="prev-banner" style="display:none">
     📌 <strong>Letzter Eintrag:</strong> <span id="prev-summary"></span>
 </div>
@@ -1933,6 +1938,7 @@ const HORSES = {
 };
 
 let currentHorse = 'ludwig';
+let archiveEntryEditState_ = null;
 let LUDWIG_AVATAR_ORIG = null;
 const initialLudwigAvatar = document.querySelector('header .avatar-btn img');
 if (initialLudwigAvatar) LUDWIG_AVATAR_ORIG = initialLudwigAvatar.src;
@@ -1956,6 +1962,10 @@ const AVATARS = {
 
 
 function setHorse(key) {
+  if (archiveEntryEditState_ && key !== currentHorse) {
+    showToast('Bitte zuerst die Archivbearbeitung speichern oder abbrechen.');
+    return;
+  }
   if (!HORSES[key]) return;
   if (window.__LUDWIG_SUPABASE_ENABLED__ && Array.isArray(window.__LUDWIG_ACCESS_KEYS) && !window.__LUDWIG_ACCESS_KEYS.includes(key)) return;
   const previousHorse = currentHorse;
@@ -2882,7 +2892,8 @@ function clearForm() {
 // TRAINING SPEICHERN
 // ═══════════════════════════════════════════════════════
 async function saveTraining() {
-  if (!validateTrainingRequiredFields()) return;
+  if (!archiveEntryEditState_ && !validateTrainingRequiredFields()) return;
+  if (archiveEntryEditState_) clearRequiredMarks();
   const datum = $('t-datum').value;
   if (!datum) { alert('Bitte Datum eingeben!'); return; }
   const durationValue = Number.parseFloat($('t-dauer')?.value || '');
@@ -2949,6 +2960,11 @@ async function saveTraining() {
     $('t-geschwitzt-intensitaet').value      // Geschwitzt-Stärke (column 45)
   ];
 
+  if (archiveEntryEditState_) {
+    await saveArchiveTrainingEdit_(row, btn);
+    return;
+  }
+
   try {
     await appendRow(HORSES[currentHorse].tabs.protokolle, row);
     rememberBridlePreferencesFromRow(currentHorse, row);
@@ -2970,6 +2986,9 @@ async function saveTraining() {
 // VERLAUF
 // ═══════════════════════════════════════════════════════
 let cachedEntries = [];
+let cachedProtocolRowsByIndex_ = new Map();
+let cachedProtocolHeaders_ = [];
+let cachedProtocolHorse_ = null;
 
 async function renderVerlauf() {
   const requestedHorse = currentHorse;
@@ -2984,9 +3003,15 @@ async function renderVerlauf() {
     window.__lastProtokollRows = rows;
 
     // rows[0] = Header, rest = Daten
-    const headers = rows[0] || [];
-    const data = rows.slice(1).map((r, i) => ({
-      _rowIndex: i + 2, // 1-based, +1 for header
+    const headers = Array.isArray(rows[0]) ? rows[0].slice() : [];
+    cachedProtocolHorse_ = requestedHorse;
+    cachedProtocolHeaders_ = headers;
+    cachedProtocolRowsByIndex_ = new Map();
+    const data = rows.slice(1).map((r, i) => {
+      const rowIndex = i + 2;
+      cachedProtocolRowsByIndex_.set(rowIndex, Array.isArray(r) ? r.slice() : []);
+      return {
+      _rowIndex: rowIndex, // 1-based, +1 for header
       ts: r[0], datum: extractDateKey_(r[1]) || r[1], wer: r[2], stimmung: r[3],
       wetter: r[4], temp: r[5], art: r[6], dauer: r[7],
       zaeum: r[8], zaeum_s: r[9], sattel: r[10], sattel_s: r[11],
@@ -2999,10 +3024,13 @@ async function renderVerlauf() {
       schutz: r[31], schutz_kommentar: r[32], eingedeckt: r[33],
       deckentyp: r[34], decke_gramm: r[35], decke_kommentar: r[36],
       rueckenempfindlichkeit: r[37], rueckenbeweglichkeit: r[38], abgeduscht: r[39], geschwitzt: r[40] || '',
-      trense_gebiss: r[41] || '', kandare_art: r[42] || '', kandarengebiss: r[43] || '', unterleggebiss: r[44] || '', geschwitzt_stufe: r[45] || '', 
-    }));
+      trense_gebiss: r[41] || '', kandare_art: r[42] || '', kandarengebiss: r[43] || '', unterleggebiss: r[44] || '', geschwitzt_stufe: r[45] || '',
+    };
+    });
 
-    cachedEntries = data.slice().reverse();
+    cachedEntries = data.slice().sort((a, b) =>
+      String(b.datum || '').localeCompare(String(a.datum || '')) || String(b.ts || '').localeCompare(String(a.ts || ''))
+    );
     renderVerlaufList();
     showPrevBanner(data);
   } catch(e) {
@@ -3025,6 +3053,305 @@ function sliderBadge(label, v) {
   if (isNaN(val)) return '';
   const color = sliderValueColor(val);
   return `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--sand);border:1px solid var(--border);border-radius:8px;padding:3px 9px;font-size:0.75rem;font-weight:600;color:${color}">${label} ${val}/10</span>`;
+}
+
+const ARCHIVE_RANGE_COLUMNS_ = {
+  22:'t-energie', 23:'t-losgelassenheit', 24:'t-durchlaessigkeit', 25:'t-verlauf-einheit',
+  26:'t-verfassung', 27:'t-kooperation', 37:'t-rueckenempfindlichkeit', 38:'t-rueckenbeweglichkeit'
+};
+const ARCHIVE_TOGGLE_PANEL_IDS_ = [
+  'bridle-details','trense-details','kandare-details','klassische-kandare-details',
+  't-eingedeckt-details','t-geschwitzt-details'
+];
+function captureTrainingFormSnapshot_() {
+  const root = $('page-training');
+  if (!root) return null;
+  const rangeLabels = {};
+  Object.values(ARCHIVE_RANGE_COLUMNS_).forEach(id => {
+    const label = $('lbl-' + id.replace('t-',''));
+    if (label) rangeLabels[label.id] = label.textContent;
+  });
+  const panelDisplays = {};
+  ARCHIVE_TOGGLE_PANEL_IDS_.forEach(id => {
+    const panel = $(id);
+    if (panel) panelDisplays[id] = panel.style.display;
+  });
+  return {
+    controls:[...root.querySelectorAll('input,select,textarea')].map(el => ({ value:el.value, checked:el.checked, className:el.className })),
+    labels:[...root.querySelectorAll('label')].map(label => label.className),
+    sweatButtons:[...root.querySelectorAll('.sweat-choice')].map(button => ({ className:button.className, ariaPressed:button.getAttribute('aria-pressed') })),
+    rangeLabels, panelDisplays
+  };
+}
+function removeArchiveEditExtras_() {
+  $('page-training')?.querySelectorAll('[data-archive-edit-legacy="true"]')?.forEach(el => el.remove());
+}
+function restoreTrainingFormSnapshot_(snapshot) {
+  const root = $('page-training');
+  if (!root || !snapshot) return;
+  removeArchiveEditExtras_();
+  const controls = [...root.querySelectorAll('input,select,textarea')];
+  snapshot.controls.forEach((state, index) => {
+    const el = controls[index];
+    if (!el) return;
+    el.value = state.value;
+    if (typeof state.checked === 'boolean') el.checked = state.checked;
+    el.className = state.className;
+  });
+  [...root.querySelectorAll('label')].forEach((label, index) => {
+    if (snapshot.labels[index] != null) label.className = snapshot.labels[index];
+  });
+  [...root.querySelectorAll('.sweat-choice')].forEach((button, index) => {
+    const state = snapshot.sweatButtons[index];
+    if (!state) return;
+    button.className = state.className;
+    if (state.ariaPressed == null) button.removeAttribute('aria-pressed');
+    else button.setAttribute('aria-pressed', state.ariaPressed);
+  });
+  Object.entries(snapshot.rangeLabels).forEach(([id,value]) => { const el=$(id); if(el) el.textContent=value; });
+  Object.entries(snapshot.panelDisplays).forEach(([id,value]) => { const el=$(id); if(el) el.style.display=value; });
+}
+function clearTrainingFormForArchiveEdit_() {
+  const root = $('page-training');
+  if (!root) return;
+  removeArchiveEditExtras_();
+  root.querySelectorAll('input[type="checkbox"],input[type="radio"]').forEach(el => { el.checked=false; });
+  root.querySelectorAll('label').forEach(label => label.classList.remove('checked','checked-yes','checked-no'));
+  root.querySelectorAll('input,select,textarea').forEach(el => {
+    if (el.type === 'checkbox' || el.type === 'radio') return;
+    if (el.type === 'range') {
+      el.value = '5';
+      const label = $('lbl-' + el.id.replace('t-',''));
+      if (label) label.textContent = '5';
+    } else el.value = '';
+  });
+  ARCHIVE_TOGGLE_PANEL_IDS_.forEach(id => { const panel=$(id); if(panel) panel.style.display='none'; });
+  root.querySelectorAll('.sweat-choice').forEach(button => {
+    button.classList.remove('active');
+    button.setAttribute('aria-pressed','false');
+  });
+  clearRequiredMarks();
+}
+function setTrainingTextField_(id, value) {
+  const el = $(id);
+  if (el) el.value = value == null ? '' : String(value);
+}
+function setTrainingCheckboxGroup_(groupId, value) {
+  const group = $(groupId);
+  if (!group) return;
+  const selected = String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+  selected.forEach(item => {
+    let input = [...group.querySelectorAll('input[type="checkbox"]')].find(el => el.value === item);
+    if (!input) {
+      const label = document.createElement('label');
+      label.dataset.archiveEditLegacy = 'true';
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = item;
+      const span = document.createElement('span');
+      span.textContent = item + ' (aelterer Eintrag)';
+      label.append(input, span);
+      if (groupId === 't-abgeduscht') {
+        label.addEventListener('click', event => { event.preventDefault(); singleCheckSelect(groupId, label); });
+      } else {
+        label.addEventListener('click', () => setTimeout(() => label.classList.toggle('checked', input.checked), 0));
+      }
+      group.append(label);
+    }
+    input.checked = true;
+    input.closest('label')?.classList.add('checked');
+  });
+}
+function setTrainingRadio_(name, value) {
+  const root = $('page-training');
+  if (!root) return;
+  const expected = String(value ?? '');
+  root.querySelectorAll('input[type="radio"]').forEach(input => {
+    if (input.name !== name) return;
+    const selected = input.value === expected && expected !== '';
+    input.checked = selected;
+    const label = input.closest('label');
+    if (!label) return;
+    label.classList.remove('checked','checked-yes','checked-no');
+    if (!selected) return;
+    if (label.parentElement?.classList.contains('yn-group')) {
+      label.classList.add(input.value === 'Ja' ? 'checked-yes' : 'checked-no');
+    } else label.classList.add('checked');
+  });
+}
+function setTrainingSelect_(id, value) {
+  const select = $(id);
+  if (!select) return;
+  const text = String(value ?? '');
+  if (text && ![...select.options].some(option => option.value === text)) {
+    const option = document.createElement('option');
+    option.value = text;
+    option.textContent = text + ' (aelterer Eintrag)';
+    option.dataset.archiveEditLegacy = 'true';
+    select.append(option);
+  }
+  select.value = text;
+}
+function populateTrainingFormFromProtocolRow_(row) {
+  clearTrainingFormForArchiveEdit_();
+  const textFields = {
+    't-datum':extractDateKey_(row[1]) || row[1], 't-wer':row[2], 't-temp':row[5], 't-dauer':row[7],
+    't-zaeum-sonstige':row[9], 't-sattel-sonstige':row[11], 't-futter-abweich':row[13],
+    't-verletzung-welche':row[18], 't-kommentar':row[19], 't-therapie-notiz':row[21],
+    't-geschirr-sonstige':row[29], 't-schutz-kommentar':row[32], 't-decke-gramm':row[35],
+    't-decke-kommentar':row[36], 't-geschwitzt-intensitaet':row[45]
+  };
+  Object.entries(textFields).forEach(([id,value]) => setTrainingTextField_(id,value));
+  const checkboxFields = {
+    't-art':6, 't-zaeum':8, 't-sattel':10, 't-therapie':20,
+    't-geschirr':28, 't-schutz':31, 't-deckentyp':34, 't-abgeduscht':39
+  };
+  Object.entries(checkboxFields).forEach(([groupId,index]) => setTrainingCheckboxGroup_(groupId,row[index]));
+  const radioFields = {
+    stimmung:3, wetter:4, futterplan:12, verdauung:14, atmung:15,
+    inhaliert:16, verletzung:17, aufgegessen:30, eingedeckt:33, geschwitzt:40
+  };
+  Object.entries(radioFields).forEach(([name,index]) => setTrainingRadio_(name,row[index]));
+  [['t-verletzung','verletzung'],['t-eingedeckt','eingedeckt'],['t-geschwitzt','geschwitzt']].forEach(([groupId,name]) => {
+    const selected = document.querySelector(`#${groupId} input[name="${name}"]:checked`);
+    if (selected) ynSelect(groupId, selected.value === 'Ja' ? 'yes' : 'no');
+  });
+  updateBridleDetails(false);
+  setTrainingSelect_('t-trense-gebiss',row[41]);
+  setTrainingSelect_('t-kandare-art',row[42]);
+  setTrainingSelect_('t-kandarengebiss',row[43]);
+  setTrainingSelect_('t-unterleggebiss',row[44]);
+  toggleClassicKandareDetails(false);
+  Object.entries(ARCHIVE_RANGE_COLUMNS_).forEach(([index,id]) => {
+    const input = $(id);
+    const value = row[Number(index)];
+    if (input) input.value = value == null || value === '' ? '5' : String(value);
+    const label = $('lbl-' + id.replace('t-',''));
+    if (label && input) label.textContent = input.value;
+  });
+  const sweatValue = String(row[45] || '');
+  if (sweatValue) {
+    let button = [...document.querySelectorAll('#t-geschwitzt-details .sweat-choice')].find(el => el.textContent.trim() === sweatValue);
+    if (!button) {
+      const group = document.querySelector('#t-geschwitzt-details .sweat-intensity-choice');
+      if (group) {
+        button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'sweat-choice';
+        button.textContent = sweatValue + ' (aelterer Eintrag)';
+        button.dataset.archiveEditLegacy = 'true';
+        button.setAttribute('aria-pressed','false');
+        button.addEventListener('click', () => selectSweatIntensity(button,sweatValue));
+        group.append(button);
+      }
+    }
+    if (button) selectSweatIntensity(button,sweatValue);
+    else setTrainingTextField_('t-geschwitzt-intensitaet',sweatValue);
+  }
+}
+function attachArchiveRangeTracking_(state) {
+  state.rangeListeners = [];
+  Object.values(ARCHIVE_RANGE_COLUMNS_).forEach(id => {
+    const input = $(id);
+    if (!input) return;
+    const listener = () => state.changedRangeFields.add(id);
+    input.addEventListener('input',listener);
+    input.addEventListener('change',listener);
+    state.rangeListeners.push({input,listener});
+  });
+}
+function releaseArchiveRangeTracking_(state) {
+  (state?.rangeListeners || []).forEach(({input,listener}) => {
+    input.removeEventListener('input',listener);
+    input.removeEventListener('change',listener);
+  });
+}
+function finishArchiveEntryEdit_(returnToArchive=true) {
+  const state = archiveEntryEditState_;
+  if (!state) return;
+  releaseArchiveRangeTracking_(state);
+  restoreTrainingFormSnapshot_(state.formSnapshot);
+  archiveEntryEditState_ = null;
+  const banner = $('archive-edit-banner');
+  if (banner) banner.hidden = true;
+  const save = $('save-btn');
+  if (save) { save.disabled = false; save.textContent = 'Protokoll speichern'; }
+  if (returnToArchive && state.horseKey === currentHorse) {
+    showPage('verlauf',document.querySelector('nav button[data-page="verlauf"]'));
+  }
+}
+function editArchiveEntry(rowIndex) {
+  if (archiveEntryEditState_) {
+    showToast('Bitte zuerst die aktuelle Bearbeitung speichern oder abbrechen.');
+    return;
+  }
+  if (cachedProtocolHorse_ !== currentHorse) {
+    showToast('Das Archiv wurde aktualisiert. Bitte den Eintrag erneut oeffnen.');
+    return;
+  }
+  const originalRow = cachedProtocolRowsByIndex_.get(Number(rowIndex));
+  if (!originalRow) {
+    showToast('Der Eintrag wurde nicht gefunden. Bitte das Archiv neu laden.');
+    return;
+  }
+  const entry = cachedEntries.find(item => item._rowIndex === Number(rowIndex));
+  const tab = HORSES[currentHorse]?.tabs?.protokolle;
+  if (!tab) { showToast('Fuer dieses Pferd ist kein Protokoll-Bereich hinterlegt.'); return; }
+  const state = {
+    horseKey:currentHorse, tab, rowIndex:Number(rowIndex), originalRow:originalRow.slice(),
+    headers:cachedProtocolHeaders_.slice(), formSnapshot:captureTrainingFormSnapshot_(), changedRangeFields:new Set(), rangeListeners:[]
+  };
+  archiveEntryEditState_ = state;
+  attachArchiveRangeTracking_(state);
+  showPage('training',document.querySelector('nav button[data-page="training"]'));
+  populateTrainingFormFromProtocolRow_(state.originalRow);
+  const banner = $('archive-edit-banner');
+  const summary = $('archive-edit-summary');
+  if (banner) banner.hidden = false;
+  if (summary) summary.textContent = `${formatDate(entry?.datum || state.originalRow[1])} · ${entry?.wer || state.originalRow[2] || 'Unbekannt'}`;
+  const save = $('save-btn');
+  if (save) { save.disabled = false; save.textContent = '\u00c4nderungen speichern'; }
+  $('page-training')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelArchiveEntryEdit() {
+  if (!archiveEntryEditState_) return;
+  finishArchiveEntryEdit_(true);
+  showToast('Bearbeitung abgebrochen; der gespeicherte Eintrag blieb unveraendert.');
+}
+async function saveArchiveTrainingEdit_(formRow, saveButton) {
+  const state = archiveEntryEditState_;
+  if (!state) return;
+  try {
+    if (state.horseKey !== currentHorse) throw new Error('Das ausgewaehlte Pferd hat sich geaendert.');
+    const updatedRow = state.originalRow.slice();
+    while (updatedRow.length < formRow.length) updatedRow.push('');
+    updatedRow[0] = state.originalRow[0] ?? formRow[0];
+    for (let index=1; index<formRow.length; index++) {
+      const rangeId = ARCHIVE_RANGE_COLUMNS_[index];
+      if (rangeId && !state.changedRangeFields.has(rangeId)) {
+        updatedRow[index] = state.originalRow[index] ?? '';
+      } else updatedRow[index] = formRow[index] ?? '';
+    }
+    const headers = protocolHeadersForUpdate_(state.headers);
+    const updates = {};
+    for (let index=1; index<formRow.length; index++) {
+      const header = String(headers[index] || '').trim();
+      if (header) updates[header] = updatedRow[index] ?? '';
+    }
+    if (!Object.keys(updates).length) throw new Error('Die Spalten des Eintrags konnten nicht zugeordnet werden.');
+    await updateRow(state.tab,state.rowIndex,updates);
+    rememberBridlePreferencesFromRow(state.horseKey,updatedRow);
+    finishArchiveEntryEdit_(true);
+    showToast('Eintrag aktualisiert.');
+  } catch (error) {
+    showToast('Aktualisierung fehlgeschlagen: ' + (error.message || 'Bitte erneut versuchen.'));
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+      if (archiveEntryEditState_) saveButton.textContent = 'Aenderungen speichern';
+      else saveButton.textContent = 'Protokoll speichern';
+    }
+  }
 }
 
 function renderVerlaufList() {
@@ -3093,8 +3420,9 @@ function renderVerlaufList() {
         ${e.kommentar ? `<div style="margin-top:10px;font-size:0.84rem;color:#444;font-style:italic;padding:10px 12px;background:var(--sand);border-radius:10px;border-left:3px solid var(--accent);line-height:1.5">💬 ${e.kommentar}</div>` : ''}
 
         <div class="entry-actions">
-          <button class="btn-delete" onclick="confirmDelete(${e._rowIndex}, ${i})">🗑️ Eintrag löschen</button>
-          <button class="btn-toggle" onclick="toggleDetail('detail-${i}')">▲ Schließen</button>
+          <button class="btn-toggle" type="button" onclick="editArchiveEntry(${e._rowIndex})">&#9998; Eintrag bearbeiten</button>
+          <button class="btn-delete" type="button" onclick="confirmDelete(${e._rowIndex}, ${i})">&#128465; Eintrag l&ouml;schen</button>
+          <button class="btn-toggle" type="button" onclick="toggleDetail('detail-${i}')">&#9650; Schlie&szlig;en</button>
         </div>
       </div>
     </div>
@@ -6065,15 +6393,37 @@ async function deleteRowFromSupabase(tab, rowIndex) {
   if (error) throw error;
 }
 
+const PROTOCOL_HEADER_DEFAULTS_ = [
+  'Timestamp','Datum','Wer','Stimmung','Wetter','Temperatur','Trainingsart','Dauer','Z\u00e4umung','Z\u00e4umung Sonstige',
+  'Sattel','Sattel Sonstige','Futter Plan','Futter Abweichung','Verdauung','Atmung','Inhaliert','Verletzung','Verletzung welche','Kommentar',
+  'Therapie','Therapie Notizen','Energie','Losgelassenheit','Durchl\u00e4ssigkeit','Verlauf','Verfassung','Kooperation','Geschirr/Kutsche',
+  'Geschirr/Kutsche Sonstige','Aufgegessen','Schutz & Decken','Schutz Kommentar','Eingedeckt','Deckentyp','Decke Gramm','Decke Kommentar',
+  'R\u00fcckenempfindlichkeit','R\u00fcckenbeweglichkeit','Abgeduscht?','Geschwitzt?','Gebiss zur Trense','Kandarenart','Kandarengebiss',
+  'Unterleggebiss','Geschwitzt St\u00e4rke'
+];
+function protocolHeadersForUpdate_(headers) {
+  const result = Array.isArray(headers) ? headers.slice() : [];
+  while (result.length < PROTOCOL_HEADER_DEFAULTS_.length) result.push('');
+  PROTOCOL_HEADER_DEFAULTS_.forEach((header, index) => {
+    if (!String(result[index] || '').trim()) result[index] = header;
+  });
+  return result;
+}
+
 async function updateRowInSupabase(tab, rowIndex, updates) {
   const client = window.__LUDWIG_SUPABASE_CLIENT__;
   const id = window.__LUDWIG_ROW_MAP_BY_TAB[tab]?.[Number(rowIndex)];
   if (!client || !id) throw new Error('Der zu bearbeitende Supabase-Eintrag wurde nicht gefunden.');
   const { data: entry, error: readError } = await client.from('app_entries').select('data,entry_date').eq('id', id).single();
   if (readError) throw readError;
-  const headers = Array.isArray(entry?.data?.headers) ? entry.data.headers : (window.__LUDWIG_HEADERS_BY_TAB[tab] || []);
-  const row = Array.isArray(entry?.data?.row) ? entry.data.row.slice() : [];
   const info = supabaseTabInfo(tab);
+  let headers = Array.isArray(entry?.data?.headers) ? entry.data.headers : (window.__LUDWIG_HEADERS_BY_TAB[tab] || []);
+  if (info.module === 'protokoll') {
+    headers = protocolHeadersForUpdate_(headers);
+    window.__LUDWIG_HEADERS_BY_TAB[tab] = headers.slice();
+  }
+  const row = Array.isArray(entry?.data?.row) ? entry.data.row.slice() : [];
+  while (row.length < headers.length) row.push('');
   Object.entries(updates || {}).forEach(([key, value]) => {
     const index = supabaseUpdateIndex(info.module, key, headers);
     if (index >= 0) row[index] = value ?? '';
@@ -7272,7 +7622,7 @@ function toggleClassicKandareDetails(loadIfMissing=true) {
   const el=document.getElementById('klassische-kandare-details');
   if (el) el.style.display=classic?'block':'none';
   const prefs=bridlePreferencesByHorse.get(currentHorse);
-  if (classic && prefs) {
+  if (classic && prefs && !archiveEntryEditState_) {
     if (!$('t-kandarengebiss')?.value && prefs.kandarengebiss) $('t-kandarengebiss').value=prefs.kandarengebiss;
     if (!$('t-unterleggebiss')?.value && prefs.unterleggebiss) $('t-unterleggebiss').value=prefs.unterleggebiss;
   } else if (classic && loadIfMissing && !prefs) loadBridlePreferences(currentHorse);
@@ -7300,7 +7650,7 @@ function updateBridlePreferencesFromRows(rows,horseKey=currentHorse) {
   return prefs;
 }
 function applyBridlePreferencesToForm(prefs) {
-  if (!prefs || currentHorse==null) return;
+  if (!prefs || currentHorse==null || archiveEntryEditState_ || !document.getElementById('page-training')?.classList.contains('active')) return;
   const selected=bridleSelectionSet();
   if (selected.has('Trense') && !$('t-trense-gebiss')?.value && prefs.trense) $('t-trense-gebiss').value=prefs.trense;
   if (selected.has('Kandare') && !$('t-kandare-art')?.value && prefs.kandareArt) $('t-kandare-art').value=prefs.kandareArt;
