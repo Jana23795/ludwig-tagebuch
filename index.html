@@ -1831,7 +1831,7 @@ nav button.supabase-hidden { display:none !important; }
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec';
-const APP_BUILD = '2026-10-21-budget-year-categories';
+const APP_BUILD = 'ludwig-reminders-v1';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 window.__LUDWIG_SUPABASE_ENABLED__ = true;
 
@@ -4693,6 +4693,9 @@ async function renderBudget() {
 const WEEKDAYS = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 let weekOffset = 0;
 let weekData = {}; // key: YYYY-MM-DD → {person, training, note}
+let weekAssignees = [];
+let weekAssigneesError = '';
+let weekAssigneesLoaded = false;
 
 // Wochenplan: stabiles DateKey-Format (Text), damit Sheets/Zeitzonen nie wieder “Vortag” machen.
 // Sheet-Header: Datum | DateKey | Person | Training | Notiz
@@ -4771,36 +4774,92 @@ function changeWeek(dir) {
   renderWoche();
 }
 
+function weekEscapeHtml_(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[character]);
+}
+
+function weekUsesProfileAssignments_() {
+  return currentHorse === 'ludwig' && Boolean(window.__LUDWIG_SUPABASE_ENABLED__);
+}
+
+async function loadWeekAssignees_() {
+  weekAssignees = [];
+  weekAssigneesError = '';
+  weekAssigneesLoaded = false;
+  const client = window.__LUDWIG_SUPABASE_CLIENT__;
+  if (!client) {
+    weekAssigneesError = 'Bitte anmelden, um zuweisbare Personen zu laden.';
+    return;
+  }
+  try {
+    const { data, error } = await client.functions.invoke('ludwig-push', {
+      body: { action: 'list-assignees' }
+    });
+    if (error || data?.error) {
+      weekAssigneesError = data?.error || error?.message || 'Personen konnten nicht geladen werden.';
+      return;
+    }
+    weekAssignees = Array.isArray(data?.assignees) ? data.assignees.filter(person =>
+      person && /^[0-9a-f-]{36}$/i.test(String(person.id || '')) && String(person.display_name || '').trim()
+    ) : [];
+    weekAssigneesLoaded = true;
+  } catch (error) {
+    weekAssigneesError = error?.message || 'Personen konnten nicht geladen werden.';
+  }
+}
+
 function drawWeekUI() {
   const monday = getMonday(weekOffset);
   const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
-
+  const usesProfiles = weekUsesProfileAssignments_();
   const fmt = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
   $('week-label').textContent = fmt(monday) + ' – ' + fmt(sunday) + ' ' + monday.getFullYear();
-
   const container = $('week-days');
   if (!container) return;
-
   const todayStr = isoDate(new Date());
   container.innerHTML = '';
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday); d.setDate(d.getDate() + i);
     const dateStr = isoDate(d);
-    const entry = weekData[dateStr];
+    const entry = weekData[dateStr] || {};
     const isToday = dateStr === todayStr;
-    const hasEntry = !!(entry && String(entry.person || '').trim());
+    const assignee = usesProfiles ? weekAssignees.find(person => person.id === entry.assigneeProfileId) : null;
+    const linked = Boolean(entry.assigneeProfileId);
+    const hasEntry = usesProfiles ? (weekAssigneesLoaded ? Boolean(assignee) : linked) : Boolean(String(entry.person || '').trim());
+    const shownPerson = assignee?.display_name || entry.person || '';
     const statusClass = hasEntry ? 'planned' : 'free';
-    const statusEmoji = hasEntry ? '✅' : '🔴';
-
+    const statusEmoji = hasEntry ? '&#9989;' : '&#128308;';
+    const options = usesProfiles ? weekAssignees.map(person =>
+      `<option value="${weekEscapeHtml_(person.id)}" ${person.id === entry.assigneeProfileId ? 'selected' : ''}>${weekEscapeHtml_(person.display_name)}</option>`
+    ).join('') : '';
+    const legacyNote = usesProfiles && shownPerson && !linked
+      ? `<div class="week-legacy-note" role="note" style="font-size:.78rem;color:#955b36;margin:6px 0">Alter Freitext, nicht verkn&uuml;pft: ${weekEscapeHtml_(shownPerson)}. Bitte die Person manuell ausw&auml;hlen.</div>`
+      : (usesProfiles && linked && !assignee
+        ? `<div class="week-legacy-note" role="note" style="font-size:.78rem;color:#955b36;margin:6px 0">Die bisherige Zuweisung ist nicht mehr aktiv. Bitte eine aktive Person ausw&auml;hlen.</div>`
+        : '');
+    const formFields = usesProfiles ? `
+        <label for="fp-${dateStr}">Person zuweisen</label>
+        <select id="fp-${dateStr}" ${weekAssignees.length ? '' : 'disabled'}>
+          <option value="">&#8211; Person ausw&auml;hlen &#8211;</option>${options}
+        </select>
+        ${legacyNote}
+        ${weekAssigneesError ? `<div class="week-assignee-error" role="status" style="font-size:.78rem;color:#a2332c;margin:6px 0">${weekEscapeHtml_(weekAssigneesError)}</div>` : (!weekAssignees.length ? '<div style="font-size:.78rem;color:#777;margin:6px 0">Keine aktive Person mit Ludwig-Zugang gefunden.</div>' : '')}
+        <label for="fl-${dateStr}">Reitstunde mit (optional)</label>
+        <input type="text" id="fl-${dateStr}" maxlength="160" placeholder="Freitext, z. B. Name der Reitlehrerin" value="${weekEscapeHtml_(entry.lessonWith || '')}" />
+      ` : `
+        <input type="text" id="fp-${dateStr}" placeholder="Name (z.B. Jana)" value="${weekEscapeHtml_(entry.person || '')}" />
+      `;
     const div = document.createElement('div');
     div.className = 'day-card ' + statusClass + (isToday ? ' today' : '');
     div.id = 'day-' + dateStr;
     div.innerHTML = `
       <div class="day-header">
         <div>
-          <div class="day-name">${WEEKDAYS[i]} ${isToday ? '· <span style="color:var(--accent);font-size:0.75rem">Heute</span>' : ''}</div>
-          <div class="day-date-small">${formatDate(dateStr)}</div>
+          <div class="day-name">${weekEscapeHtml_(WEEKDAYS[i])} ${isToday ? '– <span style="color:var(--accent);font-size:0.75rem">Heute</span>' : ''}</div>
+          <div class="day-date-small">${weekEscapeHtml_(formatDate(dateStr))}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="day-status">${statusEmoji}</span>
@@ -4808,29 +4867,30 @@ function drawWeekUI() {
         </div>
       </div>
       ${hasEntry ? `
-        <div class="day-person">👤 ${entry.person}</div>
-        ${entry.training ? `<div class=\"day-training\">🏇 ${entry.training}</div>` : ''}
-        ${entry.note ? `<div class=\"day-note\">💬 ${entry.note}</div>` : ''}
-      ` : '<div style="font-size:0.8rem;color:#bbb">Noch niemand eingetragen</div>'}
+        <div class="day-person">👤 ${weekEscapeHtml_(shownPerson || 'Zugewiesene Person')}</div>
+        ${entry.training ? `<div class="day-training">🏇 ${weekEscapeHtml_(entry.training)}</div>` : ''}
+        ${entry.lessonWith ? `<div class="day-note">👩‍🏫 Reitstunde mit: ${weekEscapeHtml_(entry.lessonWith)}</div>` : ''}
+        ${entry.note ? `<div class="day-note">💬 ${weekEscapeHtml_(entry.note)}</div>` : ''}
+      ` : (usesProfiles && shownPerson ? legacyNote : '<div style="font-size:0.8rem;color:#bbb">Noch niemand eingetragen</div>')}
       <div class="day-form" id="form-${dateStr}">
-        <input type="text" id="fp-${dateStr}" placeholder="Name (z.B. Jana)" value="${hasEntry ? entry.person : ''}" />
+        ${formFields}
         <select id="ft-${dateStr}">
           <option value="">– Trainingsart –</option>
-          <option ${entry?.training==='Ausreiten'?'selected':''}>Ausreiten</option>
-          <option ${entry?.training==='Dressur'?'selected':''}>Dressur</option>
-          <option ${entry?.training==='Springen'?'selected':''}>Springen</option>
-          <option ${entry?.training==='Reitstunde'?'selected':''}>Reitstunde</option>
-          <option ${entry?.training==='Working Equitation'?'selected':''}>Working Equitation</option>
-          <option ${entry?.training==='Bodenarbeit'?'selected':''}>Bodenarbeit</option>
-          <option ${entry?.training==='Handarbeit'?'selected':''}>Handarbeit</option>
-          <option ${entry?.training==='Freiarbeit'?'selected':''}>Freiarbeit</option>
-          <option ${entry?.training==='Equikinetik'?'selected':''}>Equikinetik</option>
-          <option ${entry?.training==='Equi-Classic-Work'?'selected':''}>Equi-Classic-Work</option>
-          <option ${entry?.training==='Laufenlassen'?'selected':''}>Laufenlassen</option>
-          <option ${entry?.training==='Fahren'?'selected':''}>Fahren</option>
-          <option ${entry?.training==='Nur füttern'?'selected':''}>🥕 Nur füttern</option>
+          <option ${entry.training==='Ausreiten'?'selected':''}>Ausreiten</option>
+          <option ${entry.training==='Dressur'?'selected':''}>Dressur</option>
+          <option ${entry.training==='Springen'?'selected':''}>Springen</option>
+          <option ${entry.training==='Reitstunde'?'selected':''}>Reitstunde</option>
+          <option ${entry.training==='Working Equitation'?'selected':''}>Working Equitation</option>
+          <option ${entry.training==='Bodenarbeit'?'selected':''}>Bodenarbeit</option>
+          <option ${entry.training==='Handarbeit'?'selected':''}>Handarbeit</option>
+          <option ${entry.training==='Freiarbeit'?'selected':''}>Freiarbeit</option>
+          <option ${entry.training==='Equikinetik'?'selected':''}>Equikinetik</option>
+          <option ${entry.training==='Equi-Classic-Work'?'selected':''}>Equi-Classic-Work</option>
+          <option ${entry.training==='Laufenlassen'?'selected':''}>Laufenlassen</option>
+          <option ${entry.training==='Fahren'?'selected':''}>Fahren</option>
+          <option ${entry.training==='Nur füttern'?'selected':''}>🥕 Nur füttern</option>
         </select>
-        <textarea id="fn-${dateStr}" placeholder="Notiz (optional)…">${hasEntry ? (entry.note||'') : ''}</textarea>
+        <textarea id="fn-${dateStr}" placeholder="Notiz (optional)…">${weekEscapeHtml_(entry.note || '')}</textarea>
         <div class="day-form-row">
           <button class="btn btn-save" onclick="saveDayEntry('${dateStr}')">💾 Speichern</button>
           ${hasEntry ? `<button class="btn-clear" onclick="clearDayEntry('${dateStr}')">🗑️ Löschen</button>` : ''}
@@ -4842,31 +4902,36 @@ function drawWeekUI() {
 }
 
 async function renderWoche() {
-  // Load from Sheet, then draw
   const container = $('week-days');
   if (!container) return;
   container.innerHTML = '<div class="loader">⏳ Lade Wochenplan…</div>';
-
+  const horseAtStart = currentHorse;
+  const usesProfiles = horseAtStart === 'ludwig' && Boolean(window.__LUDWIG_SUPABASE_ENABLED__);
+  if (usesProfiles) await loadWeekAssignees_();
+  else {
+    weekAssignees = [];
+    weekAssigneesError = '';
+    weekAssigneesLoaded = false;
+  }
+  if (horseAtStart !== currentHorse) return;
   const monday = getMonday(weekOffset);
   const startKey = isoDate(monday);
   const end = new Date(monday);
   end.setDate(end.getDate() + 6);
   const endKey = isoDate(end);
-
   try {
-    const rows = await loadSheet(HORSES[currentHorse].tabs.woche);
+    const rows = await loadSheet(HORSES[horseAtStart].tabs.woche);
+    if (horseAtStart !== currentHorse) return;
     weekData = {};
     rows.slice(1).forEach(r => {
       const key = getWeekRowKey(r);
-      if (!key) return;
-      if (key < startKey || key > endKey) return;
+      if (!key || key < startKey || key > endKey) return;
       weekData[key] = getWeekRowPayload(r);
     });
-  } catch(e) {
+  } catch (error) {
     weekData = {};
   }
-
-  drawWeekUI();
+  if (horseAtStart === currentHorse) drawWeekUI();
 }
 
 function toggleDayForm(dateStr) {
@@ -4891,14 +4956,17 @@ function getWeekRowKey(r) {
 }
 
 function getWeekRowPayload(r) {
-  // Payload detection:
-  // Expected (new): [Datum, DateKey, Person, Training, Notiz]
-  // Legacy variants might still exist, so we detect by checking whether col B is a plain date.
-  if (!r) return { person:'', training:'', note:'' };
+  if (!r) return { person:'', training:'', note:'', assigneeProfileId:'', lessonWith:'' };
   const b = r[1] ? String(r[1]).trim() : '';
   const bIsDate = /^\d{4}-\d{2}-\d{2}$/.test(b);
-  if (bIsDate && r.length >= 5) return { person: r[2] || '', training: r[3] || '', note: r[4] || '' };
-  return { person: r[1] || '', training: r[2] || '', note: r[3] || '' };
+  if (bIsDate && r.length >= 5) return {
+    person: r[2] || '',
+    training: r[3] || '',
+    note: r[4] || '',
+    assigneeProfileId: r[5] || '',
+    lessonWith: r[6] || ''
+  };
+  return { person:r[1] || '', training:r[2] || '', note:r[3] || '', assigneeProfileId:'', lessonWith:'' };
 }
 
 function safeDayLabelFromKey(key) {
@@ -4915,48 +4983,39 @@ async function saveDayEntry(dateStr) {
   const btn = event?.target;
   if (btn && btn.disabled) return;
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Speichert…'; }
-
-  const person = $('fp-' + dateStr).value.trim();
-  if (!person) {
+  const usesProfiles = weekUsesProfileAssignments_();
+  const assigneeProfileId = usesProfiles ? String($('fp-' + dateStr)?.value || '') : '';
+  const assignee = usesProfiles ? weekAssignees.find(person => person.id === assigneeProfileId) : null;
+  const person = usesProfiles ? String(assignee?.display_name || '').trim() : String($('fp-' + dateStr)?.value || '').trim();
+  if (!person || (usesProfiles && !assignee)) {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Speichern'; }
-    alert('Bitte einen Namen eintragen!');
+    alert(usesProfiles ? 'Bitte eine aktive Person aus der Liste zuweisen.' : 'Bitte einen Namen eintragen!');
     return;
   }
   const training = $('ft-' + dateStr).value;
   const note = $('fn-' + dateStr).value.trim();
-
-  // Optimistic UI update (so it turns green immediately)
-  weekData[dateStr] = { person, training, note };
+  const lessonWith = usesProfiles ? String($('fl-' + dateStr)?.value || '').trim() : '';
+  weekData[dateStr] = { person, training, note, assigneeProfileId, lessonWith };
   drawWeekUI();
-
-  // Persist (best-effort). no-cors gives no response, so we wait + re-read.
   try {
     const tab = HORSES[currentHorse].tabs.woche;
-
-    // Reload, remove duplicates for this date (from bottom to top), then write a single row
     const rows = await loadSheet(tab);
-        window.__lastGesundRows = rows;
     const matches = [];
     for (let i = 1; i < rows.length; i++) {
-      const key = getWeekRowKey(rows[i]);
-      if (key === dateStr) matches.push(i + 1); // sheet row index
+      if (getWeekRowKey(rows[i]) === dateStr) matches.push(i + 1);
     }
     for (let i = matches.length - 1; i >= 0; i--) {
       await deleteRow(tab, matches[i]);
-      await new Promise(r => setTimeout(r, 500)); // mehr Zeit für Apps Script
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
-
-    // Persist in NEW format (5 columns):
-    // Datum | DateKey | Person | Training | Notiz
-    // DateKey is a stable YYYY-MM-DD text value to avoid timezone shifts.
-    await appendRow(tab, [dateStr, dateStr, person, training, note]);
-
-    // Keep UI snappy: do NOT reload the whole week here.
-    // We already did an optimistic update, and the Sheet write is done.
+    const row = usesProfiles
+      ? [dateStr, dateStr, person, training, note, assigneeProfileId, lessonWith]
+      : [dateStr, dateStr, person, training, note];
+    await appendRow(tab, row);
     showToast('✅ Eintrag gespeichert!');
-  } catch(e) {
-    showToast('⚠️ Gespeichert – bitte kurz neu laden, falls Anzeige nicht aktualisiert.');
-    // Keep optimistic UI; user can still see what they typed.
+  } catch (error) {
+    showToast('⚠️ Speichern fehlgeschlagen. Bitte den Wochenplan neu laden.');
+    if (currentHorse === 'ludwig') await renderWoche();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '💾 Speichern'; }
   }
