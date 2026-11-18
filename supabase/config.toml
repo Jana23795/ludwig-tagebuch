@@ -1,0 +1,2 @@
+[functions.ludwig-reminders]
+verify_jwt = false
