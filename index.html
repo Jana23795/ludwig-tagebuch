@@ -6672,7 +6672,9 @@ restoreSupabaseSession();
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return null;
   try {
-    const reg = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+    const appBasePath = new URL('.', window.location.href).pathname;
+    const workerPath = new URL('sw.js', window.location.href).pathname;
+    const reg = await navigator.serviceWorker.register(workerPath, { scope: appBasePath });
     console.log('SW registriert:', reg.scope);
     return reg;
   } catch (e) {
@@ -7971,7 +7973,8 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     const disableButton = document.getElementById('ludwig-push-disable');
     if (!sendButton || !disableButton || !('serviceWorker' in navigator)) return;
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/');
+      const appBase = new URL('.', document.baseURI);
+      const registration = await navigator.serviceWorker.getRegistration(appBase.pathname);
       currentSubscription = registration ? await registration.pushManager.getSubscription() : null;
       const active = Boolean(currentSubscription && Notification.permission === 'granted');
       sendButton.disabled = !active;
@@ -8003,8 +8006,10 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
       const keyData = await invokePushFunction({ action: 'get-public-key' });
       if (!keyData || !keyData.publicKey) throw new Error('Der öffentliche Push-Schlüssel fehlt in der Supabase-Funktion.');
 
-      let registration = await navigator.serviceWorker.getRegistration('/');
-      if (!registration) registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      const appBase = new URL('.', document.baseURI);
+      const workerScope = appBase.pathname;
+      let registration = await navigator.serviceWorker.getRegistration(workerScope);
+      if (!registration) registration = await navigator.serviceWorker.register(new URL('sw.js', appBase).pathname, { scope: workerScope });
       await navigator.serviceWorker.ready;
 
       currentSubscription = await registration.pushManager.getSubscription();
