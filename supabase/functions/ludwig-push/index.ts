@@ -8,6 +8,7 @@ type PushSubscriptionInput = {
 
 type RequestBody = {
   action?: string;
+  horse_slug?: string;
   subscription?: PushSubscriptionInput;
   endpoint?: string;
 };
@@ -84,6 +85,11 @@ Deno.serve(async (request: Request) => {
     });
 
     if (body.action === 'list-assignees') {
+      const horseSlug = String(body.horse_slug || '').trim().toLowerCase();
+      if (!/^[a-z0-9][a-z0-9-]*$/.test(horseSlug)) {
+        return jsonResponse({ error: 'Pferd fehlt oder ist ungueltig.' }, 400, cors);
+      }
+
       const { data: callerProfile, error: callerError } = await admin
         .from('profiles')
         .select('id, active, is_admin')
@@ -95,9 +101,10 @@ Deno.serve(async (request: Request) => {
       const { data: horse, error: horseError } = await admin
         .from('horses')
         .select('id')
-        .eq('slug', 'ludwig')
+        .eq('slug', horseSlug)
         .maybeSingle();
-      if (horseError || !horse) return jsonResponse({ error: 'Ludwig wurde nicht gefunden.' }, 500, cors);
+      if (horseError) return jsonResponse({ error: 'Das Pferd konnte nicht geladen werden.' }, 500, cors);
+      if (!horse) return jsonResponse({ error: 'Pferd nicht gefunden.' }, 404, cors);
 
       const { data: callerMembership, error: membershipError } = await admin
         .from('horse_members')
@@ -105,8 +112,8 @@ Deno.serve(async (request: Request) => {
         .eq('horse_id', horse.id)
         .eq('profile_id', callerProfile.id)
         .maybeSingle();
-      if (membershipError) return jsonResponse({ error: 'Der Ludwig-Zugang konnte nicht geprueft werden.' }, 500, cors);
-      if (!callerMembership && !callerProfile.is_admin) return jsonResponse({ error: 'Kein Zugriff auf Ludwig.' }, 403, cors);
+      if (membershipError) return jsonResponse({ error: 'Der Pferdezugang konnte nicht geprueft werden.' }, 500, cors);
+      if (!callerMembership && !callerProfile.is_admin) return jsonResponse({ error: 'Kein Zugriff auf dieses Pferd.' }, 403, cors);
 
       const { data: memberships, error: listError } = await admin
         .from('horse_members')
