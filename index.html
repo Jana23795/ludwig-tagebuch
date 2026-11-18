@@ -7857,5 +7857,230 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
 })();
 </script>
 
+<script>
+(() => {
+  const PANEL_ID = 'ludwig-push-test-panel';
+  let currentSubscription = null;
+
+  function isIOSDevice() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function isInstalledPWA() {
+    return navigator.standalone === true ||
+      window.matchMedia('(display-mode: standalone)').matches;
+  }
+
+  function setStatus(message, isError = false) {
+    const status = document.getElementById('ludwig-push-status');
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.error = isError ? 'true' : 'false';
+  }
+
+  function base64UrlToBytes(value) {
+    const padding = '='.repeat((4 - (value.length % 4)) % 4);
+    const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from(raw, character => character.charCodeAt(0));
+  }
+
+  async function invokePushFunction(body) {
+    const client = window.__LUDWIG_SUPABASE_CLIENT__;
+    if (!client) throw new Error('Bitte zuerst in Ludwig anmelden.');
+    const { data, error } = await client.functions.invoke('ludwig-push', { body });
+    if (error) throw new Error(error.message || 'Die Push-Funktion ist nicht erreichbar.');
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  }
+
+  function getPanel() {
+    let panel = document.getElementById(PANEL_ID);
+    if (panel) return panel;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      #${PANEL_ID}{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483000;font-family:inherit;color:#3B2A1A}
+      #${PANEL_ID} *{box-sizing:border-box}
+      #${PANEL_ID} .lpt-launch{border:0;border-radius:999px;padding:12px 16px;background:#3B2A1A;color:#fff;font:600 14px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 4px 16px #0003;cursor:pointer}
+      #${PANEL_ID} .lpt-box{width:min(330px,calc(100vw - 28px));margin-top:8px;padding:16px;background:#fffdf8;border:1px solid #d9c9ad;border-radius:14px;box-shadow:0 8px 28px #0003}
+      #${PANEL_ID} .lpt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+      #${PANEL_ID} .lpt-title{font-weight:700;font-size:15px}
+      #${PANEL_ID} .lpt-close{border:0;background:transparent;color:#3B2A1A;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}
+      #${PANEL_ID} .lpt-copy{font-size:13px;line-height:1.45;margin:0 0 12px;color:#554638}
+      #${PANEL_ID} .lpt-actions{display:grid;gap:8px}
+      #${PANEL_ID} .lpt-actions button{min-height:42px;border:0;border-radius:9px;padding:9px 12px;background:#8b653d;color:#fff;font:600 14px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+      #${PANEL_ID} .lpt-actions button.secondary{background:#eee5d8;color:#3B2A1A}
+      #${PANEL_ID} button:disabled{opacity:.55;cursor:wait}
+      #${PANEL_ID} button:focus-visible{outline:3px solid #c58c42;outline-offset:2px}
+      #${PANEL_ID} .lpt-status{font-size:12px;line-height:1.4;margin:10px 0 0;min-height:17px;color:#38634b}
+      #${PANEL_ID} .lpt-status[data-error="true"]{color:#a2332c}
+      @media(prefers-reduced-motion:reduce){#${PANEL_ID} *{scroll-behavior:auto!important}}
+    `;
+    document.head.appendChild(style);
+
+    panel = document.createElement('section');
+    panel.id = PANEL_ID;
+    panel.innerHTML = `
+      <button type="button" class="lpt-launch" aria-expanded="false" aria-controls="ludwig-push-test-box">🔔 Push testen</button>
+      <div class="lpt-box" id="ludwig-push-test-box" hidden>
+        <div class="lpt-head"><div class="lpt-title">Push-Test für dieses Gerät</div><button type="button" class="lpt-close" aria-label="Schließen">×</button></div>
+        <p class="lpt-copy">Aktiviere Push für dieses Gerät und sende dir eine feste Testnachricht. Es werden noch keine Trainings- oder Erinnerungsereignisse verschickt.</p>
+        <div class="lpt-actions">
+          <button type="button" id="ludwig-push-enable">Push aktivieren</button>
+          <button type="button" id="ludwig-push-send" class="secondary" disabled>Testnachricht senden</button>
+          <button type="button" id="ludwig-push-disable" class="secondary" disabled>Push auf diesem Gerät ausschalten</button>
+        </div>
+        <p class="lpt-status" id="ludwig-push-status" aria-live="polite"></p>
+      </div>`;
+    document.body.appendChild(panel);
+
+    const launcher = panel.querySelector('.lpt-launch');
+    const box = panel.querySelector('.lpt-box');
+    launcher.addEventListener('click', () => {
+      box.hidden = !box.hidden;
+      launcher.setAttribute('aria-expanded', String(!box.hidden));
+      if (!box.hidden) refreshSubscriptionState();
+    });
+    panel.querySelector('.lpt-close').addEventListener('click', () => {
+      box.hidden = true;
+      launcher.setAttribute('aria-expanded', 'false');
+      launcher.focus();
+    });
+    panel.querySelector('#ludwig-push-enable').addEventListener('click', enablePush);
+    panel.querySelector('#ludwig-push-send').addEventListener('click', sendTestPush);
+    panel.querySelector('#ludwig-push-disable').addEventListener('click', disablePush);
+    return panel;
+  }
+
+  function syncPanelVisibility() {
+    const panel = getPanel();
+    const authenticated = document.body.classList.contains('supabase-authenticated') &&
+      Boolean(window.__LUDWIG_SUPABASE_CLIENT__);
+    panel.hidden = !authenticated;
+    if (!authenticated) {
+      currentSubscription = null;
+      panel.querySelector('#ludwig-push-send').disabled = true;
+      panel.querySelector('#ludwig-push-disable').disabled = true;
+    }
+  }
+
+  async function refreshSubscriptionState() {
+    const sendButton = document.getElementById('ludwig-push-send');
+    const disableButton = document.getElementById('ludwig-push-disable');
+    if (!sendButton || !disableButton || !('serviceWorker' in navigator)) return;
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('/');
+      currentSubscription = registration ? await registration.pushManager.getSubscription() : null;
+      const active = Boolean(currentSubscription && Notification.permission === 'granted');
+      sendButton.disabled = !active;
+      disableButton.disabled = !active;
+      if (active) setStatus('Push-Anmeldung für dieses Gerät gefunden.');
+    } catch (error) {
+      currentSubscription = null;
+      sendButton.disabled = true;
+      disableButton.disabled = true;
+    }
+  }
+
+  async function enablePush(event) {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      if (!window.isSecureContext) throw new Error('Push funktioniert nur über eine sichere HTTPS-Verbindung.');
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        throw new Error('Dieser Browser unterstützt Web-Push nicht.');
+      }
+      if (isIOSDevice() && !isInstalledPWA()) {
+        throw new Error('Auf iPhone/iPad: Ludwig zuerst über „Teilen → Zum Home-Bildschirm“ installieren und dann die installierte App öffnen.');
+      }
+
+      let permission = Notification.permission;
+      if (permission === 'default') permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('Benachrichtigungen sind nicht erlaubt. Bitte die iOS-/Browser-Einstellungen prüfen.');
+
+      const keyData = await invokePushFunction({ action: 'get-public-key' });
+      if (!keyData || !keyData.publicKey) throw new Error('Der öffentliche Push-Schlüssel fehlt in der Supabase-Funktion.');
+
+      let registration = await navigator.serviceWorker.getRegistration('/');
+      if (!registration) registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+
+      currentSubscription = await registration.pushManager.getSubscription();
+      if (!currentSubscription) {
+        currentSubscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: base64UrlToBytes(keyData.publicKey)
+        });
+      }
+
+      const result = await invokePushFunction({
+        action: 'register',
+        subscription: currentSubscription.toJSON()
+      });
+      if (!result || result.registered !== true) throw new Error('Das Gerät konnte nicht in Supabase gespeichert werden.');
+
+      document.getElementById('ludwig-push-send').disabled = false;
+      document.getElementById('ludwig-push-disable').disabled = false;
+      setStatus('Push ist aktiviert. Du kannst jetzt eine Testnachricht senden.');
+    } catch (error) {
+      setStatus(error.message || 'Push konnte nicht aktiviert werden.', true);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function sendTestPush(event) {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      if (!currentSubscription) await refreshSubscriptionState();
+      if (!currentSubscription) throw new Error('Bitte zuerst Push aktivieren.');
+      await invokePushFunction({ action: 'send-test', endpoint: currentSubscription.endpoint });
+      setStatus('Test angefordert. Die Mitteilung sollte gleich auf diesem Gerät erscheinen.');
+    } catch (error) {
+      setStatus(error.message || 'Die Testnachricht konnte nicht gesendet werden.', true);
+    } finally {
+      button.disabled = !currentSubscription;
+    }
+  }
+
+  async function disablePush(event) {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      if (!currentSubscription) await refreshSubscriptionState();
+      if (!currentSubscription) throw new Error('Für dieses Gerät wurde keine Push-Anmeldung gefunden.');
+      const endpoint = currentSubscription.endpoint;
+      await invokePushFunction({ action: 'unregister', endpoint });
+      await currentSubscription.unsubscribe();
+      currentSubscription = null;
+      document.getElementById('ludwig-push-send').disabled = true;
+      setStatus('Push wurde auf diesem Gerät ausgeschaltet.');
+    } catch (error) {
+      setStatus(error.message || 'Push konnte nicht ausgeschaltet werden.', true);
+    } finally {
+      button.disabled = !currentSubscription;
+    }
+  }
+
+  function init() {
+    if (!document.body) return;
+    getPanel();
+    syncPanelVisibility();
+    new MutationObserver(syncPanelVisibility).observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+})();
+</script>
 </body>
 </html>
