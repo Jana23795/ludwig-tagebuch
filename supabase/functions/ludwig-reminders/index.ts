@@ -1,34 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
-type Profile = {
-  id: string;
-  display_name: string;
-  auth_user_id: string | null;
-};
-
-type PushRow = {
-  id: string;
-  user_id: string;
-  endpoint: string;
-  p256dh: string;
-  auth_key: string;
-};
-
-type Horse = {
-  id: string;
-  slug: string;
-  display_name: string;
-};
-
+type Profile = { id: string; display_name: string; auth_user_id: string | null };
+type PushRow = { id: string; user_id: string; endpoint: string; p256dh: string; auth_key: string };
+type Horse = { id: string; slug: string; display_name: string };
 type ReminderType = 'daily_training' | 'weekly_plan_gap';
-
-type LocalClock = {
-  date: string;
-  hour: number;
-  minute: number;
-  weekday: number;
-};
+type LocalClock = { date: string; hour: number; minute: number; weekday: number };
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -53,6 +30,19 @@ function addDays(dateKey: string, amount: number): string {
   const date = new Date(`${dateKey}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + amount);
   return date.toISOString().slice(0, 10);
+}
+
+// Runs shortly before 22:00 local time. If the scheduler uses a fixed UTC time
+// that crosses midnight in Berlin, associate the first local hour with yesterday.
+function dailyReminderDate(clock: LocalClock): string | null {
+  if ((clock.hour === 21 && clock.minute >= 50) || clock.hour === 22 || clock.hour === 23) return clock.date;
+  if (clock.hour === 0) return addDays(clock.date, -1);
+  return null;
+}
+
+function weeklyReminderWindow(clock: LocalClock): boolean {
+  // 12:00 UTC becomes 13:00 or 14:00 in Europe/Berlin, depending on DST.
+  return clock.weekday === 6 && clock.hour >= 12 && clock.hour <= 14;
 }
 
 function upcomingMonday(dateKey: string): string {
@@ -171,12 +161,8 @@ async function subscriptionsForUser(admin: ReturnType<typeof createClient>, auth
 }
 
 async function claimDelivery(
-  admin: ReturnType<typeof createClient>,
-  horseId: string,
-  reminderType: ReminderType,
-  localDate: string,
-  authUserId: string,
-  context: Record<string, unknown>
+  admin: ReturnType<typeof createClient>, horseId: string, reminderType: ReminderType,
+  localDate: string, authUserId: string, context: Record<string, unknown>
 ): Promise<string | null> {
   const { data, error } = await admin.rpc('claim_horse_reminder_delivery', {
     p_horse_id: horseId,
@@ -190,10 +176,7 @@ async function claimDelivery(
 }
 
 async function markDelivery(
-  admin: ReturnType<typeof createClient>,
-  id: string,
-  status: 'sent' | 'failed',
-  errorText = ''
+  admin: ReturnType<typeof createClient>, id: string, status: 'sent' | 'failed', errorText = ''
 ) {
   const payload = status === 'sent'
     ? { status, sent_at: new Date().toISOString(), last_error: null }
@@ -203,14 +186,9 @@ async function markDelivery(
 }
 
 async function sendToUser(
-  admin: ReturnType<typeof createClient>,
-  horseId: string,
-  authUserId: string,
-  reminderType: ReminderType,
-  localDate: string,
-  payload: Record<string, unknown>,
-  context: Record<string, unknown>,
-  vapid: { publicKey: string; privateKey: string; subject: string }
+  admin: ReturnType<typeof createClient>, horseId: string, authUserId: string,
+  reminderType: ReminderType, localDate: string, payload: Record<string, unknown>,
+  context: Record<string, unknown>, vapid: { publicKey: string; privateKey: string; subject: string }
 ): Promise<boolean> {
   const deliveryId = await claimDelivery(admin, horseId, reminderType, localDate, authUserId, context);
   if (!deliveryId) return false;
@@ -227,7 +205,7 @@ async function sendToUser(
         await webpush.sendNotification({
           endpoint: subscription.endpoint,
           keys: { p256dh: subscription.p256dh, auth: subscription.auth_key }
-        }, JSON.stringify(payload), { TTL: 3600 });
+        }, JSON.stringify(payload), { TTL: 12 * 60 * 60 });
         sent = true;
       } catch (error) {
         const statusCode = Number((error as { statusCode?: number })?.statusCode || 0);
@@ -246,14 +224,9 @@ async function sendToUser(
 }
 
 async function sendToOwnersAndAdmins(
-  admin: ReturnType<typeof createClient>,
-  horseId: string,
-  localDate: string,
-  reminderType: ReminderType,
-  payload: Record<string, unknown>,
-  context: Record<string, unknown>,
-  vapid: { publicKey: string; privateKey: string; subject: string },
-  excludeUserIds = new Set<string>()
+  admin: ReturnType<typeof createClient>, horseId: string, localDate: string, reminderType: ReminderType,
+  payload: Record<string, unknown>, context: Record<string, unknown>,
+  vapid: { publicKey: string; privateKey: string; subject: string }, excludeUserIds = new Set<string>()
 ): Promise<number> {
   const profiles = await ownerAndAdminProfiles(admin, horseId);
   const authIds = [...new Set(profiles.map(profile => profile.auth_user_id).filter((id): id is string => Boolean(id)))];
@@ -267,14 +240,9 @@ async function sendToOwnersAndAdmins(
 }
 
 async function sendToOwners(
-  admin: ReturnType<typeof createClient>,
-  horseId: string,
-  localDate: string,
-  reminderType: ReminderType,
-  payload: Record<string, unknown>,
-  context: Record<string, unknown>,
-  vapid: { publicKey: string; privateKey: string; subject: string },
-  excludeUserIds = new Set<string>()
+  admin: ReturnType<typeof createClient>, horseId: string, localDate: string, reminderType: ReminderType,
+  payload: Record<string, unknown>, context: Record<string, unknown>,
+  vapid: { publicKey: string; privateKey: string; subject: string }, excludeUserIds = new Set<string>()
 ): Promise<number> {
   const profiles = await ownerProfiles(admin, horseId);
   const authIds = [...new Set(profiles.map(profile => profile.auth_user_id).filter((id): id is string => Boolean(id)))];
@@ -288,40 +256,21 @@ async function sendToOwners(
 }
 
 function horseLabel(horse: Horse): string {
-  const shortNames: Record<string, string> = {
-    ludwig: 'Ludwig',
-    minstel: 'Minstrel',
-    loki: 'Loki',
-    ushi: 'Ushi',
-    ted: 'Ted'
-  };
+  const shortNames: Record<string, string> = { ludwig: 'Ludwig', minstel: 'Minstrel', loki: 'Loki', ushi: 'Ushi', ted: 'Ted' };
   return shortNames[horse.slug] || horse.display_name || horse.slug;
 }
 
 async function processDailyReminder(
-  admin: ReturnType<typeof createClient>,
-  horse: Horse,
-  dateKey: string,
-  vapid: { publicKey: string; privateKey: string; subject: string },
-  appUrl: string
+  admin: ReturnType<typeof createClient>, horse: Horse, dateKey: string,
+  vapid: { publicKey: string; privateKey: string; subject: string }, appUrl: string
 ): Promise<{ skipped: boolean; sent: number }> {
   const { data: protocols, error: protocolError } = await admin
-    .from('app_entries')
-    .select('id')
-    .eq('horse_id', horse.id)
-    .eq('module', 'protokoll')
-    .eq('entry_date', dateKey)
-    .limit(1);
+    .from('app_entries').select('id').eq('horse_id', horse.id).eq('module', 'protokoll').eq('entry_date', dateKey).limit(1);
   if (protocolError) throw protocolError;
   if (protocols?.length) return { skipped: true, sent: 0 };
 
   const { data: plans, error: planError } = await admin
-    .from('app_entries')
-    .select('data')
-    .eq('horse_id', horse.id)
-    .eq('module', 'wochenplan')
-    .eq('entry_date', dateKey)
-    .limit(5);
+    .from('app_entries').select('data').eq('horse_id', horse.id).eq('module', 'wochenplan').eq('entry_date', dateKey).limit(5);
   if (planError) throw planError;
   const plan = (plans || []).find((entry: any) => assignedProfileId(entry)) || plans?.[0] || null;
   const assignedId = assignedProfileId(plan);
@@ -331,17 +280,10 @@ async function processDailyReminder(
   const body = assignedName
     ? `Für heute ist noch kein Trainingsprotokoll gespeichert. Zuständig: ${assignedName}.`
     : `Für heute ist noch kein Trainingsprotokoll gespeichert. Bitte den Wochenplan für ${label} prüfen.`;
-  const payload = {
-    title: `${label}: Trainingsprotokoll offen`,
-    body,
-    tag: `${horse.slug}-daily-${dateKey}`,
-    url: appUrl
-  };
+  const payload = { title: `${label}: Trainingsprotokoll offen`, body, tag: `${horse.slug}-daily-${dateKey}`, url: appUrl };
   const context = {
-    horse_id: horse.id,
-    horse_slug: horse.slug,
-    assigned_profile_id: assignedId || null,
-    assigned_display_name: assignedName || null
+    horse_id: horse.id, horse_slug: horse.slug,
+    assigned_profile_id: assignedId || null, assigned_display_name: assignedName || null
   };
   const tried = new Set<string>();
   if (candidate?.auth_user_id) {
@@ -358,22 +300,15 @@ async function processDailyReminder(
 }
 
 async function processWeeklyReminder(
-  admin: ReturnType<typeof createClient>,
-  horse: Horse,
-  saturdayKey: string,
-  vapid: { publicKey: string; privateKey: string; subject: string },
-  appUrl: string
+  admin: ReturnType<typeof createClient>, horse: Horse, saturdayKey: string,
+  vapid: { publicKey: string; privateKey: string; subject: string }, appUrl: string
 ): Promise<{ skipped: boolean; sent: number; missing: string[] }> {
   const monday = upcomingMonday(saturdayKey);
   const days = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
   const sunday = days[6];
   const { data: plans, error } = await admin
-    .from('app_entries')
-    .select('entry_date, data')
-    .eq('horse_id', horse.id)
-    .eq('module', 'wochenplan')
-    .gte('entry_date', monday)
-    .lte('entry_date', sunday);
+    .from('app_entries').select('entry_date, data').eq('horse_id', horse.id).eq('module', 'wochenplan')
+    .gte('entry_date', monday).lte('entry_date', sunday);
   if (error) throw error;
   const validAssignees = await activeAssigneeProfileIds(admin, horse.id);
   const assignedByDate = new Map<string, string>();
@@ -404,9 +339,7 @@ Deno.serve(async (request: Request) => {
   const cronSecret = Deno.env.get('LUDWIG_CRON_SECRET') || '';
   const authHeader = request.headers.get('authorization') || '';
   const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-  if (!cronSecret || !tokenMatch || tokenMatch[1] !== cronSecret) {
-    return json({ error: 'Unauthorized.' }, 401);
-  }
+  if (!cronSecret || !tokenMatch || tokenMatch[1] !== cronSecret) return json({ error: 'Unauthorized.' }, 401);
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -418,29 +351,29 @@ Deno.serve(async (request: Request) => {
   }
 
   try {
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false }
-    });
-    const { data: horses, error: horsesError } = await admin
-      .from('horses')
-      .select('id, slug, display_name')
-      .order('slug', { ascending: true });
+    const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: horses, error: horsesError } = await admin.from('horses').select('id, slug, display_name').order('slug', { ascending: true });
     if (horsesError) throw horsesError;
     if (!horses?.length) return json({ error: 'No horses are configured.' }, 500);
 
     webpush.setVapidDetails(subject, publicKey, privateKey);
     const clock = localClock();
+    const dailyDate = dailyReminderDate(clock);
     const appUrl = Deno.env.get('APP_URL') || '/index.html';
-    const results: Record<string, unknown> = { local_time: `${clock.date} ${String(clock.hour).padStart(2, '0')}:${String(clock.minute).padStart(2, '0')}` };
+    const results: Record<string, unknown> = {
+      local_time: `${clock.date} ${String(clock.hour).padStart(2, '0')}:${String(clock.minute).padStart(2, '0')}`,
+      daily_target_date: dailyDate,
+      weekly_window: weeklyReminderWindow(clock)
+    };
 
-    if (clock.hour === 22) {
+    if (dailyDate) {
       const daily: Record<string, unknown> = {};
       for (const horse of horses as Horse[]) {
-        daily[horse.slug] = await processDailyReminder(admin, horse, clock.date, { publicKey, privateKey, subject }, appUrl);
+        daily[horse.slug] = await processDailyReminder(admin, horse, dailyDate, { publicKey, privateKey, subject }, appUrl);
       }
       results.daily = daily;
     }
-    if (clock.weekday === 6 && clock.hour === 12) {
+    if (weeklyReminderWindow(clock)) {
       const weekly: Record<string, unknown> = {};
       for (const horse of horses as Horse[]) {
         weekly[horse.slug] = await processWeeklyReminder(admin, horse, clock.date, { publicKey, privateKey, subject }, appUrl);
