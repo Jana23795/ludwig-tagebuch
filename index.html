@@ -796,7 +796,9 @@ nav button.supabase-hidden { display:none !important; }
 
     <div class="section-h">Dokumente</div>
     <div id="profileDocuments"></div>
-    <div class="section-h">Konto</div>
+    <div class="section-h">Feedback</div>
+<button class="btn" onclick="openLudwigFeedback()" type="button">💬 Feedback oder Idee senden</button>
+<div class="section-h">Konto</div>
     <button class="btn" type="button" onclick="openPasswordDialog()">🔑 Passwort ändern</button>
     <button class="btn btn-danger" type="button" onclick="logoutSupabase()">🚪 Abmelden</button>
   </div>
@@ -1224,6 +1226,7 @@ nav button.supabase-hidden { display:none !important; }
     <select id="t-trense-gebiss">
       <option value="">— bitte wählen —</option>
       <option>Wassertrense</option><option>Bauchergebiss</option><option>Baucherstange</option>
+       <option>Billy Allen</option><option>Snaffle</option>
       <option>Schenkeltrense</option><option>Olivenkopfgebiss</option><option>Olivenkopfstange</option>
       <option>Stehnschenkeltrense</option>
     </select>
@@ -1258,6 +1261,7 @@ nav button.supabase-hidden { display:none !important; }
 <label><input type="checkbox" value="Barocksattel Everluck (braun)"/><span>Barocksattel Everluck 🟫</span></label>
 <label><input type="checkbox" value="Westernsattel"/><span>Westernsattel</span></label>
 <label><input type="checkbox" value="Reitpad"/><span>Reitpad</span></label>
+    <label><input type="checkbox" value="Fellsattel"/><span>Fellsattel</span></label>
 <label><input type="checkbox" value="Damensattel"/><span>Damensattel</span></label>
 <label><input type="checkbox" value="Ohne Sattel"/><span>Ohne Sattel</span></label>
 </div>
@@ -7989,10 +7993,10 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
 
     const style = document.createElement('style');
     style.textContent = `
-      #${PANEL_ID}{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:2147483000;font-family:inherit;color:#3B2A1A}
+      #${PANEL_ID}{position:relative;width:100%;margin:12px 0;font-family:inherit;color:#3B2A1A}
       #${PANEL_ID} *{box-sizing:border-box}
-      #${PANEL_ID} .lpt-launch{border:0;border-radius:999px;padding:12px 16px;background:#3B2A1A;color:#fff;font:600 14px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 4px 16px #0003;cursor:pointer}
-      #${PANEL_ID} .lpt-box{width:min(330px,calc(100vw - 28px));margin-top:8px;padding:16px;background:#fffdf8;border:1px solid #d9c9ad;border-radius:14px;box-shadow:0 8px 28px #0003}
+      #${PANEL_ID} .lpt-launch{display:block;width:100%;text-align:left;border:1px solid #d9c9ad;border-radius:9px;padding:11px 12px;background:#fffdf8;color:#3B2A1A;font:600 14px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+      #${PANEL_ID} .lpt-box{width:100%;margin-top:8px;padding:14px;background:#fffdf8;border:1px solid #d9c9ad;border-radius:10px}
       #${PANEL_ID} .lpt-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
       #${PANEL_ID} .lpt-title{font-weight:700;font-size:15px}
       #${PANEL_ID} .lpt-close{border:0;background:transparent;color:#3B2A1A;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}
@@ -8011,10 +8015,10 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     panel = document.createElement('section');
     panel.id = PANEL_ID;
     panel.innerHTML = `
-      <button type="button" class="lpt-launch" aria-expanded="false" aria-controls="ludwig-push-test-box">🔔 Push testen</button>
+      <button type="button" class="lpt-launch" aria-expanded="false" aria-controls="ludwig-push-test-box">🔔 Benachrichtigungen</button>
       <div class="lpt-box" id="ludwig-push-test-box" hidden>
-        <div class="lpt-head"><div class="lpt-title">Push-Test für dieses Gerät</div><button type="button" class="lpt-close" aria-label="Schließen">×</button></div>
-        <p class="lpt-copy">Aktiviere Push für dieses Gerät und sende dir eine feste Testnachricht. Es werden noch keine Trainings- oder Erinnerungsereignisse verschickt.</p>
+        <div class="lpt-head"><div class="lpt-title">Push für dieses Gerät</div><button type="button" class="lpt-close" aria-label="Schließen">×</button></div>
+        <p class="lpt-copy">Aktiviere Push für dieses Gerät oder sende eine Testnachricht. Die tägliche Erinnerung wird nur gesendet, wenn für das Pferd kein Protokoll des Tages vorliegt; sie geht je nach Wochenplan an die zugewiesene Person oder die zuständige Besitzer-/Admin-Gruppe.</p>
         <div class="lpt-actions">
           <button type="button" id="ludwig-push-enable">Push aktivieren</button>
           <button type="button" id="ludwig-push-send" class="secondary" disabled>Testnachricht senden</button>
@@ -8022,7 +8026,10 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
         </div>
         <p class="lpt-status" id="ludwig-push-status" aria-live="polite"></p>
       </div>`;
-    document.body.appendChild(panel);
+    const drawerBody = document.querySelector('.drawer .drawer-body');
+    const accountHeading = drawerBody && Array.from(drawerBody.querySelectorAll('.section-h')).find(el => el.textContent.trim() === 'Konto');
+    if (drawerBody && accountHeading) drawerBody.insertBefore(panel, accountHeading);
+    else document.body.appendChild(panel);
 
     const launcher = panel.querySelector('.lpt-launch');
     const box = panel.querySelector('.lpt-box');
@@ -8172,6 +8179,233 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     init();
   }
 })();
+</script>
+<script>
+(() => {
+  const FEEDBACK_MODAL_ID = 'ludwig-feedback-modal';
+  const FEEDBACK_STATUS_LABELS = { open: 'Offen', in_progress: 'In Bearbeitung', done: 'Erledigt' };
+  const FEEDBACK_CATEGORY_LABELS = { idea: 'Änderungsidee', bug: 'Fehler melden', other: 'Sonstiges' };
+
+  function feedbackEscape(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+
+  function feedbackSetStatus(message, isError = false) {
+    const status = document.getElementById('ludwig-feedback-status');
+    if (!status) return;
+    status.textContent = message;
+    status.dataset.error = isError ? 'true' : 'false';
+  }
+
+  function ensureFeedbackModal() {
+    let modal = document.getElementById(FEEDBACK_MODAL_ID);
+    if (modal) return modal;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .lf-overlay{position:fixed;inset:0;z-index:2147483500;display:grid;place-items:center;padding:14px;background:#1d170ecc}
+      .lf-overlay[hidden]{display:none!important}
+      .lf-dialog{width:min(620px,100%);max-height:min(90dvh,900px);overflow:auto;background:#fffdf8;color:#3B2A1A;border:1px solid #d9c9ad;border-radius:16px;padding:18px;box-shadow:0 12px 40px #0005;font-family:inherit}
+      .lf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+      .lf-head h2{margin:0;font-size:1.2rem}
+      .lf-head p{margin:5px 0 0;color:#6b5b4b;font-size:.88rem}
+      .lf-close{border:0;background:transparent;color:#3B2A1A;font-size:26px;line-height:1;cursor:pointer;padding:0 4px}
+      .lf-field{display:block;margin:12px 0 6px;font-weight:650;font-size:.9rem}
+      .lf-dialog input,.lf-dialog select,.lf-dialog textarea{width:100%;font:inherit;padding:10px 11px;border:1px solid #cbb99c;border-radius:8px;background:#fff;color:#2f251c}
+      .lf-dialog textarea{min-height:120px;resize:vertical;line-height:1.45}
+      .lf-dialog button:focus-visible,.lf-dialog select:focus-visible,.lf-dialog textarea:focus-visible{outline:3px solid #c58c42;outline-offset:2px}
+      .lf-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:12px}
+      .lf-actions button{min-height:42px;border:0;border-radius:9px;padding:9px 14px;background:#8b653d;color:#fff;font:600 14px/1.2 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+      .lf-actions button.secondary{background:#eee5d8;color:#3B2A1A}
+      .lf-actions button:disabled{opacity:.55;cursor:wait}
+      .lf-status{min-height:18px;margin:9px 0 0;color:#38634b;font-size:.86rem}
+      .lf-status[data-error="true"]{color:#a2332c}
+      .lf-inbox{margin-top:22px;padding-top:16px;border-top:1px solid #e6dccb}
+      .lf-inbox h3{margin:0 0 9px;font-size:1rem}
+      .lf-inbox-list{display:grid;gap:10px}
+      .lf-entry{padding:12px;border:1px solid #e0d4c2;border-radius:10px;background:#fff}
+      .lf-entry-meta{font-size:.8rem;color:#6b5b4b;margin-bottom:6px}
+      .lf-entry-category{font-size:.82rem;font-weight:700;color:#704d2a}
+      .lf-entry-message{margin:6px 0 10px;white-space:normal;overflow-wrap:anywhere;line-height:1.45;font-size:.9rem}
+      .lf-entry-status{display:grid;grid-template-columns:auto minmax(150px,1fr);align-items:center;gap:8px;font-size:.82rem}
+      .lf-empty{padding:12px;background:#f6f0e5;border-radius:8px;color:#6b5b4b}
+      @media(max-width:520px){.lf-dialog{padding:14px}.lf-entry-status{grid-template-columns:1fr}.lf-actions button{flex:1}}
+      @media(prefers-reduced-motion:reduce){.lf-dialog *{scroll-behavior:auto!important}}
+    `;
+    document.head.appendChild(style);
+
+    modal = document.createElement('div');
+    modal.id = FEEDBACK_MODAL_ID;
+    modal.className = 'lf-overlay';
+    modal.hidden = true;
+    modal.innerHTML = `
+      <section class="lf-dialog" role="dialog" aria-modal="true" aria-labelledby="ludwig-feedback-title" tabindex="-1">
+        <div class="lf-head">
+          <div><h2 id="ludwig-feedback-title">Feedback und Ideen</h2><p id="ludwig-feedback-horse"></p></div>
+          <button type="button" class="lf-close" aria-label="Schließen">&times;</button>
+        </div>
+        <form id="ludwig-feedback-form">
+          <label class="lf-field" for="ludwig-feedback-category">Worum geht es?</label>
+          <select id="ludwig-feedback-category" required>
+            <option value="idea">Änderungsidee</option>
+            <option value="bug">Fehler melden</option>
+            <option value="other">Sonstiges</option>
+          </select>
+          <label class="lf-field" for="ludwig-feedback-message">Deine Nachricht</label>
+          <textarea id="ludwig-feedback-message" maxlength="5000" minlength="5" required placeholder="Beschreibe kurz deinen Vorschlag oder das Problem …"></textarea>
+          <p class="lf-status" id="ludwig-feedback-status" aria-live="polite"></p>
+          <div class="lf-actions">
+            <button type="button" class="secondary lf-cancel">Schließen</button>
+            <button type="submit" id="ludwig-feedback-submit">Feedback senden</button>
+          </div>
+        </form>
+        <section class="lf-inbox" id="ludwig-feedback-inbox" hidden>
+          <h3>Admin-Postfach</h3>
+          <p class="lf-status" id="ludwig-feedback-inbox-status" aria-live="polite"></p>
+          <div class="lf-inbox-list" id="ludwig-feedback-inbox-list"></div>
+        </section>
+      </section>`;
+    document.body.appendChild(modal);
+
+    modal.querySelector('.lf-close').addEventListener('click', closeLudwigFeedback);
+    modal.querySelector('.lf-cancel').addEventListener('click', closeLudwigFeedback);
+    modal.querySelector('#ludwig-feedback-form').addEventListener('submit', submitLudwigFeedback);
+    modal.addEventListener('click', event => { if (event.target === modal) closeLudwigFeedback(); });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !modal.hidden) closeLudwigFeedback();
+    });
+    return modal;
+  }
+
+  function openLudwigFeedback() {
+    const client = window.__LUDWIG_SUPABASE_CLIENT__;
+    const profile = window.__LUDWIG_PROFILE__;
+    if (!client || !profile) {
+      if (typeof showToast === 'function') showToast('Bitte zuerst anmelden.');
+      return;
+    }
+    if (typeof closeDrawer === 'function') closeDrawer();
+    const modal = ensureFeedbackModal();
+    const horse = HORSES[currentHorse];
+    modal.querySelector('#ludwig-feedback-horse').textContent = 'Pferd: ' + (horse?.display || currentHorse);
+    modal.querySelector('#ludwig-feedback-status').textContent = '';
+    modal.hidden = false;
+    document.body.classList.add('feedback-open');
+    const inbox = modal.querySelector('#ludwig-feedback-inbox');
+    inbox.hidden = !profile.is_admin;
+    modal.querySelector('#ludwig-feedback-message').focus();
+    if (profile.is_admin) loadLudwigFeedbackInbox();
+  }
+
+  function closeLudwigFeedback() {
+    const modal = document.getElementById(FEEDBACK_MODAL_ID);
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.classList.remove('feedback-open');
+  }
+
+  async function submitLudwigFeedback(event) {
+    event.preventDefault();
+    const client = window.__LUDWIG_SUPABASE_CLIENT__;
+    const profile = window.__LUDWIG_PROFILE__;
+    const horseId = window.__LUDWIG_HORSE_ID_BY_KEY?.get(currentHorse);
+    const category = document.getElementById('ludwig-feedback-category').value;
+    const message = document.getElementById('ludwig-feedback-message').value.trim();
+    const submit = document.getElementById('ludwig-feedback-submit');
+    if (!client || !profile || !horseId) {
+      feedbackSetStatus('Bitte melde dich erneut an und wähle ein freigeschaltetes Pferd.', true);
+      return;
+    }
+    if (message.length < 5 || message.length > 5000) {
+      feedbackSetStatus('Bitte gib eine Nachricht mit 5 bis 5000 Zeichen ein.', true);
+      return;
+    }
+    submit.disabled = true;
+    feedbackSetStatus('Wird gesendet …');
+    try {
+      const { error } = await client.from('app_feedback').insert({ horse_id: horseId, category, message });
+      if (error) throw error;
+      document.getElementById('ludwig-feedback-message').value = '';
+      feedbackSetStatus('Danke! Dein Feedback wurde gespeichert.');
+      if (profile.is_admin) await loadLudwigFeedbackInbox();
+    } catch (error) {
+      feedbackSetStatus(error?.message || 'Feedback konnte nicht gesendet werden. Bitte später erneut versuchen.', true);
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
+  async function loadLudwigFeedbackInbox() {
+    const client = window.__LUDWIG_SUPABASE_CLIENT__;
+    const status = document.getElementById('ludwig-feedback-inbox-status');
+    const list = document.getElementById('ludwig-feedback-inbox-list');
+    if (!client || !window.__LUDWIG_PROFILE__?.is_admin || !status || !list) return;
+    status.dataset.error = 'false';
+    status.textContent = 'Lade Feedback …';
+    list.innerHTML = '';
+    try {
+      const { data: entries, error } = await client.from('app_feedback')
+        .select('id,horse_id,submitted_by,category,message,status,created_at')
+        .order('created_at', { ascending: false }).limit(100);
+      if (error) throw error;
+      const rows = entries || [];
+      const userIds = [...new Set(rows.map(row => row.submitted_by).filter(Boolean))];
+      const { data: profiles, error: profilesError } = userIds.length
+        ? await client.from('profiles').select('auth_user_id,display_name').in('auth_user_id', userIds)
+        : { data: [], error: null };
+      if (profilesError) throw profilesError;
+      const { data: horses, error: horsesError } = await client.from('horses').select('id,display_name');
+      if (horsesError) throw horsesError;
+      const profileNames = new Map((profiles || []).map(row => [row.auth_user_id, row.display_name]));
+      const horseNames = new Map((horses || []).map(row => [row.id, row.display_name]));
+      if (!rows.length) {
+        status.textContent = '';
+        list.innerHTML = '<p class="lf-empty">Es ist noch kein Feedback eingegangen.</p>';
+        return;
+      }
+      status.textContent = `${rows.length} neueste Einsendungen`;
+      list.innerHTML = rows.map(row => {
+        const recordStatus = FEEDBACK_STATUS_LABELS[row.status] ? row.status : 'open';
+        const dateText = row.created_at ? new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(row.created_at)) : '';
+        const message = feedbackEscape(row.message).replace(/\r?\n/g, '<br>');
+        const options = Object.entries(FEEDBACK_STATUS_LABELS).map(([value, label]) => `<option value="${value}"${recordStatus === value ? ' selected' : ''}>${label}</option>`).join('');
+        return `<article class="lf-entry">
+          <div class="lf-entry-meta"><strong>${feedbackEscape(horseNames.get(row.horse_id) || 'Pferd')}</strong> · ${feedbackEscape(profileNames.get(row.submitted_by) || 'Unbekannt')} · ${feedbackEscape(dateText)}</div>
+          <div class="lf-entry-category">${feedbackEscape(FEEDBACK_CATEGORY_LABELS[row.category] || 'Sonstiges')}</div>
+          <p class="lf-entry-message">${message}</p>
+          <label class="lf-entry-status">Status<select data-feedback-status="${feedbackEscape(row.id)}">${options}</select></label>
+        </article>`;
+      }).join('');
+      list.querySelectorAll('[data-feedback-status]').forEach(select => select.addEventListener('change', updateLudwigFeedbackStatus));
+    } catch (error) {
+      status.textContent = error?.message || 'Das Feedback-Postfach konnte nicht geladen werden.';
+      status.dataset.error = 'true';
+    }
+  }
+
+  async function updateLudwigFeedbackStatus(event) {
+    const select = event.currentTarget;
+    const id = select.dataset.feedbackStatus;
+    const client = window.__LUDWIG_SUPABASE_CLIENT__;
+    if (!client || !window.__LUDWIG_PROFILE__?.is_admin || !id) return;
+    select.disabled = true;
+    try {
+      const { error } = await client.from('app_feedback').update({ status: select.value }).eq('id', id);
+      if (error) throw error;
+      const status = document.getElementById('ludwig-feedback-inbox-status');
+      if (status) { status.dataset.error = 'false'; status.textContent = 'Status gespeichert.'; }
+      await loadLudwigFeedbackInbox();
+    } catch (error) {
+      const status = document.getElementById('ludwig-feedback-inbox-status');
+      if (status) { status.dataset.error = 'true'; status.textContent = error?.message || 'Status konnte nicht gespeichert werden.'; }
+      select.disabled = false;
+    }
+  }
+
+  window.openLudwigFeedback = openLudwigFeedback;
+  window.closeLudwigFeedback = closeLudwigFeedback;
+})();
+
 </script>
 </body>
 </html>
