@@ -4,7 +4,7 @@ import webpush from 'npm:web-push@3.6.7';
 type Profile = { id: string; display_name: string; auth_user_id: string | null };
 type PushRow = { id: string; user_id: string; endpoint: string; p256dh: string; auth_key: string };
 type Horse = { id: string; slug: string; display_name: string };
-type ReminderType = 'daily_training' | 'weekly_plan_gap';
+type ReminderType = 'daily_training' | 'weekly_plan_gap' | 'weekly_pat' | 'monthly_feed_plan' | 'monthly_budget';
 type LocalClock = { date: string; hour: number; minute: number; weekday: number };
 
 function json(body: unknown, status = 200) {
@@ -160,6 +160,33 @@ async function subscriptionsForUser(admin: ReturnType<typeof createClient>, auth
   return (data || []) as PushRow[];
 }
 
+async function reminderEnabledFor(
+  admin: ReturnType<typeof createClient>, horseId: string, authUserId: string,
+  reminderType: ReminderType
+): Promise<boolean> {
+  const { data: profile, error: profileError } = await admin.from('profiles')
+    .select('id, is_admin').eq('auth_user_id', authUserId).eq('active', true).maybeSingle();
+  if (profileError) throw profileError;
+  if (!profile) return false;
+
+  const { data: settings, error: settingsError } = await admin.from('user_settings')
+    .select('notifications_enabled').eq('profile_id', profile.id).maybeSingle();
+  if (settingsError) throw settingsError;
+  if (settings?.notifications_enabled === false) return false;
+
+  const { data: preference, error: preferenceError } = await admin.from('horse_notification_preferences')
+    .select('enabled').eq('horse_id', horseId).eq('profile_id', profile.id)
+    .eq('reminder_type', reminderType).maybeSingle();
+  if (preferenceError) throw preferenceError;
+  if (preference) return preference.enabled === true;
+
+  if (profile.is_admin === true) return true;
+  const { data: membership, error: membershipError } = await admin.from('horse_members')
+    .select('can_manage_owner_areas').eq('horse_id', horseId).eq('profile_id', profile.id).maybeSingle();
+  if (membershipError) throw membershipError;
+  return membership?.can_manage_owner_areas === true;
+}
+
 async function claimDelivery(
   admin: ReturnType<typeof createClient>, horseId: string, reminderType: ReminderType,
   localDate: string, authUserId: string, context: Record<string, unknown>
@@ -190,6 +217,7 @@ async function sendToUser(
   reminderType: ReminderType, localDate: string, payload: Record<string, unknown>,
   context: Record<string, unknown>, vapid: { publicKey: string; privateKey: string; subject: string }
 ): Promise<boolean> {
+  if (!(await reminderEnabledFor(admin, horseId, authUserId, reminderType))) return false;
   const deliveryId = await claimDelivery(admin, horseId, reminderType, localDate, authUserId, context);
   if (!deliveryId) return false;
   let sent = false;
@@ -253,6 +281,104 @@ async function sendToOwners(
     if (sent) count++;
   }
   return count;
+}
+
+async function memberProfilesForReminder(
+  admin: ReturnType<typeof createClient>, horse: Horse
+): Promise<Profile[]> {
+  const { data: members, error: membersError } = await admin.from('horse_members')
+    .select('profile_id').eq('horse_id', horse.id);
+  if (membersError) throw membersError;
+  const ids = [...new Set((members || []).map((item: any) => String(item.profile_id || '')).filter(Boolean))];
+  const profiles: Profile[] = [];
+  if (ids.length) {
+    const { data, error } = await admin.from('profiles')
+      .select('id, display_name, auth_user_id').in('id', ids).eq('active', true);
+    if (error) throw error;
+    profiles.push(...((data || []) as Profile[]));
+  }
+  if (horse.slug === 'ludwig') profiles.push(...await ownerAndAdminProfiles(admin, horse.id));
+  const unique = new Map<string, Profile>();
+  for (const profile of profiles) if (profile.auth_user_id) unique.set(profile.auth_user_id, profile);
+  return [...unique.values()];
+}
+
+async function sendToHorseMembers(
+  admin: ReturnType<typeof createClient>, horse: Horse, localDate: string, reminderType: ReminderType,
+  payload: Record<string, unknown>, context: Record<string, unknown>,
+  vapid: { publicKey: string; privateKey: string; subject: string }
+): Promise<number> {
+  const profiles = await memberProfilesForReminder(admin, horse);
+  let count = 0;
+  for (const profile of profiles) {
+    if (!profile.auth_user_id) continue;
+    if (await sendToUser(admin, horse.id, profile.auth_user_id, reminderType, localDate, payload, context, vapid)) count++;
+  }
+  return count;
+}
+
+function weeklyPATWindow(clock: LocalClock): boolean {
+  return clock.weekday === 0 && clock.hour === 12;
+}
+
+function monthlyFeedReminderWindow(clock: LocalClock): boolean {
+  return clock.date.slice(8, 10) === '01' && clock.hour === 12;
+}
+
+function monthlyBudgetReminderWindow(clock: LocalClock): boolean {
+  return clock.date.slice(8, 10) === '25' && clock.hour === 20;
+}
+
+async function processWeeklyPATReminder(
+  admin: ReturnType<typeof createClient>, horse: Horse, dateKey: string,
+  vapid: { publicKey: string; privateKey: string; subject: string }, appUrl: string
+): Promise<{ skipped: boolean; sent: number; since: string }> {
+  const since = addDays(dateKey, -6);
+  const { data: entries, error } = await admin.from('app_entries')
+    .select('entry_date, data, legacy_source').eq('horse_id', horse.id).eq('module', 'pat')
+    .gte('entry_date', since).lte('entry_date', dateKey).limit(100);
+  if (error) throw error;
+  const checks = (entries || []).filter((entry: any) => {
+    const row = entry?.data?.row;
+    const storedHeader = String(entry?.legacy_source || '') === 'supabase-app'
+      && Array.isArray(row) && row[0] === 'Timestamp' && row[1] === 'Datum';
+    return !storedHeader;
+  });
+  if (checks.length) return { skipped: true, sent: 0, since };
+  const label = horseLabel(horse);
+  const payload = {
+    title: `${label}: PAT-Check fällig`,
+    body: `Für ${label} wurde in den letzten sieben Tagen kein PAT-Check gespeichert.`,
+    tag: `${horse.slug}-weekly-pat-${dateKey}`,
+    url: appUrl
+  };
+  const context = { horse_id: horse.id, horse_slug: horse.slug, since, through: dateKey };
+  const sent = await sendToHorseMembers(admin, horse, dateKey, 'weekly_pat', payload, context, vapid);
+  return { skipped: false, sent, since };
+}
+
+async function processMonthlyReminder(
+  admin: ReturnType<typeof createClient>, horse: Horse, reminderType: 'monthly_feed_plan' | 'monthly_budget',
+  dateKey: string, vapid: { publicKey: string; privateKey: string; subject: string }, appUrl: string
+): Promise<{ skipped: boolean; sent: number }> {
+  const periodStart = `${dateKey.slice(0, 7)}-01`;
+  const { data: completion, error: completionError } = await admin.from('horse_reminder_completions')
+    .select('horse_id').eq('horse_id', horse.id).eq('reminder_type', reminderType)
+    .eq('period_start', periodStart).maybeSingle();
+  if (completionError) throw completionError;
+  if (completion) return { skipped: true, sent: 0 };
+  const label = horseLabel(horse);
+  const isFeed = reminderType === 'monthly_feed_plan';
+  const topic = isFeed ? 'Futterplan' : 'Budget';
+  const payload = {
+    title: `${label}: ${topic} erledigen`,
+    body: `Bitte den ${topic} für ${new Date(`${periodStart}T12:00:00Z`).toLocaleDateString('de-DE', { month: 'long', year: 'numeric', timeZone: 'Europe/Berlin' })} prüfen und anschließend als erledigt markieren.`,
+    tag: `${horse.slug}-${reminderType}-${periodStart}`,
+    url: appUrl
+  };
+  const context = { horse_id: horse.id, horse_slug: horse.slug, period_start: periodStart, reminder_type: reminderType };
+  const sent = await sendToHorseMembers(admin, horse, dateKey, reminderType, payload, context, vapid);
+  return { skipped: false, sent };
 }
 
 function horseLabel(horse: Horse): string {
@@ -363,7 +489,10 @@ Deno.serve(async (request: Request) => {
     const results: Record<string, unknown> = {
       local_time: `${clock.date} ${String(clock.hour).padStart(2, '0')}:${String(clock.minute).padStart(2, '0')}`,
       daily_target_date: dailyDate,
-      weekly_window: weeklyReminderWindow(clock)
+      weekly_window: weeklyReminderWindow(clock),
+      weekly_pat_window: weeklyPATWindow(clock),
+      monthly_feed_window: monthlyFeedReminderWindow(clock),
+      monthly_budget_window: monthlyBudgetReminderWindow(clock)
     };
 
     if (dailyDate) {
@@ -379,6 +508,27 @@ Deno.serve(async (request: Request) => {
         weekly[horse.slug] = await processWeeklyReminder(admin, horse, clock.date, { publicKey, privateKey, subject }, appUrl);
       }
       results.weekly = weekly;
+    }
+    if (weeklyPATWindow(clock)) {
+      const pat: Record<string, unknown> = {};
+      for (const horse of horses as Horse[]) {
+        pat[horse.slug] = await processWeeklyPATReminder(admin, horse, clock.date, { publicKey, privateKey, subject }, appUrl);
+      }
+      results.weekly_pat = pat;
+    }
+    if (monthlyFeedReminderWindow(clock)) {
+      const feed: Record<string, unknown> = {};
+      for (const horse of horses as Horse[]) {
+        feed[horse.slug] = await processMonthlyReminder(admin, horse, 'monthly_feed_plan', clock.date, { publicKey, privateKey, subject }, appUrl);
+      }
+      results.monthly_feed_plan = feed;
+    }
+    if (monthlyBudgetReminderWindow(clock)) {
+      const budget: Record<string, unknown> = {};
+      for (const horse of horses as Horse[]) {
+        budget[horse.slug] = await processMonthlyReminder(admin, horse, 'monthly_budget', clock.date, { publicKey, privateKey, subject }, appUrl);
+      }
+      results.monthly_budget = budget;
     }
     return json({ ok: true, ...results });
   } catch (error) {
