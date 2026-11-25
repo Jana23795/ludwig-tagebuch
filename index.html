@@ -8341,8 +8341,17 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
   function horseSlugFromKey(key) {
     try {
       const config = typeof HORSES !== 'undefined' ? HORSES[key] : null;
-      return String(config?.slug || config?.key || key || 'ludwig');
-    } catch (_) { return String(key || 'ludwig'); }
+      const protocolTab = config?.tabs?.protokolle;
+      if (protocolTab && typeof supabaseTabInfo === 'function') {
+        const normalized = supabaseTabInfo(protocolTab)?.slug;
+        if (normalized) return String(normalized);
+      }
+      const fallback = String(config?.slug || key || 'ludwig').trim().toLowerCase();
+      return fallback === 'minstrel' ? 'minstel' : fallback;
+    } catch (_) {
+      const fallback = String(key || 'ludwig').trim().toLowerCase();
+      return fallback === 'minstrel' ? 'minstel' : fallback;
+    }
   }
 
   function accessibleHorseIds() {
@@ -8877,13 +8886,25 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
 
   async function renderHorseProfileExtras() {
     const seq = ++horseRenderSequence;
-    if (!isAuthenticated() || !$('profileGrid')) return;
+    if (!$('profileGrid')) return;
     ensureHorseExtra();
     const section = $('ludwig-horse-extra');
     if (!section) return;
+    const list = $('ludwig-private-doc-list');
+    const upload = $('ludwig-doc-upload');
+    if (!isAuthenticated()) {
+      if (list) list.textContent = 'Bitte anmelden, um private Dokumente zu laden.';
+      if (upload) upload.hidden = true;
+      return;
+    }
     try {
       const horse = await currentHorseRow();
-      if (!horse) return;
+      if (seq !== horseRenderSequence) return;
+      if (!horse) {
+        if (list) list.textContent = `Kein Supabase-Pferdedatensatz für „${horseSlugFromKey(horseKey())}“ gefunden.`;
+        if (upload) upload.hidden = true;
+        return;
+      }
       const [profileResult, docsResult] = await Promise.all([
         client().from('horse_profile_details').select('details,profile_image_path').eq('horse_id', horse.id).maybeSingle(),
         client().from('horse_documents').select('id,label,category,storage_path,mime_type,created_at').eq('horse_id', horse.id).order('created_at', { ascending:false })
