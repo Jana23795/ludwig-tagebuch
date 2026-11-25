@@ -1835,7 +1835,7 @@ nav button.supabase-hidden { display:none !important; }
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec';
-const APP_BUILD = 'ludwig-profile-reminders-v2';
+const APP_BUILD = 'ludwig-profile-reminders-v3';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 window.__LUDWIG_SUPABASE_ENABLED__ = true;
 
@@ -2088,12 +2088,17 @@ async function logoutSupabase() {
   }
 }
 
-function renderProfile() {
+function renderHorseProfileCore() {
   const h = HORSES[currentHorse];
+  if (!h) return;
   const title = document.getElementById('drawerTitle');
-  if (title) title.textContent = h.display;
-  const grid = document.getElementById('profileGrid');
+  if (title) title.textContent = h.display || h.key || currentHorse;
+  const headerName = document.getElementById('header-name');
+  const headerSub = document.getElementById('header-sub');
   const meta = h.meta || {};
+  if (headerName) headerName.textContent = h.display || h.key || currentHorse;
+  if (headerSub) headerSub.textContent = [meta.rasse, meta.alter, meta.groesse, meta.gewicht].filter(Boolean).join(' · ');
+
   const rows = [
     ['Vollständiger Name', h.display],
     ['Rasse', meta.rasse],
@@ -2105,19 +2110,50 @@ function renderProfile() {
   ];
   if (meta.cob) rows.push(['COB', meta.cob]);
   if (meta.krankheiten) rows.push(['Erkrankungen', meta.krankheiten]);
-  if (grid) grid.innerHTML = rows.map(function(kv){
-    return '<div class="profile-row"><div class="k">'+kv[0]+'</div><div class="v">'+(kv[1]||'—')+'</div></div>';
-  }).join('');
+  const grid = document.getElementById('profileGrid');
+  if (grid) {
+    grid.replaceChildren();
+    for (const [label, value] of rows) {
+      const row = document.createElement('div');
+      row.className = 'profile-row';
+      const key = document.createElement('div');
+      key.className = 'k';
+      key.textContent = label;
+      const val = document.createElement('div');
+      val.className = 'v';
+      val.textContent = value === undefined || value === null || String(value).trim() === '' ? '—' : String(value);
+      row.append(key, val);
+      grid.appendChild(row);
+    }
+  }
 
-  const ped = document.getElementById('pedigree');
-  if (ped) ped.innerHTML = (h.pedigree||[]).map(function(n){
-    return '<div class="node"><strong>'+n.name+'</strong><div class="meta">'+(n.note||'')+'</div></div>';
-  }).join('');
-
+  const pedigree = document.getElementById('pedigree');
+  if (pedigree) {
+    pedigree.replaceChildren();
+    for (const item of Array.isArray(h.pedigree) ? h.pedigree : []) {
+      const node = document.createElement('div');
+      node.className = 'node';
+      const name = document.createElement('strong');
+      name.textContent = String(item?.name || '');
+      const note = document.createElement('div');
+      note.className = 'meta';
+      note.textContent = String(item?.note || '');
+      node.append(name, note);
+      pedigree.appendChild(node);
+    }
+  }
   const documents = document.getElementById('profileDocuments');
-  if (documents) documents.innerHTML = '<div style="font-size:.82rem;color:#888;padding:8px 0">Private Dokumente erscheinen im Pferdeprofil.</div>';
+  if (documents) {
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:.82rem;color:#888;padding:8px 0';
+    note.textContent = 'Private Dokumente erscheinen im Pferdeprofil.';
+    documents.replaceChildren(note);
+  }
 }
 
+function renderProfile() {
+  renderHorseProfileCore();
+}
 function downloadDoc(kind) {
   const url = (currentHorse === 'loki' && kind === 'allergie')
     ? PDFS.lokiAllergie
@@ -8864,6 +8900,128 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     await renderMonthlyTasks();
   }
 
+  const horseProfileDefaults = new Map(Object.entries(HORSES).map(([key, horse]) => [key, {
+    display: horse.display,
+    meta: { ...(horse.meta || {}) },
+    pedigree: (horse.pedigree || []).map(item => ({ name:String(item?.name || ''), note:String(item?.note || '') }))
+  }]));
+  const profileDataByHorse = new Map();
+  const profileFieldKeys = ['display','rasse','alter','geburtstag','groesse','gewicht','allergien','krankheiten','cob'];
+  const profileMetaKeys = ['rasse','alter','geburtstag','groesse','gewicht','allergien','krankheiten','cob'];
+  let profileEditorHorseKey = '';
+
+  function horseProfileValues(key, savedFields, savedPedigree) {
+    const defaults = horseProfileDefaults.get(key) || { display:HORSES[key]?.display || '', meta:{}, pedigree:[] };
+    const fields = { display:String(defaults.display || '') };
+    for (const field of profileMetaKeys) fields[field] = String(defaults.meta?.[field] ?? '');
+    if (savedFields && typeof savedFields === 'object' && !Array.isArray(savedFields)) {
+      for (const field of profileFieldKeys) {
+        if (Object.prototype.hasOwnProperty.call(savedFields, field) && savedFields[field] !== null && savedFields[field] !== undefined) {
+          fields[field] = String(savedFields[field]);
+        }
+      }
+    }
+    const sourcePedigree = Array.isArray(savedPedigree) ? savedPedigree : defaults.pedigree;
+    const pedigree = sourcePedigree.slice(0, 80).map(item => ({
+      name:String(item?.name ?? '').slice(0, 160),
+      note:String(item?.note ?? '').slice(0, 600)
+    }));
+    return { fields, pedigree };
+  }
+
+  function applyHorseProfileToConfig(key, values) {
+    const config = HORSES[key];
+    if (!config) return;
+    config.display = values.fields.display;
+    config.meta = { ...(horseProfileDefaults.get(key)?.meta || {}), ...config.meta };
+    for (const field of profileMetaKeys) config.meta[field] = values.fields[field];
+    config.pedigree = values.pedigree.map(item => ({ ...item }));
+  }
+
+  function fillProfileEditor(values) {
+    const mapping = {
+      display:'ludwig-profile-display', rasse:'ludwig-profile-rasse', alter:'ludwig-profile-alter',
+      geburtstag:'ludwig-profile-geburtstag', groesse:'ludwig-profile-groesse', gewicht:'ludwig-profile-gewicht',
+      allergien:'ludwig-profile-allergien', krankheiten:'ludwig-profile-krankheiten', cob:'ludwig-profile-cob'
+    };
+    for (const [field, id] of Object.entries(mapping)) {
+      const input = $(id);
+      if (input) input.value = values.fields[field] || '';
+    }
+    renderPedigreeEditor(values.pedigree);
+  }
+
+  function renderPedigreeEditor(entries) {
+    const container = $('ludwig-pedigree-editor');
+    if (!container) return;
+    container.replaceChildren();
+    (Array.isArray(entries) ? entries : []).slice(0, 80).forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'ludwig-pedigree-row';
+      row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:start;border:1px solid var(--border);border-radius:8px;padding:8px';
+      const fields = document.createElement('div');
+      fields.style.cssText = 'display:grid;gap:6px';
+      const name = document.createElement('input');
+      name.type = 'text'; name.maxLength = 160; name.value = String(item?.name || '');
+      name.placeholder = 'Name'; name.setAttribute('aria-label', `Abstammungseintrag ${index + 1}: Name`);
+      const note = document.createElement('textarea');
+      note.maxLength = 600; note.rows = 2; note.value = String(item?.note || '');
+      note.placeholder = 'Verwandtschaft / Notiz'; note.setAttribute('aria-label', `Abstammungseintrag ${index + 1}: Notiz`);
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.className = 'btn-toggle'; remove.textContent = 'Entfernen';
+      remove.setAttribute('aria-label', `Abstammungseintrag ${index + 1} entfernen`);
+      remove.addEventListener('click', () => { row.remove(); });
+      fields.append(name, note);
+      row.append(fields, remove);
+      container.appendChild(row);
+    });
+  }
+
+  function profileCanEdit() {
+    return Boolean(isAuthenticated() && typeof supabaseCanManageOwnerArea === 'function' && supabaseCanManageOwnerArea());
+  }
+
+  function closeHorseProfileEditor() {
+    const editor = $('ludwig-profile-editor');
+    if (editor) editor.hidden = true;
+    profileEditorHorseKey = '';
+  }
+
+  function startHorseProfileEdit() {
+    if (!profileCanEdit()) {
+      showToast('Nur Besitzer/Admins dürfen das Pferdeprofil bearbeiten.');
+      return;
+    }
+    const key = horseKey();
+    const values = profileDataByHorse.get(key);
+    if (!values) {
+      setStatus('ludwig-horse-profile-status', 'Das Pferdeprofil wird noch geladen. Bitte kurz warten.', true);
+      return;
+    }
+    profileEditorHorseKey = key;
+    fillProfileEditor(values);
+    $('ludwig-profile-editor').hidden = false;
+    $('ludwig-profile-display')?.focus();
+  }
+
+  async function resolveHorseOwnerAccess(horseId) {
+    try {
+      const { data: memberships, error } = await client().from('horse_members')
+        .select('profile_id').eq('horse_id', horseId).eq('can_manage_owner_areas', true);
+      if (error) throw error;
+      const ids = [...new Set((memberships || []).map(row => row.profile_id).filter(Boolean))];
+      if (!ids.length) return 'Keine Besitzer-/Admin-Mitgliedschaft mit Besitzerzugriff für dieses Pferd hinterlegt.';
+      const { data: profiles, error: profileError } = await client().from('profiles')
+        .select('id,display_name,username').in('id', ids).eq('active', true);
+      if (profileError) throw profileError;
+      const names = (profiles || []).map(profile => String(profile.display_name || profile.username || '').trim()).filter(Boolean);
+      return names.length ? names.join(', ') : 'Besitzerzugriff ist in horse_members hinterlegt; Namen sind nicht verfügbar.';
+    } catch (error) {
+      console.warn('Besitzerzugriff konnte nicht geladen werden.', error);
+      return 'Besitzerzugriff konnte nicht geladen werden.';
+    }
+  }
+
   function ensureHorseExtra() {
     const grid = $('profileGrid');
     if (!grid || $('ludwig-horse-extra')) return $('ludwig-horse-extra');
@@ -8871,14 +9029,41 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     section.id = 'ludwig-horse-extra';
     section.innerHTML = `
       <h3>Pferdeprofil</h3>
-      <div><strong>Besitzer:</strong> <span id="ludwig-owner-display">-</span></div>
-      <div id="ludwig-owner-editor" hidden><label class="ludwig-settings-field" for="ludwig-owner-name">Besitzer bearbeiten<input id="ludwig-owner-name" type="text" maxlength="160" /></label><button class="btn" type="button" id="ludwig-owner-save">Besitzer speichern</button></div>
+      <div><strong>Besitzerzugriff laut SQL:</strong> <span id="ludwig-owner-display">Wird geladen …</span></div>
+      <div id="ludwig-profile-edit-controls" hidden><button class="btn" type="button" id="ludwig-profile-edit-toggle">Steckbrief &amp; Abstammung bearbeiten</button></div>
+      <div id="ludwig-profile-editor" hidden>
+        <label class="ludwig-settings-field" for="ludwig-profile-display">Vollständiger Name<input id="ludwig-profile-display" type="text" maxlength="160" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-rasse">Rasse<input id="ludwig-profile-rasse" type="text" maxlength="160" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-alter">Alter<input id="ludwig-profile-alter" type="text" maxlength="80" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-geburtstag">Geburtstag<input id="ludwig-profile-geburtstag" type="text" maxlength="40" placeholder="z. B. 14.04.2008" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-groesse">Größe<input id="ludwig-profile-groesse" type="text" maxlength="40" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-gewicht">Gewicht<input id="ludwig-profile-gewicht" type="text" maxlength="40" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-allergien">Allergien<input id="ludwig-profile-allergien" type="text" maxlength="300" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-krankheiten">Erkrankungen<input id="ludwig-profile-krankheiten" type="text" maxlength="300" /></label>
+        <label class="ludwig-settings-field" for="ludwig-profile-cob">COB / Zusatzangabe<input id="ludwig-profile-cob" type="text" maxlength="120" /></label>
+        <h4>Abstammung</h4>
+        <div id="ludwig-pedigree-editor" style="display:grid;gap:8px"></div>
+        <button class="btn-toggle" type="button" id="ludwig-pedigree-add">Abstammungseintrag hinzufügen</button>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn" type="button" id="ludwig-profile-save">Steckbrief speichern</button>
+          <button class="btn-toggle" type="button" id="ludwig-profile-cancel">Abbrechen</button>
+        </div>
+      </div>
       <div id="ludwig-horse-photo-wrap"><img id="ludwig-horse-photo" class="ludwig-horse-img" alt="Pferdeprofilbild" hidden /></div>
       <div id="ludwig-horse-photo-editor" hidden><label class="ludwig-settings-field" for="ludwig-horse-photo-file">Profilbild hochladen<input id="ludwig-horse-photo-file" type="file" accept="image/jpeg,image/png,image/webp" /></label><small>JPG, PNG oder WebP; maximal 5 MB.</small></div>
       <p id="ludwig-horse-profile-status" class="ludwig-settings-status" role="status" aria-live="polite"></p>
       <div id="ludwig-private-docs"><h3>Private Blutbilder &amp; Dokumente</h3><div id="ludwig-private-doc-list">Lade …</div><div id="ludwig-doc-upload" hidden><label class="ludwig-settings-field" for="ludwig-doc-label">Bezeichnung<input id="ludwig-doc-label" type="text" maxlength="120" placeholder="z. B. Blutbild Mai 2026" /></label><label class="ludwig-settings-field" for="ludwig-doc-category">Kategorie<select id="ludwig-doc-category"><option value="bloodwork">Blutbild</option><option value="allergy">Allergietest</option><option value="other">Sonstiges</option></select></label><label class="ludwig-settings-field" for="ludwig-doc-file">Foto oder PDF hochladen<input id="ludwig-doc-file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" /></label><button class="btn" type="button" id="ludwig-doc-upload-button">Dokument hochladen</button></div><p id="ludwig-doc-status" class="ludwig-settings-status" role="status" aria-live="polite"></p></div>`;
     grid.insertAdjacentElement('afterend', section);
-    $('ludwig-owner-save').addEventListener('click', saveHorseOwner);
+    $('ludwig-profile-edit-toggle').addEventListener('click', startHorseProfileEdit);
+    $('ludwig-pedigree-add').addEventListener('click', () => {
+      const current = [...($('ludwig-pedigree-editor')?.querySelectorAll('.ludwig-pedigree-row') || [])].length;
+      if (current >= 80) { showToast('Maximal 80 Abstammungseinträge.'); return; }
+      const rows = [...($('ludwig-pedigree-editor')?.querySelectorAll('.ludwig-pedigree-row') || [])].map(row => ({ name:row.querySelector('input')?.value || '', note:row.querySelector('textarea')?.value || '' }));
+      rows.push({ name:'', note:'' });
+      renderPedigreeEditor(rows);
+    });
+    $('ludwig-profile-save').addEventListener('click', saveHorseProfile);
+    $('ludwig-profile-cancel').addEventListener('click', closeHorseProfileEditor);
     $('ludwig-horse-photo-file').addEventListener('change', uploadHorsePhoto);
     $('ludwig-doc-upload-button').addEventListener('click', uploadHorseDocument);
     return section;
@@ -8888,41 +9073,48 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     const seq = ++horseRenderSequence;
     if (!$('profileGrid')) return;
     ensureHorseExtra();
-    const section = $('ludwig-horse-extra');
-    if (!section) return;
     const list = $('ludwig-private-doc-list');
     const upload = $('ludwig-doc-upload');
+    const canManage = profileCanEdit();
+    $('ludwig-profile-edit-controls').hidden = !canManage;
+    $('ludwig-horse-photo-editor').hidden = !canManage;
     if (!isAuthenticated()) {
+      $('ludwig-owner-display').textContent = 'Bitte anmelden, um Besitzerzugriff anzuzeigen.';
       if (list) list.textContent = 'Bitte anmelden, um private Dokumente zu laden.';
       if (upload) upload.hidden = true;
       return;
     }
     try {
+      const keyAtStart = horseKey();
       const horse = await currentHorseRow();
-      if (seq !== horseRenderSequence) return;
+      if (seq !== horseRenderSequence || keyAtStart !== horseKey()) return;
       if (!horse) {
-        if (list) list.textContent = `Kein Supabase-Pferdedatensatz für „${horseSlugFromKey(horseKey())}“ gefunden.`;
+        $('ludwig-owner-display').textContent = `Kein Supabase-Pferdedatensatz für „${horseSlugFromKey(keyAtStart)}“ gefunden.`;
+        if (list) list.textContent = 'Pferdedatensatz nicht gefunden.';
         if (upload) upload.hidden = true;
         return;
       }
-      const [profileResult, docsResult] = await Promise.all([
+      const [profileResult, docsResult, ownerAccess] = await Promise.all([
         client().from('horse_profile_details').select('details,profile_image_path').eq('horse_id', horse.id).maybeSingle(),
-        client().from('horse_documents').select('id,label,category,storage_path,mime_type,created_at').eq('horse_id', horse.id).order('created_at', { ascending:false })
+        client().from('horse_documents').select('id,label,category,storage_path,mime_type,created_at').eq('horse_id', horse.id).order('created_at', { ascending:false }),
+        resolveHorseOwnerAccess(horse.id)
       ]);
       if (profileResult.error) throw profileResult.error;
       if (docsResult.error) throw docsResult.error;
-      if (seq !== horseRenderSequence) return;
+      if (seq !== horseRenderSequence || keyAtStart !== horseKey()) return;
       const row = profileResult.data || {};
-      const details = row.details && typeof row.details === 'object' ? row.details : {};
-      const ownerName = String(details.owner_name || '').trim();
-      $('ludwig-owner-display').textContent = ownerName || 'Nicht angegeben';
-      const canManage = typeof supabaseCanManageOwnerArea === 'function' && supabaseCanManageOwnerArea();
-      $('ludwig-owner-editor').hidden = !canManage;
-      $('ludwig-horse-photo-editor').hidden = !canManage;
-      if (canManage) $('ludwig-owner-name').value = ownerName;
+      const details = row.details && typeof row.details === 'object' && !Array.isArray(row.details) ? row.details : {};
+      const values = horseProfileValues(keyAtStart, details.profile_fields, details.pedigree);
+      profileDataByHorse.set(keyAtStart, values);
+      applyHorseProfileToConfig(keyAtStart, values);
+      if (typeof renderHorseProfileCore === 'function') renderHorseProfileCore();
+      $('ludwig-owner-display').textContent = ownerAccess;
+      $('ludwig-profile-edit-controls').hidden = !profileCanEdit();
+      $('ludwig-horse-photo-editor').hidden = !profileCanEdit();
+      if (profileEditorHorseKey && profileEditorHorseKey !== keyAtStart) closeHorseProfileEditor();
       const photo = $('ludwig-horse-photo');
       const photoUrl = await signedUrl(row.profile_image_path);
-      if (seq !== horseRenderSequence) return;
+      if (seq !== horseRenderSequence || keyAtStart !== horseKey()) return;
       if (photoUrl) { photo.src = photoUrl; photo.hidden = false; }
       else { photo.removeAttribute('src'); photo.hidden = true; }
       const headerImg = document.querySelector('.avatar-btn img');
@@ -8930,24 +9122,68 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
       await renderHorseDocuments(horse, docsResult.data || []);
     } catch (error) {
       setStatus('ludwig-horse-profile-status', error.message || 'Pferdeprofil konnte nicht geladen werden.', true);
-      const list = $('ludwig-private-doc-list');
+      $('ludwig-owner-display').textContent = 'Pferdeprofil oder Besitzerzugriff konnte nicht geladen werden.';
       if (list) list.textContent = 'Private Dokumente konnten nicht geladen werden.';
     }
   }
 
-  async function saveHorseOwner() {
-    const horse = await currentHorseRow();
+  async function saveHorseProfile() {
+    const key = profileEditorHorseKey;
+    const button = $('ludwig-profile-save');
     const profile = currentProfile();
-    if (!horse || !profile?.id || !client()) return;
-    const input = $('ludwig-owner-name');
-    const ownerName = String(input?.value || '').trim();
-    const { data: existing, error: readError } = await client().from('horse_profile_details').select('details,profile_image_path').eq('horse_id', horse.id).maybeSingle();
-    if (readError) { setStatus('ludwig-horse-profile-status', readError.message, true); return; }
-    const details = { ...(existing?.details || {}), owner_name: ownerName };
-    const { error } = await client().from('horse_profile_details').upsert({ horse_id:horse.id, details, profile_image_path:existing?.profile_image_path || null, updated_by:profile.id, updated_at:new Date().toISOString() }, { onConflict:'horse_id' });
-    if (error) { setStatus('ludwig-horse-profile-status', error.message || 'Besitzer konnte nicht gespeichert werden.', true); return; }
-    $('ludwig-owner-display').textContent = ownerName || 'Nicht angegeben';
-    setStatus('ludwig-horse-profile-status', 'Besitzer gespeichert.');
+    if (!key || key !== horseKey() || !profile?.id || !client() || !profileCanEdit()) {
+      setStatus('ludwig-horse-profile-status', 'Bearbeitung nicht möglich: Pferd oder Berechtigung hat sich geändert.', true);
+      return;
+    }
+    const fields = {
+      display:String($('ludwig-profile-display')?.value || '').trim(),
+      rasse:String($('ludwig-profile-rasse')?.value || '').trim(),
+      alter:String($('ludwig-profile-alter')?.value || '').trim(),
+      geburtstag:String($('ludwig-profile-geburtstag')?.value || '').trim(),
+      groesse:String($('ludwig-profile-groesse')?.value || '').trim(),
+      gewicht:String($('ludwig-profile-gewicht')?.value || '').trim(),
+      allergien:String($('ludwig-profile-allergien')?.value || '').trim(),
+      krankheiten:String($('ludwig-profile-krankheiten')?.value || '').trim(),
+      cob:String($('ludwig-profile-cob')?.value || '').trim()
+    };
+    if (!fields.display) {
+      setStatus('ludwig-horse-profile-status', 'Bitte einen vollständigen Namen eingeben.', true);
+      $('ludwig-profile-display')?.focus();
+      return;
+    }
+    const pedigree = [...($('ludwig-pedigree-editor')?.querySelectorAll('.ludwig-pedigree-row') || [])]
+      .map(row => ({ name:String(row.querySelector('input')?.value || '').trim().slice(0,160), note:String(row.querySelector('textarea')?.value || '').trim().slice(0,600) }))
+      .filter(item => item.name || item.note).slice(0,80);
+    if (button) { button.disabled = true; button.textContent = 'Speichere …'; }
+    setStatus('ludwig-horse-profile-status', 'Speichere Steckbrief …');
+    try {
+      const horse = await currentHorseRow();
+      if (!horse || key !== horseKey() || !profileCanEdit()) throw new Error('Pferd oder Berechtigung hat sich geändert.');
+      const { data: existing, error: readError } = await client().from('horse_profile_details')
+        .select('details,profile_image_path').eq('horse_id', horse.id).maybeSingle();
+      if (readError) throw readError;
+      if (key !== horseKey() || !profileCanEdit()) throw new Error('Pferd oder Berechtigung hat sich geändert.');
+      const details = existing?.details && typeof existing.details === 'object' && !Array.isArray(existing.details) ? { ...existing.details } : {};
+      delete details.owner_name;
+      details.profile_fields = fields;
+      details.pedigree = pedigree;
+      const { error } = await client().from('horse_profile_details').upsert({
+        horse_id:horse.id, details, profile_image_path:existing?.profile_image_path || null,
+        updated_by:profile.id, updated_at:new Date().toISOString()
+      }, { onConflict:'horse_id' });
+      if (error) throw error;
+      const values = { fields, pedigree };
+      profileDataByHorse.set(key, values);
+      applyHorseProfileToConfig(key, values);
+      if (typeof renderHorseProfileCore === 'function') renderHorseProfileCore();
+      closeHorseProfileEditor();
+      setStatus('ludwig-horse-profile-status', 'Steckbrief und Abstammung gespeichert.');
+      void renderHorseProfileExtras();
+    } catch (error) {
+      setStatus('ludwig-horse-profile-status', error.message || 'Steckbrief konnte nicht gespeichert werden.', true);
+    } finally {
+      if (button) { button.disabled = false; button.textContent = 'Steckbrief speichern'; }
+    }
   }
 
   async function uploadHorsePhoto(event) {
