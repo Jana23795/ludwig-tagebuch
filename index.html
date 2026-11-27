@@ -1835,7 +1835,7 @@ nav button.supabase-hidden { display:none !important; }
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec';
-const APP_BUILD = 'ludwig-profile-reminders-v4';
+const APP_BUILD = 'ludwig-profile-reminders-v5';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 window.__LUDWIG_SUPABASE_ENABLED__ = true;
 
@@ -8131,8 +8131,9 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
 
     const style = document.createElement('style');
     style.textContent = `
-      .lf-overlay{position:fixed;inset:0;z-index:2147483500;display:grid;place-items:center;padding:14px;background:#1d170ecc}
-      .lf-overlay[hidden]{display:none!important}
+      #ludwig-feedback-modal{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:14px;border:0;background:#1d170ecc;color:inherit;display:grid;place-items:center;overflow:auto}
+      #ludwig-feedback-modal:not([open]){display:none}
+      #ludwig-feedback-modal::backdrop{background:transparent}
       .lf-dialog{width:min(620px,100%);max-height:min(90dvh,900px);overflow:auto;background:#fffdf8;color:#3B2A1A;border:1px solid #d9c9ad;border-radius:16px;padding:18px;box-shadow:0 12px 40px #0005;font-family:inherit}
       .lf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
       .lf-head h2{margin:0;font-size:1.2rem}
@@ -8162,12 +8163,12 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     `;
     document.head.appendChild(style);
 
-    modal = document.createElement('div');
+    modal = document.createElement('dialog');
     modal.id = FEEDBACK_MODAL_ID;
     modal.className = 'lf-overlay';
-    modal.hidden = true;
+    modal.setAttribute('aria-labelledby', 'ludwig-feedback-title');
     modal.innerHTML = `
-      <section class="lf-dialog" role="dialog" aria-modal="true" aria-labelledby="ludwig-feedback-title" tabindex="-1">
+      <section class="lf-dialog" tabindex="-1">
         <div class="lf-head">
           <div><h2 id="ludwig-feedback-title">Feedback und Ideen</h2><p id="ludwig-feedback-horse"></p></div>
           <button type="button" class="lf-close" aria-label="Schließen">&times;</button>
@@ -8199,9 +8200,7 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     modal.querySelector('.lf-cancel').addEventListener('click', closeLudwigFeedback);
     modal.querySelector('#ludwig-feedback-form').addEventListener('submit', submitLudwigFeedback);
     modal.addEventListener('click', event => { if (event.target === modal) closeLudwigFeedback(); });
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && !modal.hidden) closeLudwigFeedback();
-    });
+    modal.addEventListener('close', () => document.body.classList.remove('feedback-open'));
     return modal;
   }
 
@@ -8213,11 +8212,13 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
       return;
     }
     if (typeof closeDrawer === 'function') closeDrawer();
+    const settingsDialog = document.getElementById('ludwig-settings-dialog');
+    if (settingsDialog?.open) settingsDialog.close();
     const modal = ensureFeedbackModal();
     const horse = HORSES[currentHorse];
     modal.querySelector('#ludwig-feedback-horse').textContent = 'Pferd: ' + (horse?.display || currentHorse);
     modal.querySelector('#ludwig-feedback-status').textContent = '';
-    modal.hidden = false;
+    if (!modal.open) modal.showModal();
     document.body.classList.add('feedback-open');
     const inbox = modal.querySelector('#ludwig-feedback-inbox');
     inbox.hidden = !profile.is_admin;
@@ -8228,7 +8229,7 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
   function closeLudwigFeedback() {
     const modal = document.getElementById(FEEDBACK_MODAL_ID);
     if (!modal) return;
-    modal.hidden = true;
+    if (modal.open) modal.close();
     document.body.classList.remove('feedback-open');
   }
 
@@ -9004,24 +9005,6 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     $('ludwig-profile-display')?.focus();
   }
 
-  async function resolveHorseOwnerAccess(horseId) {
-    try {
-      const { data: memberships, error } = await client().from('horse_members')
-        .select('profile_id').eq('horse_id', horseId).eq('can_manage_owner_areas', true);
-      if (error) throw error;
-      const ids = [...new Set((memberships || []).map(row => row.profile_id).filter(Boolean))];
-      if (!ids.length) return 'Keine Besitzer-/Admin-Mitgliedschaft mit Besitzerzugriff für dieses Pferd hinterlegt.';
-      const { data: profiles, error: profileError } = await client().from('profiles')
-        .select('id,display_name,username').in('id', ids).eq('active', true);
-      if (profileError) throw profileError;
-      const names = (profiles || []).map(profile => String(profile.display_name || profile.username || '').trim()).filter(Boolean);
-      return names.length ? names.join(', ') : 'Besitzerzugriff ist in horse_members hinterlegt; Namen sind nicht verfügbar.';
-    } catch (error) {
-      console.warn('Besitzerzugriff konnte nicht geladen werden.', error);
-      return 'Besitzerzugriff konnte nicht geladen werden.';
-    }
-  }
-
   function ensureHorseExtra() {
     const grid = $('profileGrid');
     if (!grid || $('ludwig-horse-extra')) return $('ludwig-horse-extra');
@@ -9029,7 +9012,6 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     section.id = 'ludwig-horse-extra';
     section.innerHTML = `
       <h3>Pferdeprofil</h3>
-      <div><strong>Besitzerzugriff laut SQL:</strong> <span id="ludwig-owner-display">Wird geladen …</span></div>
       <div id="ludwig-profile-edit-controls" hidden><button class="btn" type="button" id="ludwig-profile-edit-toggle">Steckbrief &amp; Abstammung bearbeiten</button></div>
       <div id="ludwig-profile-editor" hidden>
         <label class="ludwig-settings-field" for="ludwig-profile-display">Vollständiger Name<input id="ludwig-profile-display" type="text" maxlength="160" /></label>
@@ -9079,7 +9061,6 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
     $('ludwig-profile-edit-controls').hidden = !canManage;
     $('ludwig-horse-photo-editor').hidden = !canManage;
     if (!isAuthenticated()) {
-      $('ludwig-owner-display').textContent = 'Bitte anmelden, um Besitzerzugriff anzuzeigen.';
       if (list) list.textContent = 'Bitte anmelden, um private Dokumente zu laden.';
       if (upload) upload.hidden = true;
       return;
@@ -9089,15 +9070,13 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
       const horse = await currentHorseRow();
       if (seq !== horseRenderSequence || keyAtStart !== horseKey()) return;
       if (!horse) {
-        $('ludwig-owner-display').textContent = `Kein Supabase-Pferdedatensatz für „${horseSlugFromKey(keyAtStart)}“ gefunden.`;
         if (list) list.textContent = 'Pferdedatensatz nicht gefunden.';
         if (upload) upload.hidden = true;
         return;
       }
-      const [profileResult, docsResult, ownerAccess] = await Promise.all([
+      const [profileResult, docsResult] = await Promise.all([
         client().from('horse_profile_details').select('details,profile_image_path').eq('horse_id', horse.id).maybeSingle(),
-        client().from('horse_documents').select('id,label,category,storage_path,mime_type,created_at').eq('horse_id', horse.id).order('created_at', { ascending:false }),
-        resolveHorseOwnerAccess(horse.id)
+        client().from('horse_documents').select('id,label,category,storage_path,mime_type,created_at').eq('horse_id', horse.id).order('created_at', { ascending:false })
       ]);
       if (profileResult.error) throw profileResult.error;
       if (docsResult.error) throw docsResult.error;
@@ -9108,7 +9087,6 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
       profileDataByHorse.set(keyAtStart, values);
       applyHorseProfileToConfig(keyAtStart, values);
       if (typeof renderHorseProfileCore === 'function') renderHorseProfileCore();
-      $('ludwig-owner-display').textContent = ownerAccess;
       $('ludwig-profile-edit-controls').hidden = !profileCanEdit();
       $('ludwig-horse-photo-editor').hidden = !profileCanEdit();
       if (profileEditorHorseKey && profileEditorHorseKey !== keyAtStart) closeHorseProfileEditor();
@@ -9122,7 +9100,6 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
       await renderHorseDocuments(horse, docsResult.data || []);
     } catch (error) {
       setStatus('ludwig-horse-profile-status', error.message || 'Pferdeprofil konnte nicht geladen werden.', true);
-      $('ludwig-owner-display').textContent = 'Pferdeprofil oder Besitzerzugriff konnte nicht geladen werden.';
       if (list) list.textContent = 'Private Dokumente konnten nicht geladen werden.';
     }
   }
