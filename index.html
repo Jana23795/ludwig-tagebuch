@@ -1835,7 +1835,7 @@ nav button.supabase-hidden { display:none !important; }
 // Nach dem Einrichten des Scripts hier die URL eintragen:
 // ═══════════════════════════════════════════════════════
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2OLm85kyZOYRsiSpHAZJP8OkpjhUFxx-HE44jjJYtupFo13cibhdbgB5qKg-M-l8LEg/exec';
-const APP_BUILD = 'ludwig-profile-reminders-v3';
+const APP_BUILD = 'ludwig-profile-reminders-v4';
 const SHEET_ID   = '1cd4FTxAs161478ACAbbx9Bc6Vhy3v-A2e96b_kzPtZE';
 window.__LUDWIG_SUPABASE_ENABLED__ = true;
 
@@ -9577,6 +9577,131 @@ function rememberBridlePreferencesFromRow(horseKey,row) {
   else setup();
 })();
 
+</script>
+<script>
+(() => {
+  const GUIDE_ID = 'ludwig-push-guide';
+  const MEMORY_SEEN = new Set();
+  let shownStorageKey = '';
+
+  function ensureGuide() {
+    let guide = document.getElementById(GUIDE_ID);
+    if (guide) return guide;
+    const style = document.createElement('style');
+    style.id = 'ludwig-push-guide-style';
+    style.textContent = `
+      #${GUIDE_ID}{width:min(560px,calc(100vw - 24px));max-width:560px;max-height:min(90vh,780px);margin:auto;padding:0;border:1px solid #d9c9ad;border-radius:16px;background:#fffdf8;color:#3b2a1a;box-shadow:0 20px 60px rgba(30,20,10,.28);overflow:auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+      #${GUIDE_ID}::backdrop{background:rgba(24,18,12,.56)}
+      #${GUIDE_ID} *{box-sizing:border-box}
+      #${GUIDE_ID} .lpg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 20px 8px}
+      #${GUIDE_ID} h2{margin:0;color:#3b2a1a;font:700 1.35rem/1.25 'Playfair Display',Georgia,serif}
+      #${GUIDE_ID} .lpg-close{flex:0 0 auto;border:0;border-radius:8px;background:transparent;color:#5a4938;font-size:1.55rem;line-height:1;padding:2px 7px;cursor:pointer}
+      #${GUIDE_ID} .lpg-body{padding:0 20px 20px;font-size:.92rem;line-height:1.5}
+      #${GUIDE_ID} .lpg-body p{margin:8px 0 12px}
+      #${GUIDE_ID} ol{display:grid;gap:10px;padding-left:1.35rem;margin:14px 0}
+      #${GUIDE_ID} li{padding-left:2px}
+      #${GUIDE_ID} .lpg-note{padding:10px 12px;border-left:4px solid #b5803b;border-radius:6px;background:#f4ead8;font-size:.83rem}
+      #${GUIDE_ID} .lpg-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+      #${GUIDE_ID} .lpg-actions button{min-height:44px;border:0;border-radius:9px;padding:10px 14px;font:600 .9rem system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+      #${GUIDE_ID} .lpg-primary{background:#3b2a1a;color:#fff8e9}
+      #${GUIDE_ID} .lpg-secondary{border:1px solid #d9c9ad!important;background:#fff;color:#3b2a1a}
+      #${GUIDE_ID} button:focus-visible{outline:3px solid #c58c42;outline-offset:3px}
+      @media(max-width:480px){#${GUIDE_ID}{width:calc(100vw - 16px);max-height:92vh;border-radius:13px}#${GUIDE_ID} .lpg-head{padding:16px 15px 6px}#${GUIDE_ID} .lpg-body{padding:0 15px 16px;font-size:.88rem}#${GUIDE_ID} .lpg-actions{display:grid}#${GUIDE_ID} .lpg-actions button{width:100%}}
+      @media(prefers-reduced-motion:reduce){#${GUIDE_ID} *,#${GUIDE_ID} *::before,#${GUIDE_ID} *::after{scroll-behavior:auto!important;transition:none!important}}
+    `;
+    document.head.appendChild(style);
+    guide = document.createElement('dialog');
+    guide.id = GUIDE_ID;
+    guide.setAttribute('aria-labelledby', 'ludwig-push-guide-title');
+    guide.innerHTML = `
+      <div class="lpg-head">
+        <h2 id="ludwig-push-guide-title">Push-Erinnerungen einrichten</h2>
+        <button type="button" class="lpg-close" aria-label="Anleitung schließen">×</button>
+      </div>
+      <div class="lpg-body">
+        <p>Damit die Erinnerungen bei der richtigen Person ankommen, müssen Push und die jeweilige Reminder-Art eingerichtet sein:</p>
+        <ol>
+          <li><strong>Push für dieses Gerät aktivieren:</strong> Im Bereich „Push für dieses Gerät“ auf „Push aktivieren“ tippen und die Browser-Benachrichtigungen erlauben. Auf iPhone/iPad muss Ludwig zuvor über „Teilen → Zum Home-Bildschirm“ installiert und von dort geöffnet werden.</li>
+          <li><strong>Erinnerungen einschalten:</strong> Den globalen Schalter aktivieren und darunter beim jeweiligen Pferd die gewünschte Erinnerung auswählen. Normale Pferde-Mitglieder müssen die Erinnerungen ausdrücklich einschalten.</li>
+          <li><strong>Zuständige Person:</strong> Wer im Wochenplan eingetragen ist, muss aus der verknüpften Personenauswahl gewählt sein und Push auf dem eigenen Gerät aktiviert haben. Ist die zugewiesene Person nicht erreichbar oder hat sie die Erinnerung ausgeschaltet, geht die Tageserinnerung ersatzweise an Besitzer/Admins.</li>
+        </ol>
+        <p class="lpg-note">Die tägliche Erinnerung um 22:00 Uhr wird nur verschickt, wenn für das Pferd noch kein Trainingsprotokoll des Tages gespeichert ist. Nach dem Aktivieren kannst du im Gerätebereich eine Testnachricht senden.</p>
+        <div class="lpg-actions">
+          <button type="button" class="lpg-primary" id="ludwig-push-guide-open-settings">Push jetzt einrichten</button>
+          <button type="button" class="lpg-secondary" id="ludwig-push-guide-dismiss">Später schließen</button>
+        </div>
+      </div>`;
+    document.body.appendChild(guide);
+
+    const markSeen = key => {
+      if (!key) return;
+      MEMORY_SEEN.add(key);
+      try { localStorage.setItem(key, '1'); } catch (_) {}
+    };
+    guide.addEventListener('close', () => {
+      const closingKey = guide.dataset.closingKey || shownStorageKey;
+      if (guide.returnValue !== 'auth-ended') markSeen(closingKey);
+      guide.dataset.closingKey = '';
+      shownStorageKey = '';
+    });
+    const closeGuide = reason => {
+      guide.dataset.closingKey = shownStorageKey;
+      guide.close(reason);
+    };
+    guide.querySelector('.lpg-close').addEventListener('click', () => closeGuide('dismissed'));
+    guide.querySelector('#ludwig-push-guide-dismiss').addEventListener('click', () => closeGuide('dismissed'));
+    guide.addEventListener('click', event => { if (event.target === guide) closeGuide('dismissed'); });
+    guide.querySelector('#ludwig-push-guide-open-settings').addEventListener('click', () => {
+      closeGuide('settings');
+      window.setTimeout(() => {
+        if (!document.body.classList.contains('supabase-authenticated')) return;
+        document.getElementById('ludwig-settings-open')?.click();
+        window.setTimeout(() => {
+          const launcher = document.querySelector('#ludwig-push-test-panel .lpt-launch');
+          if (launcher && launcher.getAttribute('aria-expanded') !== 'true') launcher.click();
+        }, 350);
+      }, 80);
+    });
+    return guide;
+  }
+
+  function storageKeyFor(profileId) {
+    return `ludwig_push_guide_seen_v1_${profileId}`;
+  }
+
+  function syncGuide() {
+    const guide = ensureGuide();
+    const authenticated = document.body.classList.contains('supabase-authenticated');
+    const profileId = String(window.__LUDWIG_PROFILE__?.id || '');
+    if (!authenticated || !profileId) {
+      if (guide.open) {
+        guide.dataset.closingKey = shownStorageKey;
+        guide.close('auth-ended');
+      }
+      return;
+    }
+    const key = storageKeyFor(profileId);
+    let alreadySeen = MEMORY_SEEN.has(key);
+    try { alreadySeen = alreadySeen || localStorage.getItem(key) === '1'; } catch (_) {}
+    if (alreadySeen || guide.open) return;
+    shownStorageKey = key;
+    guide.dataset.closingKey = '';
+    guide.returnValue = '';
+    if (typeof guide.showModal === 'function') {
+      guide.showModal();
+      guide.querySelector('#ludwig-push-guide-open-settings')?.focus();
+    }
+  }
+
+  function init() {
+    if (!document.body) return;
+    ensureGuide();
+    new MutationObserver(syncGuide).observe(document.body, { attributes:true, attributeFilter:['class'] });
+    syncGuide();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
+  else init();
+})();
 </script>
 </body>
 </html>
